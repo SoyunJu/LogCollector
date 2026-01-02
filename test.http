@@ -1,0 +1,23 @@
+### 에러 로그 전송 테스트
+POST http://localhost:8081/api/logs
+Content-Type: application/json
+
+{
+  "serviceName": "payment-module",
+  "hostName": "pod-pay-8273",
+  "logLevel": "ERROR",
+  "message": "Critical: Payment processing failed due to timeout",
+  "stackTrace": "INFO: Initializing request...\nINFO: Validating user token...\nDEBUG: Connecting to bank API...\nERROR: java.net.ConnectException: Connection timed out\n\tat com.soyunju.pay.BankClient.send(BankClient.java:45)\n\tat com.soyunju.pay.PayService.process(PayService.java:102)\n\tat com.soyunju.pay.PayController.pay(PayController.java:34)\n\tat (30라인을 채우기 위한 가상 라인 1)\n\tat (가상 라인 2)\n\tat (가상 라인 3)\n\tat (가상 라인 4)\n\tat (가상 라인 5)\n\tat (가상 라인 6)\n\tat (가상 라인 7)\n\tat (가상 라인 8)\n\tat (가상 라인 9)\n\tat (가상 라인 10)\n\tat (가상 라인 11)\n\tat (가상 라인 12)\n\tat (가상 라인 13)\n\tat (가상 라인 14)\n\tat (가상 라인 15)\n\tat (가상 라인 16)\n\tat (가상 라인 17)\n\tat (가상 라인 18)\n\tat (가상 라인 19)\n\tat (가상 라인 20)\n\tat (가상 라인 21)\n\tat (가상 라인 22)\n\tat (가상 라인 23)\n\tat (가상 라인 24)\n\tat (가상 라인 25)\n\tat (가상 라인 26)\n\tat (가상 라인 27)\n\tat (가상 라인 28)\n\tat (이 라인은 30라인이 넘어가므로 요약에 포함되지 않아야 함)"
+}
+
+### 에러 로그 목록 조회 테스트
+GET http://localhost:8081/api/logs
+
+###
+GET http://localhost:8081/api/logs?status=NEW
+
+###
+GET http://localhost:8081/api/logs?serviceName=payment-module&isToday=true
+
+###
+GET http://localhost:8081/api/logs?size=5&page=0
