@@ -1,0 +1,64 @@
+### [환경 설정] 변수 정의
+@host = localhost
+@port = 8081
+@baseUrl = http://{{host}}:{{port}}/api/logs
+
+### -----------------------------------------------------------
+### 1. ErrorLogCrdController (데이터 생성 및 변조)
+### -----------------------------------------------------------
+
+### [수집] 신규 에러 로그 전송 (POST /api/logs)
+# 성공 시 200 OK와 함께 errorCode, summary가 생성되어 반환됩니다.
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "serviceName": "payment-api",
+  "hostName": "pay-svr-01",
+  "logLevel": "CRITICAL",
+  "message": "SQLException: Connection pool exhausted",
+  "stackTrace": "java.sql.SQLException: Cannot get connection\n at com.zaxxer.hikari.HikariPool.getConnection\n at com.soyunju.payment.PayService.process"
+}
+
+> {% client.global.set("savedLogId", response.body.logId); %}
+
+
+### [수정] 로그 상태 변경 (PATCH /api/logs/{id}/status)
+# NEW -> IN_PROGRESS로 상태를 변경합니다.
+PATCH {{baseUrl}}/{{savedLogId}}/status?newStatus=IN_PROGRESS
+
+
+### [삭제] 다중 로그 삭제 (DELETE /api/logs)
+# ID 리스트를 받아 대량 삭제를 수행합니다.
+DELETE {{baseUrl}}
+Content-Type: application/json
+
+[10, 11, 12]
+
+
+### -----------------------------------------------------------
+### 2. ErrorLogSearchController (데이터 조회 및 검색)
+### -----------------------------------------------------------
+
+### [조회] 동적 조건 검색 (GET /api/logs)
+# Querydsl을 이용해 서비스명, 상태, 날짜별로 페이징 조회합니다.
+GET {{baseUrl}}?serviceName=payment-api&status=IN_PROGRESS&isToday=true&page=0&size=20
+
+
+### [필터] 특정 상태 로그만 조회 (GET /api/logs/status/{status})
+GET {{baseUrl}}/status/NEW?page=0&size=10
+
+
+### [정렬] 복합 정렬 조회 (GET /api/logs/sorted)
+# 최신순/오래된순 + 서비스명 DESC 조건으로 조회합니다.
+GET {{baseUrl}}/sorted?direction=asc&page=0&size=10
+
+
+### -----------------------------------------------------------
+### 3. ErrorLogAiController (AI 특수 분석)
+### -----------------------------------------------------------
+
+### [분석] AI 심층 분석 요청 (POST /api/logs/ai/{id}/analyze)
+# DB 저장 없이 분석 결과(원인, 조치)만 즉시 리턴합니다.
+POST {{baseUrl}}/ai/{{savedLogId}}/analyze
+Content-Type: application/json
