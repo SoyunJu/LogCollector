@@ -13,7 +13,7 @@ POST {{baseUrl}}
 Content-Type: application/json
 
 {
-  "serviceName": "payment-api",
+  "serviceName": "test-api",
   "hostName": "pay-svr-01",
   "logLevel": "CRITICAL",
   "message": "SQLException: Connection pool exhausted",
@@ -42,8 +42,7 @@ Content-Type: application/json
 
 ### [조회] 동적 조건 검색 (GET /api/logs)
 # Querydsl을 이용해 서비스명, 상태, 날짜별로 페이징 조회합니다.
-GET {{baseUrl}}?serviceName=payment-api&status=IN_PROGRESS&isToday=true&page=0&size=20
-
+GET {{baseUrl}}?serviceName=payment-api&status=IN_PROGRESS&isToday=true&page=0&size=2
 
 ### [필터] 특정 상태 로그만 조회 (GET /api/logs/status/{status})
 GET {{baseUrl}}/status/NEW?page=0&size=10
@@ -61,4 +60,8 @@ GET {{baseUrl}}/sorted?direction=asc&page=0&size=10
 ### [분석] AI 심층 분석 요청 (POST /api/logs/ai/{id}/analyze)
 # DB 저장 없이 분석 결과(원인, 조치)만 즉시 리턴합니다.
 POST {{baseUrl}}/ai/{{savedLogId}}/analyze
+Content-Type: application/json
+
+# DB 저장 없이 분석 결과(원인, 조치)만 즉시 리턴합니다.
+POST {{baseUrl}}/ai/{4}/analyze
 Content-Type: application/json

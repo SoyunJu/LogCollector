@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-app-deploy
+spec:
+  replicas: 2  # 2개의 복제본
+  selector:
+    matchLabels:
+      app: log-app
+  template:
+    metadata:
+      labels:
+        app: log-app
+    spec:
+      containers:
+        - name: log-app
+          image: logcollector-log-app:latest # 빌드한 도커 이미지명
+          imagePullPolicy: Never # 로컬 도커 이미지를 사용할 때 필수
+          ports:
+            - containerPort: 8081
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mariadb://logcollector-db:3306/logcollector
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: logcollector-secrets
+                  key: db-root-password
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: logcollector-secrets
+                  key: openai-api-key
+            - name: SPRING_PROFILES_ACTIVE
+              value: secret

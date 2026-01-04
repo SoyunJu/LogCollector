@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment   # DB 실행
+metadata:
+  name: mariadb-deploy
+spec:
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:latest
+          env:
+            - name: MARIADB_DATABASE
+              value: logcollector
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: logcollector-secrets
+                  key: db-root-password
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mariadb-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mariadb-storage
+          persistentVolumeClaim:
+            claimName: mariadb-pvc

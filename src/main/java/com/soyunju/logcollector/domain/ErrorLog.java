@@ -56,7 +56,7 @@ public class ErrorLog {
 
     @Column(name = "repeat_count")
     @Builder.Default
-    private int repeatCount = 1; // 누적 발생 횟수
+    private Integer repeatCount = 1; // 누적 발생 횟수
 
     @Column(name = "last_occurrence_time")
     private LocalDateTime lastOccurrenceTime; // 마지막 발생 시간

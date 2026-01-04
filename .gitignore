@@ -38,3 +38,6 @@ out/
 
 # Secrets
 src/main/resources/application-secret.properties
+.env
+# Kubernetes Secrets
+k8s/00-secret.yaml
