@@ -1,67 +1,72 @@
-### [환경 설정] 변수 정의
-@host = localhost
-@port = 8081
-@baseUrl = http://{{host}}:{{port}}/api/logs
+### 전역 변수 설정
+@baseUrl = http://localhost:8082/api/logs
 
-### -----------------------------------------------------------
-### 1. ErrorLogCrdController (데이터 생성 및 변조)
-### -----------------------------------------------------------
-
-### [수집] 신규 에러 로그 전송 (POST /api/logs)
-# 성공 시 200 OK와 함께 errorCode, summary가 생성되어 반환됩니다.
+### 1. 로그 수집 API (Create)
+# 정상적인 에러 로그 수집 요청을 보냅니다.
 POST {{baseUrl}}
 Content-Type: application/json
 
 {
-  "serviceName": "test-api",
-  "hostName": "pay-svr-01",
-  "logLevel": "CRITICAL",
-  "message": "SQLException: Connection pool exhausted",
-  "stackTrace": "java.sql.SQLException: Cannot get connection\n at com.zaxxer.hikari.HikariPool.getConnection\n at com.soyunju.payment.PayService.process"
+  "serviceName": "Test01Service",
+  "logLevel": "ERROR",
+  "message": "Connection timeout to Database",
+  "stackTrace": "java.net.ConnectException: Connection timed out\n\tat com.soyunju.db.Connector.connect(Connector.java:45)",
+  "hostName": "auth-server-01",
+  "ip": "192.168.0.10"
 }
 
-> {% client.global.set("savedLogId", response.body.logId); %}
+### 2. 동일 로그 재전송 (Upsert 확인)
+# 동일한 serviceName, message, stackTrace를 보내 repeat_count와 last_occurred_time 업데이트를 확인합니다.
+POST {{baseUrl}}
+Content-Type: application/json
 
+{
+  "serviceName": "UserAuthService",
+  "logLevel": "ERROR",
+  "message": "Connection timeout to Database",
+  "stackTrace": "java.net.ConnectException: Connection timed out\n\tat com.soyunju.db.Connector.connect(Connector.java:45)",
+  "hostName": "auth-server-02",
+  "ip": "192.168.0.11"
+}
 
-### [수정] 로그 상태 변경 (PATCH /api/logs/{id}/status)
-# NEW -> IN_PROGRESS로 상태를 변경합니다.
-PATCH {{baseUrl}}/{{savedLogId}}/status?newStatus=IN_PROGRESS
+### 3. 동적 조건 검색 (Search)
+# 서비스명과 상태를 필터링하여 검색합니다.
+GET {{baseUrl}}?serviceName=UserAuthService&status=NEW&isToday=true&page=0&size=20
+Accept: application/json
 
+### 4. 상태별 필터링 조회
+# NEW 상태인 로그만 조회합니다. (ErrorStatus: NEW, IN_PROGRESS, RESOLVED 중 선택)
+GET {{baseUrl}}/status/NEW?page=0&size=10
+Accept: application/json
 
-### [삭제] 다중 로그 삭제 (DELETE /api/logs)
-# ID 리스트를 받아 대량 삭제를 수행합니다.
+### 5. 특수 정렬 조회 (Sorted)
+# 최신순(desc) 또는 오래된순(asc)으로 정렬하여 조회합니다.
+GET {{baseUrl}}/sorted?direction=desc&page=0&size=10
+Accept: application/json
+
+### 6. 로그 상태 업데이트 (Update)
+# logId가 1인 로그의 상태를 IN_PROGRESS로 변경합니다.
+PATCH {{baseUrl}}/5/status?newStatus=IN_PROGRESS
+
+### 7. 다중 로그 삭제 (Delete)
+# 특정 ID 리스트에 해당하는 로그들을 삭제합니다.
 DELETE {{baseUrl}}
 Content-Type: application/json
 
-[10, 11, 12]
+[1, 2, 3]
 
 
-### -----------------------------------------------------------
-### 2. ErrorLogSearchController (데이터 조회 및 검색)
-### -----------------------------------------------------------
-
-### [조회] 동적 조건 검색 (GET /api/logs)
-# Querydsl을 이용해 서비스명, 상태, 날짜별로 페이징 조회합니다.
-GET {{baseUrl}}?serviceName=payment-api&status=IN_PROGRESS&isToday=true&page=0&size=2
-
-### [필터] 특정 상태 로그만 조회 (GET /api/logs/status/{status})
-GET {{baseUrl}}/status/NEW?page=0&size=10
-
-
-### [정렬] 복합 정렬 조회 (GET /api/logs/sorted)
-# 최신순/오래된순 + 서비스명 DESC 조건으로 조회합니다.
-GET {{baseUrl}}/sorted?direction=asc&page=0&size=10
-
-
-### -----------------------------------------------------------
-### 3. ErrorLogAiController (AI 특수 분석)
-### -----------------------------------------------------------
-
-### [분석] AI 심층 분석 요청 (POST /api/logs/ai/{id}/analyze)
-# DB 저장 없이 분석 결과(원인, 조치)만 즉시 리턴합니다.
-POST {{baseUrl}}/ai/{{savedLogId}}/analyze
+### 1. 로그 수집 요청 (Redis 큐에 데이터가 들어감)
+POST http://localhost:8082/api/logs
 Content-Type: application/json
 
-# DB 저장 없이 분석 결과(원인, 조치)만 즉시 리턴합니다.
-POST {{baseUrl}}/ai/{4}/analyze
-Content-Type: application/json
+{
+  "serviceName": "Order-Service",
+  "errorCode": "ERR_DATABASE_CONNECTION",
+  "message": "Connection timeout at 2026-01-14",
+  "occurredAt": "2026-01-14T22:15:00"
+}
+
+### 2. AI 분석 요청 (Mock 또는 OpenAI 호출 확인)
+# {logId} 부분은 실제 DB에 저장된 ID로 변경하여 호출하세요.
+POST http://localhost:8082/api/logs/ai/1/analyze

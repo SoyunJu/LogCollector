@@ -16,9 +16,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,39 +29,84 @@ public class ErrorLogSearchService {
     private final ErrorLogRepository errorLogRepository;
     private final LogProcessor logProcessor;
 
-    public Page<ErrorLogResponse> findLogs(String serviceName, ErrorStatus status, boolean isToday, Pageable pageable) {
-        QErrorLog errorLog = QErrorLog.errorLog;
-        BooleanBuilder builder = new BooleanBuilder();
+    private static final QErrorLog errorLog = QErrorLog.errorLog;
 
-        if (status != null) builder.and(errorLog.status.eq(status));
-        if (serviceName != null && !serviceName.isEmpty()) builder.and(errorLog.serviceName.eq(serviceName));
-        if (isToday) {
-            LocalDateTime startOfToday = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
-            builder.and(errorLog.occurrenceTime.after(startOfToday));
-        }
-
-        List<ErrorLog> results = queryFactory.selectFrom(errorLog)
-                .where(builder)
-                .offset(pageable.getOffset()).limit(pageable.getPageSize())
-                .orderBy(errorLog.occurrenceTime.desc()).fetch();
-
-        long total = queryFactory.selectFrom(errorLog).where(builder).fetchCount();
-        return new PageImpl<>(results.stream().map(logProcessor::convertToResponse).collect(Collectors.toList()), pageable, total);
+    public Page<ErrorLogResponse> findLogs(
+            String serviceName,
+            ErrorStatus status,
+            boolean isToday,
+            Pageable pageable
+    ) {
+        BooleanBuilder builder = buildCommonCondition(serviceName, status, isToday);
+        return fetchPage(builder, pageable, errorLog.occurredTime.desc());
     }
 
     public Page<ErrorLogResponse> getLogsByStatus(ErrorStatus status, Pageable pageable) {
-        return errorLogRepository.findByStatus(status, pageable).map(logProcessor::convertToResponse);
+        return errorLogRepository
+                .findByStatus(status, pageable)
+                .map(logProcessor::convertToResponse);
     }
 
     public Page<ErrorLogResponse> getSortedLogs(String direction, Pageable pageable) {
-        QErrorLog log = QErrorLog.errorLog;
-        OrderSpecifier<?> timeOrder = direction.equalsIgnoreCase("desc") ? log.occurrenceTime.desc() : log.occurrenceTime.asc();
+        OrderSpecifier<?> timeOrder =
+                "desc".equalsIgnoreCase(direction)
+                        ? errorLog.occurredTime.desc()
+                        : errorLog.occurredTime.asc();
 
-        List<ErrorLog> results = queryFactory.selectFrom(log)
-                .orderBy(timeOrder, log.serviceName.desc())
-                .offset(pageable.getOffset()).limit(pageable.getPageSize()).fetch();
+        return fetchPage(null, pageable, timeOrder, errorLog.serviceName.desc());
+    }
 
-        long total = queryFactory.selectFrom(log).fetchCount();
-        return new PageImpl<>(results.stream().map(logProcessor::convertToResponse).collect(Collectors.toList()), pageable, total);
+    /* =========================
+       공통 로직
+       ========================= */
+
+    private BooleanBuilder buildCommonCondition(
+            String serviceName,
+            ErrorStatus status,
+            boolean isToday
+    ) {
+        BooleanBuilder builder = new BooleanBuilder();
+
+        if (status != null) {
+            builder.and(errorLog.status.eq(status));
+        }
+
+        if (serviceName != null && !serviceName.isEmpty()) {
+            builder.and(errorLog.serviceName.eq(serviceName));
+        }
+
+        if (isToday) {
+            LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+            builder.and(errorLog.occurredTime.after(startOfToday));
+        }
+
+        return builder;
+    }
+
+    private Page<ErrorLogResponse> fetchPage(
+            BooleanBuilder condition,
+            Pageable pageable,
+            OrderSpecifier<?>... orderSpecifiers
+    ) {
+        List<ErrorLog> results = queryFactory
+                .selectFrom(errorLog)
+                .where(condition)
+                .orderBy(orderSpecifiers)
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        long total = queryFactory
+                .selectFrom(errorLog)
+                .where(condition)
+                .fetchCount();
+
+        return new PageImpl<>(
+                results.stream()
+                        .map(logProcessor::convertToResponse)
+                        .toList(),
+                pageable,
+                total
+        );
     }
 }

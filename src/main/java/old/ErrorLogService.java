@@ -104,7 +104,7 @@ public class ErrorLogService {
     /**
      * 전체 에러 로그 조회
      * public List<ErrorLog> findAllLogs() {
-     * return errorLogRepository.findAllByOrderByOccurrenceTimeDesc();
+     * return errorLogRepository.findAllByOrderByoccurredTimeDesc();
      * }
      */
 
@@ -121,7 +121,7 @@ public class ErrorLogService {
         }
         if (isToday) {
             LocalDateTime startOfToday = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
-            builder.and(errorLog.occurrenceTime.after(startOfToday));
+            builder.and(errorLog.occurredTime.after(startOfToday));
         }
 
         // 2. Querydsl을 이용한 쿼리 실행
@@ -130,7 +130,7 @@ public class ErrorLogService {
                 .where(builder)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
-                .orderBy(errorLog.occurrenceTime.desc())
+                .orderBy(errorLog.occurredTime.desc())
                 .fetch();
 
         // 3. 전체 카운트 조회 (페이징용)
@@ -173,7 +173,7 @@ public class ErrorLogService {
         }
         if (isToday) {
             LocalDateTime startOfToday = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
-            builder.and(errorLog.occurrenceTime.after(startOfToday));
+            builder.and(errorLog.occurredTime.after(startOfToday));
         }
 
         // 2. Querydsl을 이용한 쿼리 실행
@@ -182,7 +182,7 @@ public class ErrorLogService {
                 .where(builder)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
-                .orderBy(errorLog.occurrenceTime.desc())
+                .orderBy(errorLog.occurredTime.desc())
                 .fetch();
 
         // 3. 전체 카운트 조회 (페이징용)
@@ -241,7 +241,7 @@ public class ErrorLogService {
 
         // 정렬 순서 정의
         OrderSpecifier<?> timeOrder = direction.equalsIgnoreCase("desc") ?
-                log.occurrenceTime.desc() : log.occurrenceTime.asc();
+                log.occurredTime.desc() : log.occurredTime.asc();
 
         List<ErrorLog> results = queryFactory
                 .selectFrom(log)

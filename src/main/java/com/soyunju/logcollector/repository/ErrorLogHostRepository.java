@@ -1,7 +1,9 @@
 package com.soyunju.logcollector.repository;
 
 import com.soyunju.logcollector.domain.ErrorLogHost;
-import org.springframework.data.jpa.repository.*;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -10,7 +12,7 @@ import java.time.LocalDateTime;
 @Repository
 public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long> {
 
-    // host별 집계 upsert (원자적)
+    // host별 upsert (DB 컬럼명: first_occurrence_time, last_occurrence_time 반영)
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
         INSERT INTO error_log_hosts (
@@ -34,7 +36,6 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
             @Param("now") LocalDateTime now
     );
 
-    // incident(log_hash) 기준 영향 host 수
     @Query(value = "SELECT COUNT(*) FROM error_log_hosts WHERE log_hash = :logHash", nativeQuery = true)
     long countHostsByLogHash(@Param("logHash") String logHash);
 }

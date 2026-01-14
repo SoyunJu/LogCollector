@@ -3,7 +3,6 @@ package com.soyunju.logcollector.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -31,33 +30,35 @@ public class ErrorLog {
     private String stackTrace;
 
     @CreationTimestamp
-    @Column(name = "occurrence_time", precision = 3, updatable = false)
-    private LocalDateTime occurrenceTime;
+    @Column(name = "occurred_time", precision = 3, updatable = false)
+    private LocalDateTime occurredTime;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "analysis_status")
     @Builder.Default
-    private AnalysisStatus analysisStatus = AnalysisStatus.PENDING; //
+    private AnalysisStatus analysisStatus = AnalysisStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     @Builder.Default
     private ErrorStatus status = ErrorStatus.NEW;
 
-    private String errorCode; // 추가됨
-    private String summary;   // 추가됨
+    @Column(name = "error_code", length = 50)
+    private String errorCode;
 
-    @CreationTimestamp
-    @Column(name = "resolved_at", precision = 3, updatable = true)
-    private LocalDateTime resolved_at; // 아직 미사용 ( 장애 해결 시각 업데이트 할지 말지 )
+    @Column(columnDefinition = "TEXT")
+    private String summary;
+
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
 
     @Column(name = "log_hash", length = 64)
-    private String logHash; // 서비스명 + 메시지 해시값
+    private String logHash;
 
     @Column(name = "repeat_count")
     @Builder.Default
-    private Integer repeatCount = 1; // 누적 발생 횟수
+    private Integer repeatCount = 1;
 
-    @Column(name = "last_occurrence_time")
-    private LocalDateTime lastOccurrenceTime; // 마지막 발생 시간
+    @Column(name = "last_occurred_time")
+    private LocalDateTime lastOccurredTime;
 }

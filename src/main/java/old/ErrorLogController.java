@@ -41,7 +41,7 @@ public class ErrorLogController {
             @RequestParam(required = false) String serviceName,
             @RequestParam(required = false) ErrorStatus status, // 추가된 파라미터
             @RequestParam(defaultValue = "false") boolean isToday,
-            @PageableDefault(size = 20, sort = "occurrenceTime", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "occurredTime", direction = Sort.Direction.DESC) Pageable pageable) {
 
         return ResponseEntity.ok(errorLogService.findLogs(serviceName, status, isToday, pageable));
     }

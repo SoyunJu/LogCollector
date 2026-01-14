@@ -30,8 +30,10 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.POST, "/api/logs").permitAll()
                                 // 모든 조회 API는 내부 개발자용이므로 인증 필요 (현재는 개발 편의를 위해 허용)
                                 .requestMatchers(HttpMethod.GET, "/api/logs/**").permitAll()
+                                // === 수정 임시로 모두 허용 ===
+                                .requestMatchers(HttpMethod.PATCH, "/api/logs/**").permitAll()
                                 // 삭제 및 AI 분석 요청은 특정 역할(ADMIN)만 가능하도록 설정 가능
-                                // 임시로 모두 허용
+                                // === 임시로 모두 허용 ===
                                 // .requestMatchers("/api/logs/ai/**").authenticated()
                                 .requestMatchers(HttpMethod.DELETE, "/api/logs/**").permitAll()
                                 .requestMatchers("/api/logs/ai/**").permitAll()

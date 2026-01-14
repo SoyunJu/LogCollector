@@ -16,8 +16,10 @@ import java.time.LocalDateTime;
                 @Index(name = "ix_error_log_hosts_loghash_last", columnList = "log_hash,last_occurrence_time")
         }
 )
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class ErrorLogHost {
 
@@ -37,11 +39,13 @@ public class ErrorLogHost {
     @Column(name = "ip", length = 45)
     private String ip;
 
+    // ✅ DB: first_occurrence_time
     @Column(name = "first_occurrence_time", nullable = false)
-    private LocalDateTime firstOccurrenceTime;
+    private LocalDateTime firstoccurredTime;
 
+    // ✅ DB: last_occurrence_time
     @Column(name = "last_occurrence_time", nullable = false)
-    private LocalDateTime lastOccurrenceTime;
+    private LocalDateTime lastoccurredTime;
 
     @Column(name = "repeat_count", nullable = false)
     private Integer repeatCount;

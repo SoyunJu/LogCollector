@@ -1,9 +1,11 @@
 package com.soyunju.logcollector.service.ai;
 
 import com.soyunju.logcollector.dto.AiAnalysisResult;
+import com.soyunju.logcollector.dto.LogAnalysisData;
 import com.soyunju.logcollector.repository.ErrorLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -12,7 +14,8 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class OpenAiAnalysisService {
+@Profile("prod") // 운영 환경에서만 활성화
+public class OpenAiAnalysisService implements AiAnalysisService {
 
     @Value("${openai.api.key}") private String apiKey;
     @Value("${openai.api.url}") private String apiUrl;
@@ -20,11 +23,25 @@ public class OpenAiAnalysisService {
 
     private final ErrorLogRepository errorLogRepository;
     private final RestClient restClient;
+    @Override
+    public AiAnalysisResult analyze(Long logId) {
+        // 기존 openAiAnalysis 로직을 그대로 수행
+        LogAnalysisData data = errorLogRepository.findAnalysisDataById(logId)
+                .orElseThrow(() -> new IllegalArgumentException("분석 데이터를 찾을 수 없습니다. ID: " + logId));
+
+        validateRequiredFields(data);
+        String rawContent = callOpenAiApi(data);
+
+        return new AiAnalysisResult(
+                parseResult(rawContent, "원인:"),
+                parseResult(rawContent, "조치:")
+        );
+    }
 
     // 반환 타입을 void에서 AiAnalysisResult로 변경
     public AiAnalysisResult openAiAnalysis(Long logId) {
-        // 1. 프로젝션을 이용해 필요한 데이터만 효율적으로 조회
-        ErrorLogRepository.LogAnalysisData data = errorLogRepository.findAnalysisDataById(logId)
+        // 1. DTO를 이용해 필요한 데이터만 효율적으로 조회
+        LogAnalysisData data = errorLogRepository.findAnalysisDataById(logId)
                 .orElseThrow(() -> new IllegalArgumentException("분석할 데이터를 찾을 수 없습니다. ID: " + logId));
 
         // 2. 요구사항: 필수 필드 null 체크 및 상세 예외 발생
@@ -40,13 +57,13 @@ public class OpenAiAnalysisService {
         );
     }
 
-    private void validateRequiredFields(ErrorLogRepository.LogAnalysisData data) {
-        if (data.getErrorCode() == null) throw new IllegalStateException("errorCode 필드가 null입니다.");
-        if (data.getSummary() == null) throw new IllegalStateException("summary 필드가 null입니다.");
-        if (data.getMessage() == null) throw new IllegalStateException("message 필드가 null입니다.");
+    private void validateRequiredFields(LogAnalysisData data) {
+        if (data.errorCode() == null) throw new IllegalStateException("errorCode 필드가 null입니다.");
+        if (data.summary() == null) throw new IllegalStateException("summary 필드가 null입니다.");
+        if (data.message() == null) throw new IllegalStateException("message 필드가 null입니다.");
     }
 
-    private String callOpenAiApi(ErrorLogRepository.LogAnalysisData data) {
+    private String callOpenAiApi(LogAnalysisData data) {
         // AI가 반드시 형식을 지키도록 프롬프트 강화
         String prompt = String.format(
                 "당신은 전문 SRE 엔지니어입니다. 다음 에러 정보를 분석하세요.\n" +
@@ -54,7 +71,8 @@ public class OpenAiAnalysisService {
                         "응답은 반드시 아래 형식을 엄격히 지켜야 하며, 다른 부연 설명은 하지 마세요.\n" +
                         "원인: [상세한 발생 원인 한 줄]\n" +
                         "조치: [구체적인 단계별 해결 방법]",
-                data.getErrorCode(), data.getSummary(), data.getMessage());
+                data.errorCode(), data.summary(), data.message()
+        );
 
         Map response = restClient.post()
                 .uri(apiUrl)

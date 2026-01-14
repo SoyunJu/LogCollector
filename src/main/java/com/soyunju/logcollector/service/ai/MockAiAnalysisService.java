@@ -1,16 +1,19 @@
 package com.soyunju.logcollector.service.ai;
 
+import com.soyunju.logcollector.dto.AiAnalysisResult;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
-// @Primary // 실제 API 연동 전까지 이 클래스를 우선 사용
+@Profile("dev") // 개발 환경에서 활성화
 public class MockAiAnalysisService implements AiAnalysisService {
+
     @Override
-    public String[] analyze(String message, String summary) {
-        // 실제로는 여기서 외부 LLM API를 호출하게 됩니다.
-        return new String[] {
-                "분석 결과: " + message + "는 주로 DB 커넥션 풀 고갈 시 발생합니다.",
-                "권장 조치: hikariCP 설정을 점검하고 커넥션 누수를 확인하세요."
-        };
+    public AiAnalysisResult analyze(Long logId) {
+        // DB 조회 없이 고정된 결과 반환 (테스트 용도)
+        return new AiAnalysisResult(
+                "테스트용 분석 결과: DB 커넥션 풀 고갈 가능성이 높습니다.",
+                "테스트용 권장 조치: HikariCP 설정을 점검하십시오."
+        );
     }
 }

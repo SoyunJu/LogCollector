@@ -2,8 +2,8 @@ package com.soyunju.logcollector.controller;
 
 import com.soyunju.logcollector.domain.ErrorStatus;
 import com.soyunju.logcollector.dto.ErrorLogRequest;
-import com.soyunju.logcollector.dto.ErrorLogResponse;
 import com.soyunju.logcollector.service.crd.ErrorLogCrdService;
+import com.soyunju.logcollector.service.redis.LogToRedis;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,14 +19,15 @@ import java.util.List;
 public class ErrorLogCrdController {
 
     private final ErrorLogCrdService errorLogCrdService;
+    private final LogToRedis logToRedis;
 
     // 로그 수집 API (Create)
     @PostMapping
-    public ResponseEntity<ErrorLogResponse> collectLog(@Valid @RequestBody ErrorLogRequest request) {
+    public ResponseEntity<Void> collectLog(@Valid @RequestBody ErrorLogRequest request) {
         log.info("로그 수집 요청 - 서비스: {}", request.getServiceName());
-        // 중복일 경우 기존 로그의 시간을 업데이트하고 해당 정보를 반환합니다.
-        ErrorLogResponse response = errorLogCrdService.saveLog(request);
-        return response != null ? ResponseEntity.ok(response) : ResponseEntity.noContent().build();
+        // Redis 큐에 log push
+        logToRedis.push(request);
+        return ResponseEntity.accepted().build();
     }
 
     // 상태 업데이트 API (Update)

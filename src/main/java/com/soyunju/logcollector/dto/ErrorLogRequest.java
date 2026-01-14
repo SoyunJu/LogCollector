@@ -6,9 +6,9 @@ import lombok.*;
 
 @Getter
 @Setter
-@Builder // ⬅️ 빌더 패턴을 사용할 수 있게 해줍니다.
-@NoArgsConstructor // ⬅️ JSON 역직렬화를 위해 필요합니다.
-@AllArgsConstructor // ⬅️ @Builder를 위해 모든 필드를 가진 생성자가 필요합니다.
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ErrorLogRequest {
     @NotBlank(message = "서비스명은 필수입니다.")
     private String serviceName;

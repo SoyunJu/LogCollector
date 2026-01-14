@@ -1,7 +1,8 @@
-package com.soyunju.logcollector.service.ai;
+package old;
 
 import com.soyunju.logcollector.dto.AiAnalysisResult;
 import com.soyunju.logcollector.repository.ErrorLogRepository;
+import com.soyunju.logcollector.service.ai.OpenAiAnalysisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
