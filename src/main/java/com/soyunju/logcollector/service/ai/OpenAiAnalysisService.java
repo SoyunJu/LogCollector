@@ -17,25 +17,47 @@ import java.util.Map;
 @Profile("prod") // 운영 환경에서만 활성화
 public class OpenAiAnalysisService implements AiAnalysisService {
 
-    @Value("${openai.api.key}") private String apiKey;
-    @Value("${openai.api.url}") private String apiUrl;
-    @Value("${openai.model}") private String model;
+    @Value("${openai.api.key}")
+    private String apiKey;
+    @Value("${openai.api.url}")
+    private String apiUrl;
+    @Value("${openai.model}")
+    private String model;
 
     private final ErrorLogRepository errorLogRepository;
     private final RestClient restClient;
+    private final AiRateLimiterService rateLimiterService;
+
     @Override
     public AiAnalysisResult analyze(Long logId) {
-        // 기존 openAiAnalysis 로직을 그대로 수행
+        if (!rateLimiterService.isAllowed()) {
+            return new AiAnalysisResult(
+                    "분석 실패: 시스템 전체 일일 AI 호출 제한에 도달했습니다.",
+                    "내일 다시 시도하거나 관리자에게 문의하십시오."
+            );
+        }
+
         LogAnalysisData data = errorLogRepository.findAnalysisDataById(logId)
                 .orElseThrow(() -> new IllegalArgumentException("분석 데이터를 찾을 수 없습니다. ID: " + logId));
 
         validateRequiredFields(data);
-        String rawContent = callOpenAiApi(data);
 
-        return new AiAnalysisResult(
-                parseResult(rawContent, "원인:"),
-                parseResult(rawContent, "조치:")
-        );
+        try {
+            String rawContent = callOpenAiApi(data);
+            return new AiAnalysisResult(
+                    parseResult(rawContent, "원인:"),
+                    parseResult(rawContent, "조치:")
+            );
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // 4xx 에러 처리 (OpenAI 측 제한 포함)
+            if (e.getStatusCode().value() == 429) {
+                return new AiAnalysisResult("OpenAI API 할당량 초과", "잠시 후 다시 시도하십시오.");
+            }
+            return new AiAnalysisResult("분석 요청 오류 (" + e.getStatusCode() + ")", "입력 데이터 형식을 확인하십시오.");
+        } catch (Exception e) {
+            // 기타 네트워크 및 5xx 에러
+            return new AiAnalysisResult("분석 중 서버 오류 발생", "시스템 로그를 확인하십시오.");
+        }
     }
 
     // 반환 타입을 void에서 AiAnalysisResult로 변경

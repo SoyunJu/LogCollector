@@ -35,6 +35,10 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
     // 6. 특정 시간 이후 조회
     Page<ErrorLog> findByOccurredTimeAfter(LocalDateTime time, Pageable pageable);
 
+    // 7. 영향 호스트 Count 추가
+    @Query("SELECT COUNT(h) FROM ErrorLogHost h WHERE h.logHash = :logHash")
+    long countDistinctHostsByLogHash(@Param("logHash") String logHash);
+
     // AI 분석 전용: 특정 필드만 조회하여 DB 부하 최적화 (DTO로 분리)
     @Query("SELECT new com.soyunju.logcollector.dto.LogAnalysisData(e.errorCode, e.summary, e.message) " +
             "FROM ErrorLog e WHERE e.id = :id")

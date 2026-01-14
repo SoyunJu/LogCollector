@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.config; // 1. 패키지 문 누락 해결
+package com.soyunju.logcollector.config;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
