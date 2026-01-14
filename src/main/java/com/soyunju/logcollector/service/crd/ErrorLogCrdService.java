@@ -4,6 +4,7 @@ import com.soyunju.logcollector.domain.ErrorLog;
 import com.soyunju.logcollector.domain.ErrorStatus;
 import com.soyunju.logcollector.dto.ErrorLogRequest;
 import com.soyunju.logcollector.dto.ErrorLogResponse;
+import com.soyunju.logcollector.repository.ErrorLogHostRepository;
 import com.soyunju.logcollector.repository.ErrorLogRepository;
 import com.soyunju.logcollector.service.processor.LogProcessor;
 import lombok.RequiredArgsConstructor;
@@ -20,47 +21,83 @@ import java.util.Optional;
 public class ErrorLogCrdService {
 
     private final ErrorLogRepository errorLogRepository;
+    private final ErrorLogHostRepository errorLogHostRepository;
     private final LogProcessor logProcessor;
 
     @Transactional
     public ErrorLogResponse saveLog(ErrorLogRequest dto) {
         if (!logProcessor.isTargetLevel(dto.getLogLevel())) return null;
 
-        // 1. 고유 해시 생성
-        String logHash = logProcessor.generateLogHash(dto.getServiceName(), dto.getMessage());
+        LocalDateTime now = LocalDateTime.now();
 
-        // 2. 중복 여부 확인
-        Optional<ErrorLog> existingLog = errorLogRepository.findFirstByLogHashOrderByOccurrenceTimeDesc(logHash);
+        // 1. incident hash 생성 (기존 generateLogHash X)
+        String logHash = logProcessor.generateIncidentHash(
+                dto.getServiceName(),
+                dto.getMessage(),
+                dto.getStackTrace()
+        );
+
+        String hostName = (dto.getHostName() == null || dto.getHostName().isBlank())
+                ? "UNKNOWN_HOST"
+                : dto.getHostName();
+
+        // 2. host별 집계 upsert (영향 서버 누락 방지)
+        errorLogHostRepository.upsertHostCounter(
+                logHash,
+                dto.getServiceName(),
+                hostName,
+                null,   // ip 없음
+                now
+        );
+
+        // 3. incident 단건 조회 (hash는 유일)
+        Optional<ErrorLog> existingLog = errorLogRepository.findByLogHash(logHash);
 
         if (existingLog.isPresent()) {
-            // 3. [중복 로그] 카운트 증가 및 최종 시간 업데이트
             ErrorLog log = existingLog.get();
             log.setRepeatCount(log.getRepeatCount() + 1);
-            log.setLastOccurrenceTime(LocalDateTime.now());
-            log.setStatus(ErrorStatus.NEW); // 다시 발생했으므로 상태를 NEW로 리셋 가능
+            log.setLastOccurrenceTime(now);
+            log.setStatus(ErrorStatus.NEW);
 
-            return logProcessor.convertToResponse(log);
+            long impactedHostCount =
+                    errorLogHostRepository.countHostsByLogHash(logHash);
+
+            return logProcessor.convertToResponse(log, impactedHostCount);
         }
 
-        // 4. [신규 로그] 저장
+        // 4. 신규 incident 저장
         ErrorLog errorLog = ErrorLog.builder()
                 .serviceName(dto.getServiceName())
-                .hostName(dto.getHostName())
+                .hostName(hostName)
                 .logLevel(dto.getLogLevel().toUpperCase())
                 .message(dto.getMessage())
                 .stackTrace(dto.getStackTrace())
                 .errorCode(logProcessor.generateErrorCode(dto.getMessage()))
-                .summary(logProcessor.extractSummary(dto.getStackTrace() != null ?
-                        dto.getStackTrace() : dto.getMessage()))
+                .summary(
+                        logProcessor.extractSummary(
+                                dto.getStackTrace() != null
+                                        ? dto.getStackTrace()
+                                        : dto.getMessage()
+                        )
+                )
                 .logHash(logHash)
                 .repeatCount(1)
-                .lastOccurrenceTime(LocalDateTime.now())
+                .lastOccurrenceTime(now)
                 .build();
 
-        return logProcessor.convertToResponse(errorLogRepository.save(errorLog));
+        ErrorLog saved = errorLogRepository.save(errorLog);
+
+        long impactedHostCount =
+                errorLogHostRepository.countHostsByLogHash(logHash);
+
+        return logProcessor.convertToResponse(saved, impactedHostCount);
     }
 
-    public void updateStatus(Long logId, ErrorStatus newStatus) {
+    private static String safe(String s) {
+        return (s == null || s.isBlank()) ? "UNKNOWN_HOST" : s;
+    }
+
+    public void updateStatus(Long logId, com.soyunju.logcollector.domain.ErrorStatus newStatus) {
         ErrorLog errorLog = errorLogRepository.findById(logId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 로그 부재: " + logId));
         errorLog.setStatus(newStatus);
@@ -70,4 +107,3 @@ public class ErrorLogCrdService {
         errorLogRepository.deleteAllByIdInBatch(logIds);
     }
 }
-

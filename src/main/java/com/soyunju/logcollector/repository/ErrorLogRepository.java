@@ -5,6 +5,7 @@ import com.soyunju.logcollector.domain.ErrorStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -37,7 +38,41 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
         String getMessage();
     }
 
-    // 가장 최근에 발생한 동일 해시 로그 조회
-    Optional<ErrorLog> findFirstByLogHashOrderByOccurrenceTimeDesc(String logHash);
+    // 260112_sy log hashing and db upsert
+    // 260112_sy upsert 이후 단건 조회용
+    Optional<ErrorLog> findByLogHash(String logHash);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO error_logs (
+              service_name, host_name, log_level,
+              message, stack_trace, error_code, summary,
+              log_hash, repeat_count, status, analysis_status,
+              occurrence_time, last_occurrence_time
+            )
+            VALUES (
+              :serviceName, :hostName, :logLevel,
+              :message, :stackTrace, :errorCode, :summary,
+              :logHash, 1, 'NEW', 'PENDING',
+              :now, :now
+            )
+            ON DUPLICATE KEY UPDATE
+              repeat_count = repeat_count + 1,
+              last_occurrence_time = VALUES(last_occurrence_time),
+              status = 'NEW',
+              analysis_status = 'PENDING'
+            """, nativeQuery = true)
+    int upsertIncident(
+            @Param("serviceName") String serviceName,
+            @Param("hostName") String hostName,
+            @Param("logLevel") String logLevel,
+            @Param("message") String message,
+            @Param("stackTrace") String stackTrace,
+            @Param("errorCode") String errorCode,
+            @Param("summary") String summary,
+            @Param("logHash") String logHash,
+            @Param("now") LocalDateTime now
+    );
+
 
 }
