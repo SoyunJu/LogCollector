@@ -26,52 +26,66 @@ public class ErrorLogCrdService {
     private final LogProcessor logProcessor;
 
     public ErrorLogResponse saveLog(ErrorLogRequest dto) {
+
+        // 발생 시각 정책: request에 없으면 수집 시점(now)로 고정
+        LocalDateTime occurredTime =
+                (dto.getOccurredTime() != null) ? dto.getOccurredTime() : LocalDateTime.now();
+
         if (!logProcessor.isTargetLevel(dto.getLogLevel())) return null;
 
-        LocalDateTime now = LocalDateTime.now();
-
         String logHash = logProcessor.generateIncidentHash(dto.getServiceName(), dto.getMessage(), dto.getStackTrace());
-
         String hostName = (dto.getHostName() == null || dto.getHostName().isBlank()) ? "UNKNOWN_HOST" : dto.getHostName();
 
-        // 1) Host별 집계 (DB에서 신규 삽입 시 1, 기존 업데이트 시 2 반환)
-        int upsertResult = errorLogHostRepository.upsertHostCounter(logHash, dto.getServiceName(), hostName, null, now);
+        // Host 집계는 "관측 시각"을 넣고 싶으면 occurredTime을 사용(정책 일관)
+        int upsertResult = errorLogHostRepository.upsertHostCounter(
+                logHash, dto.getServiceName(), hostName, null, occurredTime
+        );
         boolean isNewHost = (upsertResult == 1);
 
-        // 2) Incident(에러 유형) 조회
         Optional<ErrorLog> existingLog = errorLogRepository.findByLogHash(logHash);
         boolean isNewIncident = existingLog.isEmpty();
 
-        // 3) error_code 생성 (요구사항: 생성 가능하면 insert 시 error_code에 저장)
-        // - stackTrace가 null이어도 안전
         String errorCode = LogNormalization.generateErrorCode(dto.getMessage(), dto.getStackTrace());
 
         ErrorLog targetLog;
 
         if (existingLog.isPresent()) {
             targetLog = existingLog.get();
-            targetLog.setRepeatCount(targetLog.getRepeatCount() + 1);
-            targetLog.setLastOccurredTime(now);
-            targetLog.setStatus(ErrorStatus.NEW);
 
-            // (권장) 기존 레코드에 error_code가 비어있다면 채움
+            // 재발생 시각/횟수/상태 갱신
+            targetLog.setRepeatCount(targetLog.getRepeatCount() + 1);
+            targetLog.setStatus(ErrorStatus.NEW);
+            targetLog.setOccurredTime(occurredTime);
+            targetLog.setLastOccurredTime(occurredTime);
+
+            // firstOccurredTime은 "신규 생성 시"에만 세팅하고, 기존에는 건드리지 않음
+
             if (targetLog.getErrorCode() == null || targetLog.getErrorCode().isBlank()) {
                 targetLog.setErrorCode(errorCode);
             }
 
-            // 보수적으로 save 호출(트랜잭션/영속성 상태 이슈 방지)
             targetLog = errorLogRepository.save(targetLog);
 
         } else {
-            targetLog = ErrorLog.builder().serviceName(dto.getServiceName()).hostName(hostName).logLevel(dto.getLogLevel().toUpperCase()).message(dto.getMessage()).summary(logProcessor.extractSummary(dto.getMessage())).logHash(logHash).errorCode(errorCode)         // ✅ 신규 insert 시 error_code 저장
-                    .repeatCount(1).occurredTime(now).lastOccurredTime(now).status(ErrorStatus.NEW)      // 기존 코드에서 NEW로 세팅하던 흐름과 일관
+            targetLog = ErrorLog.builder()
+                    .serviceName(dto.getServiceName())
+                    .hostName(hostName)
+                    .logLevel(dto.getLogLevel().toUpperCase())
+                    .message(dto.getMessage())
+                    .summary(logProcessor.extractSummary(dto.getMessage()))
+                    .logHash(logHash)
+                    .errorCode(errorCode)
+                    .repeatCount(1)
+                    .occurredTime(occurredTime)
+                    .firstOccurredTime(occurredTime)     // 신규에만 세팅
+                    .lastOccurredTime(occurredTime)
+                    .status(ErrorStatus.NEW)
                     .build();
 
             targetLog = errorLogRepository.save(targetLog);
         }
 
         long impactedHostCount = errorLogHostRepository.countHostsByLogHash(logHash);
-
         return logProcessor.convertToResponse(targetLog, impactedHostCount, isNewIncident, isNewHost);
     }
 

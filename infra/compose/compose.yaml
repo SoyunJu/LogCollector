@@ -1,6 +1,6 @@
 services:
   log-app:
-    build: .
+    build: ../..
     container_name: log-collector-app
     ports:
       - "8081:8081"

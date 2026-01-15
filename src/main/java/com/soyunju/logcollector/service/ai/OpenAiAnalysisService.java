@@ -30,53 +30,26 @@ public class OpenAiAnalysisService implements AiAnalysisService {
 
     @Override
     public AiAnalysisResult analyze(Long logId) {
+        // 1. 호출 제한 체크
         if (!rateLimiterService.isAllowed()) {
-            return new AiAnalysisResult(
-                    "분석 실패: 시스템 전체 일일 AI 호출 제한에 도달했습니다.",
-                    "내일 다시 시도하거나 관리자에게 문의하십시오."
-            );
+            return new AiAnalysisResult("분석 실패: 시스템 전체 일일 AI 호출 제한에 도달했습니다.", "내일 다시 시도하거나 관리자에게 문의하십시오.");
         }
-
-        LogAnalysisData data = errorLogRepository.findAnalysisDataById(logId)
-                .orElseThrow(() -> new IllegalArgumentException("분석 데이터를 찾을 수 없습니다. ID: " + logId));
-
+        // 2. 데이터 조회
+        LogAnalysisData data = errorLogRepository.findAnalysisDataById(logId).orElseThrow(() -> new IllegalArgumentException("분석 데이터를 찾을 수 없습니다. ID: " + logId));
+        // 3. 필수 필드 검증
         validateRequiredFields(data);
-
         try {
+            // 4. API 호출 및 결과 파싱
             String rawContent = callOpenAiApi(data);
-            return new AiAnalysisResult(
-                    parseResult(rawContent, "원인:"),
-                    parseResult(rawContent, "조치:")
-            );
+            return new AiAnalysisResult(parseResult(rawContent, "원인:"), parseResult(rawContent, "조치:"));
         } catch (org.springframework.web.client.HttpClientErrorException e) {
-            // 4xx 에러 처리 (OpenAI 측 제한 포함)
             if (e.getStatusCode().value() == 429) {
                 return new AiAnalysisResult("OpenAI API 할당량 초과", "잠시 후 다시 시도하십시오.");
             }
             return new AiAnalysisResult("분석 요청 오류 (" + e.getStatusCode() + ")", "입력 데이터 형식을 확인하십시오.");
         } catch (Exception e) {
-            // 기타 네트워크 및 5xx 에러
             return new AiAnalysisResult("분석 중 서버 오류 발생", "시스템 로그를 확인하십시오.");
         }
-    }
-
-    // 반환 타입을 void에서 AiAnalysisResult로 변경
-    public AiAnalysisResult openAiAnalysis(Long logId) {
-        // 1. DTO를 이용해 필요한 데이터만 효율적으로 조회
-        LogAnalysisData data = errorLogRepository.findAnalysisDataById(logId)
-                .orElseThrow(() -> new IllegalArgumentException("분석할 데이터를 찾을 수 없습니다. ID: " + logId));
-
-        // 2. 요구사항: 필수 필드 null 체크 및 상세 예외 발생
-        validateRequiredFields(data);
-
-        // 3. AI 분석 수행
-        String rawContent = callOpenAiApi(data);
-
-        // 4. 분석 결과 객체 생성 및 반환
-        return new AiAnalysisResult(
-                parseResult(rawContent, "원인:"),
-                parseResult(rawContent, "조치:")
-        );
     }
 
     private void validateRequiredFields(LogAnalysisData data) {
@@ -87,27 +60,9 @@ public class OpenAiAnalysisService implements AiAnalysisService {
 
     private String callOpenAiApi(LogAnalysisData data) {
         // AI가 반드시 형식을 지키도록 프롬프트 강화
-        String prompt = String.format(
-                "당신은 전문 SRE 엔지니어입니다. 다음 에러 정보를 분석하세요.\n" +
-                        "에러코드: %s\n요약: %s\n메시지: %s\n\n" +
-                        "응답은 반드시 아래 형식을 엄격히 지켜야 하며, 다른 부연 설명은 하지 마세요.\n" +
-                        "원인: [상세한 발생 원인 한 줄]\n" +
-                        "조치: [구체적인 단계별 해결 방법]",
-                data.errorCode(), data.summary(), data.message()
-        );
+        String prompt = String.format("당신은 전문 SRE 엔지니어입니다. 다음 에러 정보를 분석하세요.\n" + "에러코드: %s\n요약: %s\n메시지: %s\n\n" + "응답은 반드시 아래 형식을 엄격히 지켜야 하며, 다른 부연 설명은 하지 마세요.\n" + "원인: [상세한 발생 원인 한 줄]\n" + "조치: [구체적인 단계별 해결 방법]", data.errorCode(), data.summary(), data.message());
 
-        Map response = restClient.post()
-                .uri(apiUrl)
-                .header("Authorization", "Bearer " + apiKey)
-                .body(Map.of(
-                        "model", model,
-                        "messages", List.of(
-                                Map.of("role", "system", "content", "You are a professional system analyst."),
-                                Map.of("role", "user", "content", prompt)
-                        )
-                ))
-                .retrieve()
-                .body(Map.class);
+        Map response = restClient.post().uri(apiUrl).header("Authorization", "Bearer " + apiKey).body(Map.of("model", model, "messages", List.of(Map.of("role", "system", "content", "You are a professional system analyst."), Map.of("role", "user", "content", prompt)))).retrieve().body(Map.class);
 
         List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
         Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");

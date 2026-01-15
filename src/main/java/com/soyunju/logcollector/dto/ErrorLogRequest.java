@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @Builder
@@ -23,4 +25,6 @@ public class ErrorLogRequest {
     private String message;
 
     private String stackTrace;
+
+    private LocalDateTime occurredTime;
 }

@@ -1,0 +1,48 @@
+services:
+  logcollector-db:
+    image: mariadb:latest
+    container_name: logcollector-mariadb
+    environment:
+      MARIADB_DATABASE: logcollector
+      MARIADB_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - logcollector-db-data:/var/lib/mysql
+
+  logcollector-redis:
+    image: redis:7-alpine
+    container_name: logcollector-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - logcollector-redis-data:/data
+
+  log-app:
+    build:
+      context: ../..
+    container_name: log-collector-app
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mariadb://logcollector-db:3306/logcollector
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATA_REDIS_HOST: logcollector-redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_PROFILES_ACTIVE: compose
+    depends_on:
+      logcollector-db:
+        condition: service_healthy
+      logcollector-redis:
+        condition: service_started
+
+volumes:
+  logcollector-db-data:
+  logcollector-redis-data:

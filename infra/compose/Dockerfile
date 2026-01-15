@@ -1,6 +1,6 @@
 # 1. 빌드 스테이지
 FROM gradle:8.14-jdk17 AS build
-COPY --chown=gradle:gradle . /home/gradle/src
+COPY --chown=gradle:gradle ../.. /home/gradle/src
 WORKDIR /home/gradle/src
 RUN gradle build -x test --no-daemon
 

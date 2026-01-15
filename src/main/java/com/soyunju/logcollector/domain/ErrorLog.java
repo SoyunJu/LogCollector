@@ -3,6 +3,7 @@ package com.soyunju.logcollector.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -29,9 +30,15 @@ public class ErrorLog {
     @Column(name = "stack_trace", columnDefinition = "LONGTEXT")
     private String stackTrace;
 
-    @CreationTimestamp
-    @Column(name = "occurred_time", precision = 3, updatable = false)
+    @Column(nullable = false)
     private LocalDateTime occurredTime;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime firstOccurredTime;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "analysis_status")

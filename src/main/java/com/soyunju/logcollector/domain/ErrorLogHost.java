@@ -41,7 +41,7 @@ public class ErrorLogHost {
 
     // ✅ DB: first_occurrence_time
     @Column(name = "first_occurrence_time", nullable = false)
-    private LocalDateTime firstoccurredTime;
+    private LocalDateTime firstOccurredTime;
 
     // ✅ DB: last_occurrence_time
     @Column(name = "last_occurrence_time", nullable = false)

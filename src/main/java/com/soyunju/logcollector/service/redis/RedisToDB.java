@@ -6,72 +6,103 @@ import com.soyunju.logcollector.service.crd.ErrorLogCrdService;
 import com.soyunju.logcollector.service.notification.SlackService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import java.time.Duration;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RedisToDB {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private static final String LOG_QUEUE_KEY = "error-log-queue";
+
+    // DLQ 키(처리 실패한 로그)
+    private static final String DLQ_KEY = "error-log-queue:dlq";
+    // DLQ는 분석을 위해 더 길게 보관
+    private static final Duration DLQ_TTL = Duration.ofDays(1);
+
+    // 1초당 20개 처리
+    private static final int BATCH_SIZE = 20;
+
+    private final RedisTemplate<String, ErrorLogRequest> redisTemplate;
     private final ErrorLogCrdService errorLogCrdService;
     private final SlackService slackService;
 
-    private static final String LOG_QUEUE_KEY = "error-log-queue";
-
+    /**
+     * fixedDelay: 이전 소비 작업이 끝난 뒤 N ms 후 다음 실행(과부하 방지)
+     * - 1초마다 최대 BATCH_SIZE 개 처리
+     */
     @Scheduled(fixedDelay = 1000)
-    public void consume() {
-        while (true) {
-            // Redis List의 왼쪽(Head)에서 데이터를 하나씩 꺼냄
-            ErrorLogRequest request = (ErrorLogRequest) redisTemplate.opsForList().leftPop(LOG_QUEUE_KEY);
+    public void consumeBatch() {
+        try {
+            int processed = 0;
 
-            if (request == null) {
-                break; // 큐가 비어있으면 루프 종료
+            for (int i = 0; i < BATCH_SIZE; i++) {
+                //leftPop
+                ErrorLogRequest request =
+                        redisTemplate.opsForList()
+                                .leftPop(LOG_QUEUE_KEY, Duration.ofSeconds(2));
+                if (request == null) break;
+
+                processed++;
+                handleOne(request);
             }
 
-            try {
-                // 1. DB 저장 및 중복/확산 판별 로직 수행
-                ErrorLogResponse response = errorLogCrdService.saveLog(request);
-
-                if (response == null) {
-                    continue;
-                }
-
-                // 2. 알림 조건 판별 (운영 효율을 위한 트리거 설계)
-                // - 최초 발생했거나(isNew), 기존 에러가 새로운 서버로 번졌거나(isNewHost),
-                // - 한 곳에서 10번 반복되어 임계치에 도달했을 때 알림 발송
-                boolean shouldNotify =
-                        response.isNew() ||
-                                response.isNewHost() ||
-                                response.getRepeatCount() == 10;
-
-                if (shouldNotify) {
-                    // 상황별 맞춤 타이틀 생성
-                    String title = determineTitle(response);
-
-                    // 요약 메시지에 현재 누적 발생 횟수를 포함하여 시각화 강화
-                    String summaryWithCount = String.format("%s\n(현재 누적 발생: %d회)",
-                            response.getSummary(), response.getRepeatCount());
-
-                    // 슬랙 전송 호출
-                    slackService.sendErrorNotification(
-                            title,
-                            response.getServiceName(),
-                            summaryWithCount,
-                            response.getImpactedHostCount()
-                    );
-
-                    log.info("슬랙 알림 전송 완료 [{}]: {}", title, response.getLogHash());
-                }
-
-                log.debug("비동기 로그 처리 완료: {}", response.getServiceName());
-
-            } catch (Exception e) {
-                // 처리 실패 시 에러 로그를 남기고 다음 데이터로 진행 (시스템 안정성 확보)
-                log.error("비동기 로그 저장 중 오류 발생: {}", e.getMessage());
+            if (processed > 0) {
+                log.debug("Redis batch consume 완료: {}건", processed);
             }
+
+        } catch (RedisConnectionFailureException e) {
+            // Redis 자체 장애: 다음 스케줄에서 재시도
+            log.warn("Redis 연결 실패로 consume 스킵. msg={}", e.getMessage());
+
+        } catch (Exception e) {
+            log.error("Redis consumeBatch 중 예외. msg={}", e.getMessage(), e);
+        }
+    }
+
+    // 1건 처리
+    private void handleOne(ErrorLogRequest request) {
+        try {
+            ErrorLogResponse response = errorLogCrdService.saveLog(request);
+            if (response == null) return;
+
+            boolean shouldNotify =
+                    response.isNew() ||
+                            response.isNewHost() || // 확산
+                            response.getRepeatCount() == 10;
+
+            if (shouldNotify) {
+                String title = determineTitle(response);
+                String summaryWithCount = String.format("%s\n(현재 누적 발생: %d회)",
+                        response.getSummary(), response.getRepeatCount());
+
+                slackService.sendErrorNotification(
+                        title,
+                        response.getServiceName(),
+                        summaryWithCount,
+                        response.getImpactedHostCount()
+                );
+            }
+
+        } catch (Exception e) {
+            // DB 저장 실패/예상치 못한 오류 → DLQ로 이동
+            log.error("로그 처리 실패 → DLQ 적재. msg={}", e.getMessage(), e);
+            pushToDlq(request);
+        }
+    }
+
+    private void pushToDlq(ErrorLogRequest request) {
+        try {
+            redisTemplate.opsForList().rightPush(DLQ_KEY, request);
+            redisTemplate.expire(DLQ_KEY, DLQ_TTL);
+        } catch (Exception e) {
+            // Redis까지 실패하면 유실 가능 → 운영 알람 대상
+            log.error("DLQ 적재 실패(로그 유실 가능). msg={}", e.getMessage(), e);
         }
     }
 
@@ -82,6 +113,6 @@ public class RedisToDB {
         if (response.isNewHost()) {
             return "⚠️ *[에러 확산 감지]*";
         }
-        return "🔥 *[다건 발생 경고]*"; // repeatCount == 10 인 경우
+        return "🔥 *[다건 발생 경고]*";
     }
 }
