@@ -26,7 +26,7 @@ services:
     ports:
       - "3306:3306" # 로컬 DBeaver 접속용
     healthcheck:
-      test: [ "CMD", "mariadb-admin", "ping", "-h", "localhost" ]
+      test: [ "CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent" ]
       interval: 5s
       timeout: 5s
       retries: 5

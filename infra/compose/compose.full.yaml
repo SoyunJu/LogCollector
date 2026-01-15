@@ -6,9 +6,9 @@ services:
       MARIADB_DATABASE: logcollector
       MARIADB_ROOT_PASSWORD: root
     ports:
-      - "3306:3306"
+      - "13306:3306"
     healthcheck:
-      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -36,7 +36,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: root
       SPRING_DATA_REDIS_HOST: logcollector-redis
       SPRING_DATA_REDIS_PORT: 6379
-      SPRING_PROFILES_ACTIVE: compose
+      SPRING_PROFILES_ACTIVE: docker
     depends_on:
       logcollector-db:
         condition: service_healthy
