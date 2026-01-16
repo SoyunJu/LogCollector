@@ -17,19 +17,19 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
     // host별 upsert (DB 컬럼명: first_occurrence_time, last_occurrence_time 반영)
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
-        INSERT INTO error_log_hosts (
-          log_hash, service_name, host_name, ip,
-          first_occurrence_time, last_occurrence_time, repeat_count
-        )
-        VALUES (
-          :logHash, :serviceName, :hostName, :ip,
-          :now, :now, 1
-        )
-        ON DUPLICATE KEY UPDATE
-          repeat_count = repeat_count + 1,
-          last_occurrence_time = VALUES(last_occurrence_time),
-          ip = VALUES(ip)
-        """, nativeQuery = true)
+            INSERT INTO error_log_hosts (
+              log_hash, service_name, host_name, ip,
+              first_occurrence_time, last_occurrence_time, repeat_count
+            )
+            VALUES (
+              :logHash, :serviceName, :hostName, :ip,
+              :now, :now, 1
+            )
+            ON DUPLICATE KEY UPDATE
+              repeat_count = repeat_count + 1,
+              last_occurrence_time = VALUES(last_occurrence_time),
+              ip = VALUES(ip)
+            """, nativeQuery = true)
     int upsertHostCounter(
             @Param("logHash") String logHash,
             @Param("serviceName") String serviceName,
@@ -42,14 +42,20 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
     long countHostsByLogHash(@Param("logHash") String logHash);
 
     // System Draft 위해 추가
+    // 집계 제외 조건:
+    // - incident.status = RESOLVED
     @Query(value = """
-    SELECT
-      eh.log_hash AS logHash,
-      COUNT(DISTINCT eh.host_name) AS hostCount,
-      COALESCE(SUM(eh.repeat_count), 0) AS repeatCount,
-      MAX(eh.service_name) AS serviceName
-    FROM error_log_hosts eh
-    GROUP BY eh.log_hash
-    """, nativeQuery = true)
+            SELECT
+              i.log_hash AS logHash,
+              COUNT(*) AS hostCount,
+              COALESCE(SUM(eh.repeat_count), 0) AS repeatCount,
+              MAX(eh.service_name) AS serviceName
+            FROM incident i
+            JOIN error_log_hosts eh
+              ON eh.log_hash = i.log_hash
+            WHERE i.status <> 'RESOLVED'
+            GROUP BY i.log_hash
+            """, nativeQuery = true)
     List<HostAgg> aggregateByLogHash();
+
 }

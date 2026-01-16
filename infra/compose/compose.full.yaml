@@ -37,6 +37,9 @@ services:
       SPRING_DATA_REDIS_HOST: logcollector-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_PROFILES_ACTIVE: docker
+      # Draft policy (env override)
+      DRAFT_POLICY_HOST_SPREAD_THRESHOLD: 3
+      DRAFT_POLICY_HIGH_RECUR_THRESHOLD: 10
     depends_on:
       logcollector-db:
         condition: service_healthy
