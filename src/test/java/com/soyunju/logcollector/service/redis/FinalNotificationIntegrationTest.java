@@ -1,11 +1,11 @@
 package com.soyunju.logcollector.service.redis;
 
-import com.soyunju.logcollector.domain.ErrorLog;
-import com.soyunju.logcollector.dto.ErrorLogRequest;
-import com.soyunju.logcollector.dto.ErrorLogResponse;
-import com.soyunju.logcollector.repository.ErrorLogHostRepository;
-import com.soyunju.logcollector.repository.ErrorLogRepository;
-import com.soyunju.logcollector.service.crd.ErrorLogCrdService;
+import com.soyunju.logcollector.domain.lc.ErrorLog;
+import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
+import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
+import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
+import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
+import com.soyunju.logcollector.service.lc.crd.ErrorLogCrdService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

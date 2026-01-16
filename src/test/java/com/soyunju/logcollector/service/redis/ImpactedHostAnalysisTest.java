@@ -1,7 +1,10 @@
 package com.soyunju.logcollector.service.redis;
 
-import com.soyunju.logcollector.dto.ErrorLogRequest;
-import com.soyunju.logcollector.repository.ErrorLogRepository;
+import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
+import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
+import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
+import com.soyunju.logcollector.service.lc.redis.LogToRedis;
+import com.soyunju.logcollector.service.lc.redis.RedisToDB;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +21,7 @@ public class ImpactedHostAnalysisTest {
     private LogToRedis logToRedis;
     @Autowired private RedisToDB redisToDB;
     @Autowired private ErrorLogRepository errorLogRepository;
-    @Autowired private com.soyunju.logcollector.repository.ErrorLogHostRepository errorLogHostRepository;
+    @Autowired private ErrorLogHostRepository errorLogHostRepository;
 
     // [추가] 테스트 간 데이터 격리를 위해 매번 실행 전 데이터를 비웁니다.
     @org.junit.jupiter.api.BeforeEach

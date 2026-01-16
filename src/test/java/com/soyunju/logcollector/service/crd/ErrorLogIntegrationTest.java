@@ -1,6 +1,7 @@
 package com.soyunju.logcollector.service.crd;
 
-import com.soyunju.logcollector.repository.ErrorLogRepository;
+import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
+import com.soyunju.logcollector.service.lc.crd.ErrorLogCrdService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
