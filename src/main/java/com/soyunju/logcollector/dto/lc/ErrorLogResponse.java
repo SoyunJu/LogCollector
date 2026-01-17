@@ -1,5 +1,6 @@
 package com.soyunju.logcollector.dto.lc;
 
+import com.soyunju.logcollector.domain.lc.ErrorStatus;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -16,4 +17,5 @@ public class ErrorLogResponse {
     private boolean isNew;
     private boolean isNewHost; // 서버 확산 여부
     private String logHash;          // 해시값 추가 테스트시 확인 용이할 용도
+    private ErrorStatus status;
 }

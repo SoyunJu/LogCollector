@@ -1,15 +1,12 @@
 package com.soyunju.logcollector.controller.kb;
 
-import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
-import com.soyunju.logcollector.dto.kb.KbAddendumCreateRequest;
-import com.soyunju.logcollector.dto.kb.KbArticleResponse;
-import com.soyunju.logcollector.dto.kb.KbDraftCreateRequest;
-import com.soyunju.logcollector.service.kb.KbArticleService;
+import com.soyunju.logcollector.service.kb.crd.KbArticleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,35 +15,17 @@ public class KbArticleController {
 
     private final KbArticleService kbArticleService;
 
-    @PostMapping("/incidents/{incidentId}/draft")
-    public ResponseEntity<Long> createDraft(@PathVariable Long incidentId,
-                                            @RequestBody KbDraftCreateRequest req) {
-        // created_by는 최소 구현: system 고정
-        Long kbArticleId = kbArticleService.createDraft(
-                incidentId,
-                req.getIncidentTitle(),
-                req.getContent(),
-                CreatedBy.system
-        );
-        return ResponseEntity.ok(kbArticleId);
+    // LC 에서 resolved 된 log 처리
+    @PostMapping("/draft")
+    public ResponseEntity<Long> createDraft(@RequestParam Long incidentId) {
+        return ResponseEntity.ok(kbArticleService.createSystemDraft(incidentId));
     }
 
-    @PostMapping("/articles/{kbArticleId}/addendum")
-    public ResponseEntity<Void> addAddendum(@PathVariable Long kbArticleId,
-                                            @RequestBody KbAddendumCreateRequest req) {
-        kbArticleService.addAddendum(kbArticleId, req.getContent(), CreatedBy.user);
+    // 시스템 자동 draft
+    @PostMapping("/posting")
+    public ResponseEntity<Void> postArticle(@RequestParam Long kbArticleId, @RequestParam String title, @RequestParam(required = false) String content) {
+        kbArticleService.postArticle(kbArticleId, title, content);
         return ResponseEntity.ok().build();
     }
 
-    @PutMapping("/articles/{kbArticleId}/tags")
-    public ResponseEntity<Void> setTags(@PathVariable Long kbArticleId,
-                                        @RequestBody List<String> keywords) {
-        kbArticleService.setTags(kbArticleId, keywords);
-        return ResponseEntity.ok().build();
-    }
-
-    @GetMapping("/articles/{kbArticleId}")
-    public ResponseEntity<KbArticleResponse> getArticle(@PathVariable Long kbArticleId) {
-        return ResponseEntity.ok(kbArticleService.getArticle(kbArticleId));
-    }
 }

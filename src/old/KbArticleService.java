@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.service.kb;
+package com.soyunju.logcollector.service.kb.crd;
 
 import com.soyunju.logcollector.domain.kb.*;
 import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
@@ -19,9 +19,36 @@ public class KbArticleService {
     private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;
     private final KbAddendumRepository kbAddendumRepository;
-
-    private final KbTagRepository kbTagRepository;
     private final KbArticleTagRepository kbArticleTagRepository;
+    private final KbTagRepository kbTagRepository;
+
+    @Transactional
+    public Long createDraftFromIncident(Long incidentId, CreatedBy creator) {
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new IllegalArgumentException("Incident not found: " + incidentId));
+
+        // 1. 이미 동일한 인시던트로 생성된 KB가 있는지 확인 (중복 방지)
+        if (kbArticleRepository.existsByIncidentId(incidentId)) {
+            return null;
+        }
+
+        // 2. Incident 데이터를 그대로 복사하여 KbArticle 생성 (AI 개입 없이 단순 필드 매핑)
+        KbArticle kb = KbArticle.builder()
+                .incident(incident)
+                .incidentTitle(incident.g
+                .content(generateDefaultContent(incident))
+                .status(KbStatus.OPEN)
+                .createdBy(creator)
+                .build();
+
+        return kbArticleRepository.save(kb).getId();
+    }
+
+    private String generateDefaultContent(Incident incident) {
+        return "### [시스템 생성 초안]\n" +
+                "**요약:** " + incident.getSummary() + "\n\n" +
+                "**에러 로그:** \n```\n" + incident.getStackTrace() + "\n```";
+    }
 
     @Transactional
     public Long createDraft(Long incidentId, String incidentTitle, String content, CreatedBy createdBy) {
@@ -132,17 +159,17 @@ public class KbArticleService {
         return """
                 ## 현상
                 - 
-
+                
                 ## 영향 범위
                 - service: %s
                 - log_hash: %s
-
+                
                 ## 원인 추정
                 - 
-
+                
                 ## 대응/해결
                 - 
-
+                
                 ## 재발 방지
                 - 
                 """.formatted(incident.getServiceName(), incident.getLogHash());

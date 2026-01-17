@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 public class ErrorResponse {
-    private int status;      // HTTP 상태 코드
+    private int httpStatus;      // HTTP 상태 코드
     private String code;     // 내부 에러 코드 (예: LOG-001)
     private String message;  // 에러 메시지
     private LocalDateTime timestamp;

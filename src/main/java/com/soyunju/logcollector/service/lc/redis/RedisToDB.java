@@ -1,10 +1,12 @@
 package com.soyunju.logcollector.service.lc.redis;
 
 import com.soyunju.logcollector.config.LogCollectorRedisProperties;
+import com.soyunju.logcollector.domain.lc.ErrorStatus;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
 import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
 import com.soyunju.logcollector.service.lc.crd.ErrorLogCrdService;
 import com.soyunju.logcollector.service.lc.notification.SlackService;
+import com.soyunju.logcollector.service.lc.processor.LogProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.RedisConnectionFailureException;
@@ -23,6 +25,8 @@ public class RedisToDB {
     private final ErrorLogCrdService errorLogCrdService;
     private final SlackService slackService;
     private final LogCollectorRedisProperties props;
+    private final LogProcessor logProcessor;
+
 
     // 이전 실행 끝난 뒤 delay 하고 다시 실행, 내부에서 blocking pop(timeout) 으로 빈 큐 대기 처리
     @Scheduled(fixedDelay = 1000)
@@ -57,13 +61,22 @@ public class RedisToDB {
     // 1건 처리. 실패시 DB로
     private void handleOne(ErrorLogRequest request) {
         try {
+            String logHash = logProcessor.generateIncidentHash(
+                    request.getServiceName(), request.getMessage(), request.getStackTrace());
+
+            if (errorLogCrdService.isIgnored(logHash)) {
+                return; // IGNORED 상태라면 트랜잭션 타기 전에 종료
+            }
             ErrorLogResponse response = errorLogCrdService.saveLog(request);
             if (response == null) return;
 
-            boolean shouldNotify =
+            // 3. 알람 조건 판단 (ACKNOWLEDGED 상태면 알람 스킵)
+            boolean isAcknowledged = response.getStatus() == ErrorStatus.ACKNOWLEDGED;
+
+            boolean shouldNotify = !isAcknowledged && (
                     response.isNew() ||
                             response.isNewHost() ||
-                            response.getRepeatCount() == 10;
+                            response.getRepeatCount() == 10);
 
             if (shouldNotify) {
                 String title = determineTitle(response);
