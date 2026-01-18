@@ -10,7 +10,7 @@ public final class LogNormalization {
     private LogNormalization() {}
 
     // =========================
-    // Normalization patterns
+    // 정규화 패턴
     // =========================
     private static final Pattern PATTERN_UUID =
             Pattern.compile("\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b");
@@ -57,9 +57,6 @@ public final class LogNormalization {
     private static final Pattern PATTERN_WS =
             Pattern.compile("\\s+");
 
-    // =========================
-    // Error code extraction patterns (심볼 미해결은 "여기 선언 누락"이 원인입니다)
-    // =========================
     private static final Pattern P_ORA = Pattern.compile("\\bORA-(\\d{5})\\b");
     private static final Pattern P_SQLSTATE_CODE =
             Pattern.compile("\\bSQLSTATE\\s*[:=]?\\s*([0-9A-Z]{5})\\b", Pattern.CASE_INSENSITIVE);
@@ -70,9 +67,7 @@ public final class LogNormalization {
     private static final Pattern P_EXCEPTION =
             Pattern.compile("\\b([A-Za-z_$][A-Za-z0-9_$]*Exception)\\b");
 
-    // =========================
-    // Public APIs
-    // =========================
+
 
     public static String normalizeMessage(String message) {
         if (message == null) return "";
@@ -159,15 +154,12 @@ public final class LogNormalization {
         if (m.find()) return "EX_" + m.group(1);
 
         String upper = src.toUpperCase();
-        if (upper.contains("SQL") || upper.contains("DATABASE")) return "CAT_DB";
-        if (upper.contains("TIMEOUT") || upper.contains("CONNECTION") || upper.contains("REFUSED")) return "CAT_NET";
-        if (upper.contains("NULLPOINTER") || upper.contains("OUTOFMEMORY") || upper.contains("ILLEGALSTATE")) return "CAT_SYS";
-        return "CAT_GEN";
+        if (upper.contains("SQL") || upper.contains("DATABASE")) return "DB_ERR";
+        if (upper.contains("TIMEOUT") || upper.contains("CONNECTION") || upper.contains("REFUSED")) return "NET_ERR";
+        if (upper.contains("NULLPOINTER") || upper.contains("OUTOFMEMORY") || upper.contains("ILLEGALSTATE")) return "SYS_ERR";
+        return "GEN_ERR";
     }
 
-    // =========================
-    // Internal helper
-    // =========================
     private static String replaceHttpStatusToken(String input) {
         Matcher m = P_HTTP_CODE.matcher(input);
         StringBuffer sb = new StringBuffer();

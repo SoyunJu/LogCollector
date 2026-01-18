@@ -7,6 +7,7 @@ import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
 import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
+import com.soyunju.logcollector.service.kb.crd.IncidentService;
 import com.soyunju.logcollector.service.kb.crd.KbArticleService;
 import com.soyunju.logcollector.service.lc.processor.LogNormalization;
 import com.soyunju.logcollector.service.lc.processor.LogProcessor;
@@ -27,8 +28,9 @@ public class ErrorLogCrdService {
     private final ErrorLogHostRepository errorLogHostRepository;
     private final LogProcessor logProcessor;
 
-    // KB 연동을 위한 서비스 및 리포지토리 주입
+    // KB 연동을 위한 서비스 및 레파지토리 주입
     private final KbArticleService kbArticleService;
+    private final IncidentService incidentService;
     private final IncidentRepository incidentRepository;
 
     @Transactional(readOnly = true)
@@ -97,6 +99,18 @@ public class ErrorLogCrdService {
         }
 
         long impactedHostCount = errorLogHostRepository.countHostsByLogHash(logHash);
+
+        // Incident upsert (SSOT: Incident)
+        incidentService.recordOccurrence(
+                logHash,
+                dto.getServiceName(),
+                targetLog.getSummary(),
+                dto.getStackTrace(),
+                errorCode,
+                dto.getLogLevel(),
+                occurredTime
+        );
+
         return logProcessor.convertToResponse(targetLog, impactedHostCount, isNewIncident, isNewHost);
     }
 
@@ -119,8 +133,11 @@ public class ErrorLogCrdService {
                 log.setResolvedAt(null);
             }
             case RESOLVED -> {
+                LocalDateTime now = LocalDateTime.now();
                 log.setResolvedAt(LocalDateTime.now());
-
+                // incident status 도 변경
+                incidentService.markResolved(log.getLogHash(), now);
+                // incident 존재시 system draft 생성 --> TODO : 정책화로 옮길 계획이면 추후 제거, 이관 필요
                 incidentRepository.findByLogHash(log.getLogHash())
                         .ifPresent(incident -> kbArticleService.createSystemDraft(incident.getId()));
             }

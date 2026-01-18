@@ -96,17 +96,18 @@ public class ErrorLogSearchService {
                 .limit(pageable.getPageSize())
                 .fetch();
 
-        long total = queryFactory
-                .selectFrom(errorLog)
+        Long total = queryFactory
+                .select(errorLog.count())
+                .from(errorLog)
                 .where(condition)
-                .fetchCount();
+                .fetchOne();
 
         return new PageImpl<>(
                 results.stream()
                         .map(logProcessor::convertToResponse)
                         .toList(),
                 pageable,
-                total
+                total != null ? total : 0L
         );
     }
 }

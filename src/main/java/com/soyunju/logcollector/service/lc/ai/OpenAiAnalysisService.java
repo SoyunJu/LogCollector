@@ -6,6 +6,7 @@ import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -59,13 +60,25 @@ public class OpenAiAnalysisService implements AiAnalysisService {
     }
 
     private String callOpenAiApi(LogAnalysisData data) {
-        // AI가 반드시 형식을 지키도록 프롬프트 강화
-        String prompt = String.format("당신은 전문 SRE 엔지니어입니다. 다음 에러 정보를 분석하세요.\n" + "에러코드: %s\n요약: %s\n메시지: %s\n\n" + "응답은 반드시 아래 형식을 엄격히 지켜야 하며, 다른 부연 설명은 하지 마세요.\n" + "원인: [상세한 발생 원인 한 줄]\n" + "조치: [구체적인 단계별 해결 방법]", data.errorCode(), data.summary(), data.message());
+        String prompt = String.format("당신은 전문 SRE 엔지니어입니다. 다음 에러 정보를 분석하세요.\\n" + "에러코드: %s\\n요약: %s\\n메시지: %s\\n\\n" + "응답은 반드시 아래 형식을 엄격히 지켜야 하며, 다른 부연 설명은 하지 마세요.\\n" + "원인: [상세한 발생 원인 한 줄]\\n" + "조치: [구체적인 단계별 해결 방법]", data.errorCode(), data.summary(), data.message());
 
-        Map response = restClient.post().uri(apiUrl).header("Authorization", "Bearer " + apiKey).body(Map.of("model", model, "messages", List.of(Map.of("role", "system", "content", "You are a professional system analyst."), Map.of("role", "user", "content", prompt)))).retrieve().body(Map.class);
+        // 수정: ParameterizedTypeReference를 사용하여 Unchecked 캐스팅 경고 해결
+        Map<String, Object> response = restClient.post()
+                .uri(apiUrl)
+                .header("Authorization", "Bearer " + apiKey)
+                .body(Map.of("model", model, "messages", List.of(Map.of("role", "system", "content", "You are a professional system analyst."), Map.of("role", "user", "content", prompt))))
+                .retrieve()
+                .body(new ParameterizedTypeReference<Map<String, Object>>() {
+                });
 
+        if (response == null) throw new RuntimeException("AI API 응답이 비어있습니다.");
+
+        @SuppressWarnings("unchecked") // choices 구조는 고정되어 있으므로 한정적 허용
         List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+
+        @SuppressWarnings("unchecked")
         Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+
         return (String) message.get("content");
     }
 

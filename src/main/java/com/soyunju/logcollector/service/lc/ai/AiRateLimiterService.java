@@ -1,6 +1,7 @@
 package com.soyunju.logcollector.service.lc.ai;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -8,6 +9,7 @@ import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
+@Profile("prod") // 추가: 실제 Redis 기반 제한이 필요한 prod 환경에서만 활성화
 public class AiRateLimiterService {
 
     private final RedisTemplate<String, Object> redisTemplate;

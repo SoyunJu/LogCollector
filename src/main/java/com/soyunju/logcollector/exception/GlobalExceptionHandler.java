@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, String code, String message) {
         ErrorResponse response = ErrorResponse.builder()
-                .status(status.value())
+                .httpStatus(status.value())
                 .code(code)
                 .message(message)
                 .timestamp(LocalDateTime.now())

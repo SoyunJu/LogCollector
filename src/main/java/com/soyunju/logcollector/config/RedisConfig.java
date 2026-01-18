@@ -5,26 +5,34 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
 
 @Configuration
 public class RedisConfig {
-    // Redis 에 RequestDto 타입만 강제
     @Bean
-    public RedisTemplate<String, ErrorLogRequest> errorLogRequestRedisTemplate(RedisConnectionFactory connectionFactory, ObjectMapper redisObjectMapper) {
+    @Primary
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+
+        // 수정: Deprecated 된 생성자 대신 최신 표준 메서드 사용
+        template.setKeySerializer(RedisSerializer.string());
+        template.setValueSerializer(RedisSerializer.json());
+        return template;
+    }
+
+    @Bean
+    public RedisTemplate<String, ErrorLogRequest> errorLogRequestRedisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, ErrorLogRequest> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
-        StringRedisSerializer keySerializer = new StringRedisSerializer();
-        GenericJackson2JsonRedisSerializer valueSerializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
-
-        template.setKeySerializer(keySerializer);
-        template.setValueSerializer(valueSerializer);
-        template.setHashKeySerializer(keySerializer);
-        template.setHashValueSerializer(valueSerializer);
+        template.setKeySerializer(RedisSerializer.string());
+        template.setValueSerializer(RedisSerializer.json());
+        template.setHashKeySerializer(RedisSerializer.string());
+        template.setHashValueSerializer(RedisSerializer.json());
 
         template.afterPropertiesSet();
         return template;
