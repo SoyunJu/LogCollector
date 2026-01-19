@@ -12,6 +12,10 @@ import com.soyunju.logcollector.service.kb.crd.KbArticleService;
 import com.soyunju.logcollector.service.lc.processor.LogNormalization;
 import com.soyunju.logcollector.service.lc.processor.LogProcessor;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.ConcurrencyFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -40,76 +45,90 @@ public class ErrorLogCrdService {
                 .orElse(false);
     }
 
+    @Transactional(readOnly = true)
+    public Optional<ErrorLog> findByLogHash(String logHash) {
+        return errorLogRepository.findByLogHash(logHash);
+    }
+
+    @Retryable(
+            retryFor = { ConcurrencyFailureException.class },
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100)
+    )
     public ErrorLogResponse saveLog(ErrorLogRequest dto) {
+        LocalDateTime occurredTime = (dto.getOccurredTime() != null) ? dto.getOccurredTime() : LocalDateTime.now();
+        // 디버깅 추가 1
+        log.info("[SAVELOG][ENTER] service={} level={} occurredTime={}",
+                dto.getServiceName(), dto.getLogLevel(), dto.getOccurredTime());
 
-        // 발생 시각 정책: request에 없으면 수집 시점(now)로 고정
-        LocalDateTime occurredTime =
-                (dto.getOccurredTime() != null) ? dto.getOccurredTime() : LocalDateTime.now();
+        if (!logProcessor.isTargetLevel(dto.getLogLevel())) {
+            // 디버깅 추가 2
+            log.info("[SAVELOG][SKIP] not target level: {}", dto.getLogLevel());
+            return null;
+        }
 
-        if (!logProcessor.isTargetLevel(dto.getLogLevel())) return null;
+        log.info("[SAVELOG][HASH_INPUT] service={} msg={} st={}",
+                dto.getServiceName(), dto.getMessage(), dto.getStackTrace());
+
+        String normalizedMsg = LogNormalization.normalizeMessage(dto.getMessage());
+        String normalizedSt  = LogNormalization.normalizeMessage(dto.getStackTrace());
+
+        log.info("[SAVELOG][HASH_INPUT_NORM] service={} msgNorm={} stNorm={}",
+                dto.getServiceName(), normalizedMsg, normalizedSt);
 
         String logHash = logProcessor.generateIncidentHash(dto.getServiceName(), dto.getMessage(), dto.getStackTrace());
+       // 디버깅 추가 3
+        log.info("[SAVELOG][HASH] logHash={}", logHash);
+
         String hostName = (dto.getHostName() == null || dto.getHostName().isBlank()) ? "UNKNOWN_HOST" : dto.getHostName();
 
-        // Host 집계는 "관측 시각"을 넣고 싶으면 occurredTime을 사용(정책 일관)
-        int upsertResult = errorLogHostRepository.upsertHostCounter(
-                logHash, dto.getServiceName(), hostName, null, occurredTime
-        );
-        boolean isNewHost = (upsertResult == 1);
+        // 1. Host 집계 Upsert
+        int hostUpsertResult = errorLogHostRepository.upsertHostCounter(logHash, dto.getServiceName(), hostName, null, occurredTime);
+        boolean isNewHost = (hostUpsertResult == 1);
 
-        Optional<ErrorLog> existingLog = errorLogRepository.findByLogHash(logHash);
-        boolean isNewIncident = existingLog.isEmpty();
-
+        // 2. ErrorLog Upsert (Atomic 처리)
         String errorCode = LogNormalization.generateErrorCode(dto.getMessage(), dto.getStackTrace());
+        String summary = logProcessor.extractSummary(dto.getMessage());
 
-        ErrorLog targetLog;
+        int logUpsertResult = errorLogRepository.upsertErrorLog(
+                dto.getServiceName(), hostName, dto.getLogLevel().toUpperCase(),
+                dto.getMessage(), dto.getStackTrace(), occurredTime,
+                errorCode, summary, logHash
+        );
 
-        if (existingLog.isPresent()) {
-            targetLog = existingLog.get();
+        // 디버깅 추가 4
+        log.info("[SAVELOG][HOST] upsertResult={} isNewHost={}",
+                hostUpsertResult, hostUpsertResult == 1);
 
-            targetLog.setRepeatCount(targetLog.getRepeatCount() + 1);
-            targetLog.setOccurredTime(occurredTime);
-            targetLog.setLastOccurredTime(occurredTime);
 
-            if (targetLog.getStatus() == ErrorStatus.RESOLVED) {
-                targetLog.setStatus(ErrorStatus.NEW);
-                targetLog.setResolvedAt(null);
-                targetLog.setAcknowledgedAt(null);
-                targetLog.setAcknowledgedBy(null);
-            }
-            // ACKNOWLEDGED / NEW 는 그대로 유지
-            targetLog = errorLogRepository.save(targetLog);
-        } else {
-            targetLog = ErrorLog.builder()
-                    .serviceName(dto.getServiceName())
-                    .hostName(hostName)
-                    .logLevel(dto.getLogLevel().toUpperCase())
-                    .message(dto.getMessage())
-                    .summary(logProcessor.extractSummary(dto.getMessage()))
-                    .logHash(logHash)
-                    .errorCode(errorCode)
-                    .repeatCount(1)
-                    .occurredTime(occurredTime)
-                    .firstOccurredTime(occurredTime)     // 신규에만 세팅
-                    .lastOccurredTime(occurredTime)
-                    .status(ErrorStatus.NEW)
-                    .build();
+        // MySQL/MariaDB: 신규 insert는 1, update는 2를 반환함
+        boolean isNewIncident = (logUpsertResult == 1);
 
-            targetLog = errorLogRepository.save(targetLog);
-        }
+        // 디버깅 추가 5
+        log.info("[SAVELOG][ERRORLOG] upsertResult={} isNewIncident={}",
+                logUpsertResult, isNewIncident);
+
+        // 3. 결과 반환을 위한 엔티티 조회
+        ErrorLog targetLog = errorLogRepository.findByLogHash(logHash)
+                .orElseThrow(() -> new IllegalStateException("Log not found after upsert"));
+
+        // 디버깅 추가 6
+        log.info("[SAVELOG][ERRORLOG] persisted id={} status={}",
+                targetLog.getId(), targetLog.getStatus());
 
         long impactedHostCount = errorLogHostRepository.countHostsByLogHash(logHash);
 
-        // Incident upsert (SSOT: Incident)
+        // 디버깅 추가 7
+        log.info("*******[SAVELOG][INCIDENT][CALL]***** logHash={} service={} level={}",
+                logHash, dto.getServiceName(), dto.getLogLevel());
+
+        // 4. Incident 연동 (IncidentService도 동일하게 Upsert 방식으로 수정 권장)
         incidentService.recordOccurrence(
-                logHash,
-                dto.getServiceName(),
-                targetLog.getSummary(),
-                dto.getStackTrace(),
-                errorCode,
-                dto.getLogLevel(),
-                occurredTime
+                logHash, dto.getServiceName(), targetLog.getSummary(),
+                dto.getStackTrace(), errorCode, dto.getLogLevel(), occurredTime
         );
+        // 디버깅 추가 8
+        log.info("******[SAVELOG][INCIDENT][DONE]***** logHash={}", logHash);
 
         return logProcessor.convertToResponse(targetLog, impactedHostCount, isNewIncident, isNewHost);
     }
@@ -134,7 +153,7 @@ public class ErrorLogCrdService {
             }
             case RESOLVED -> {
                 LocalDateTime now = LocalDateTime.now();
-                log.setResolvedAt(LocalDateTime.now());
+                log.setResolvedAt(now);
                 // incident status 도 변경
                 incidentService.markResolved(log.getLogHash(), now);
                 // incident 존재시 system draft 생성 --> TODO : 정책화로 옮길 계획이면 추후 제거, 이관 필요

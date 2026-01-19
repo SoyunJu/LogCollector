@@ -5,12 +5,14 @@ import com.soyunju.logcollector.domain.kb.enums.ErrorLevel;
 import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -24,52 +26,28 @@ public class IncidentService {
     }
 
     public Incident recordOccurrence(
-            String logHash,
-            String serviceName,
-            String summary,
-            String stackTrace,
-            String errorCode,
-            String logLevel,
-            LocalDateTime occurredAt
+
+            String logHash, String serviceName, String summary,
+            String stackTrace, String errorCode, String logLevel, LocalDateTime occurredAt
     ) {
+
+        log.info("[INCIDENT][ENTER] logHash={} time={}", logHash, occurredAt);
+
         LocalDateTime ts = (occurredAt != null) ? occurredAt : LocalDateTime.now();
-        ErrorLevel level = mapErrorLevel(logLevel);
 
-        Incident incident = incidentRepository.findByLogHash(logHash)
-                .orElseGet(() -> Incident.builder()
-                        .logHash(logHash)
-                        .serviceName(serviceName)
-                        .status(IncidentStatus.OPEN)
-                        .errorLevel(level)
-                        .repeatCount(0) // 아래에서 +1
-                        .firstOccurredAt(ts)
-                        .lastOccurredAt(ts)
-                        .build());
+        // 1. ErrorLevel 매핑 및 DB ENUM 값 검증 (ERROR, EXCEPTION, FATAL, WARN 중 하나여야 함)
+        String level = mapErrorLevel(logLevel).name();
 
-        if (incident.getFirstOccurredAt() == null) incident.setFirstOccurredAt(ts);
+        // 2. Native Upsert 수행
+        incidentRepository.upsertIncident(
+                logHash, serviceName, summary, stackTrace, errorCode, level, ts
+        );
 
-        // last / count 갱신
-        incident.setLastOccurredAt(ts);
-        incident.setRepeatCount((incident.getRepeatCount() == null ? 0 : incident.getRepeatCount()) + 1);
+        log.info("[INCIDENT][UPSERT] logHash={}", logHash);
 
-        // 재발시 OPEN
-        if (incident.getStatus() == IncidentStatus.RESOLVED) {
-            incident.setStatus(IncidentStatus.OPEN);
-            incident.setResolvedAt(null);
-        }
-
-        if (isBlank(incident.getServiceName()) && !isBlank(serviceName)) {
-            incident.setServiceName(serviceName);
-        }
-
-        // 비어있을 때만 insert
-        if (isBlank(incident.getSummary()) && !isBlank(summary)) incident.setSummary(summary);
-        if (isBlank(incident.getStackTrace()) && !isBlank(stackTrace)) incident.setStackTrace(stackTrace);
-        if (isBlank(incident.getErrorCode()) && !isBlank(errorCode)) incident.setErrorCode(errorCode);
-
-        if (incident.getErrorLevel() == null) incident.setErrorLevel(level);
-
-        return incidentRepository.save(incident);
+        // 3. 반영 결과 조회
+        return incidentRepository.findByLogHash(logHash)
+                .orElseThrow(() -> new IllegalStateException("Incident Upsert 실패: " + logHash));
     }
 
     public void markResolved(String logHash, LocalDateTime resolvedAt) {
@@ -93,4 +71,7 @@ public class IncidentService {
     private boolean isBlank(String s) {
         return s == null || s.isBlank();
     }
+
+
+
 }

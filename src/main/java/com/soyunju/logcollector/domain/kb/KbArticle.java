@@ -24,7 +24,7 @@ public class KbArticle {
     @JoinColumn(name = "incident_id", nullable = false)
     private Incident incident;
 
-    @Column(name = "incident_title", nullable = true, length = 255)
+    @Column(name = "incident_title", nullable = false, length = 255)
     private String incidentTitle;
 
     @Lob

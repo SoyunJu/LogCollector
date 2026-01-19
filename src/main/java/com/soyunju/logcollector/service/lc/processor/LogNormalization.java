@@ -7,7 +7,8 @@ import java.util.regex.Pattern;
 
 public final class LogNormalization {
 
-    private LogNormalization() {}
+    private LogNormalization() {
+    }
 
     // =========================
     // 정규화 패턴
@@ -51,6 +52,13 @@ public final class LogNormalization {
     private static final Pattern PATTERN_NUM_TOKEN =
             Pattern.compile("\\b\\d{2,}\\b");
 
+    // ms 등을 못잡아서 숫자 앞뒤가 숫자가 아닌 경우만 잡기
+  /* private static final Pattern PATTERN_NUM_TOKEN =
+           Pattern.compile("(?<!\\d)\\d{2,}(?!\\d)"); */
+
+    private static final Pattern PATTERN_NUM_WITH_UNIT =
+            Pattern.compile("(?<!\\d)\\d{2,}(?=(ms|s|sec|secs|seconds)\\b)", Pattern.CASE_INSENSITIVE);
+
     private static final Pattern PATTERN_MULTI_NUM =
             Pattern.compile("(?:<NUM>\\s+)+<NUM>");
 
@@ -66,38 +74,55 @@ public final class LogNormalization {
             Pattern.compile("\\berrno\\s*[:=]?\\s*(\\d+)\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern P_EXCEPTION =
             Pattern.compile("\\b([A-Za-z_$][A-Za-z0-9_$]*Exception)\\b");
-
+    private static final Pattern PATTERN_BRACKET_KV_ID =
+            Pattern.compile("\\[(?i)(traceid|spanid|requestid|correlationid|txid|transactionid|sessionid|rid)\\s*[:=]\\s*([^\\]]+)\\]");
+    private static final Pattern PATTERN_POOL_CONN =
+            Pattern.compile("\\b(?i)(pool|connid|connectionid)\\s*[:=]\\s*([A-Za-z0-9._\\-]+)\\b");
 
 
     public static String normalizeMessage(String message) {
         if (message == null) return "";
+
         String s = message;
 
-        // 의미 코드 토큰화(숫자 정규화 전에 보호)
+        // 1. [] 로 감싼 equestId, traceId 등 제거
+        s = PATTERN_BRACKET_KV_ID.matcher(s).replaceAll("[$1=<ID>]");
+        // pool=HikariPool-1, connId=1001 같은 런타임 식별자 제거
+        s = PATTERN_POOL_CONN.matcher(s).replaceAll("$1=<ID>");
+
+        // 2. 의미 있는 코드 보호 (숫자 정규화 전에 선처리)
         s = replaceHttpStatusToken(s);
         s = P_ERRNO_CODE.matcher(s).replaceAll("ERRNO");
         s = P_SQLSTATE_CODE.matcher(s).replaceAll("SQLSTATE");
 
-        // 노이즈 치환
-        s = PATTERN_CONNECTORS_WITH_NUM.matcher(s).replaceAll(" ");
+        // 3. 시간 / 위치 / 네트워크 / 경로 등 환경 노이즈 제거
         s = PATTERN_TS_ISO.matcher(s).replaceAll("<TS>");
         s = PATTERN_UUID.matcher(s).replaceAll("<UUID>");
         s = PATTERN_IPV4.matcher(s).replaceAll("<IP>");
         s = PATTERN_IPV6.matcher(s).replaceAll("<IP6>");
         s = PATTERN_MAC.matcher(s).replaceAll("<MAC>");
         s = PATTERN_EMAIL.matcher(s).replaceAll("<EMAIL>");
+
+        // key=value 형태의 ID (traceId=xxx 등)
         s = PATTERN_KV_ID.matcher(s).replaceAll("$1=<ID>");
+
+        // URL / 파일 경로 (Windows / Unix)
         s = PATTERN_URL.matcher(s).replaceAll("<URL>");
         s = PATTERN_PATH_WIN.matcher(s).replaceAll("<PATH>");
         s = PATTERN_PATH_UNIX.matcher(s).replaceAll("<PATH>");
 
-        // 숫자 토큰 치환 + 정리
+        // 4. 숫자 정규화 (가장 마지막)
+        s = PATTERN_CONNECTORS_WITH_NUM.matcher(s).replaceAll(" ");
+        s = PATTERN_NUM_WITH_UNIT.matcher(s).replaceAll("<NUM>");
         s = PATTERN_NUM_TOKEN.matcher(s).replaceAll("<NUM>");
-        s = PATTERN_WS.matcher(s).replaceAll(" ").trim();
+
+        // 5. 공백 등 후처리 정리
         s = PATTERN_MULTI_NUM.matcher(s).replaceAll("<NUM>");
+        s = PATTERN_WS.matcher(s).replaceAll(" ").trim();
 
         return s;
     }
+
 
     public static String normalizeStackTop(String stackTrace, int maxLines) {
         if (stackTrace == null || stackTrace.isBlank() || maxLines <= 0) return "";
@@ -156,7 +181,8 @@ public final class LogNormalization {
         String upper = src.toUpperCase();
         if (upper.contains("SQL") || upper.contains("DATABASE")) return "DB_ERR";
         if (upper.contains("TIMEOUT") || upper.contains("CONNECTION") || upper.contains("REFUSED")) return "NET_ERR";
-        if (upper.contains("NULLPOINTER") || upper.contains("OUTOFMEMORY") || upper.contains("ILLEGALSTATE")) return "SYS_ERR";
+        if (upper.contains("NULLPOINTER") || upper.contains("OUTOFMEMORY") || upper.contains("ILLEGALSTATE"))
+            return "SYS_ERR";
         return "GEN_ERR";
     }
 

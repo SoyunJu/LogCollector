@@ -24,10 +24,9 @@ public abstract class MariaDbContainerTestBase {
         registry.add("spring.datasource.username", maria::getUsername);
         registry.add("spring.datasource.password", maria::getPassword);
 
-        // 테스트에서는 스키마는 이미 수동 생성해둔 상태라면 validate가 안전
-        // 만약 테스트가 스키마를 생성하도록 하고 싶으면 create-drop로 바꿔도 됨
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
-        registry.add("spring.jpa.show-sql", () -> "false");
-        registry.add("spring.jpa.properties.hibernate.format_sql", () -> "false");
+        // 수정: validate 대신 update를 사용하여 테스트 시 테이블 자동 생성
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "update");
+        registry.add("spring.jpa.show-sql", () -> "true"); // 쿼리 확인을 위해 true 권장
+        registry.add("spring.jpa.properties.hibernate.format_sql", () -> "true");
     }
 }

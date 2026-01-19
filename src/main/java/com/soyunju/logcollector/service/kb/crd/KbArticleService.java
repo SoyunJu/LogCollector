@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class KbArticleService {
@@ -22,18 +24,32 @@ public class KbArticleService {
     @Transactional
     public Long createSystemDraft(Long incidentId) {
         Incident incident = incidentRepository.findById(incidentId)
-                .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new IllegalArgumentException("Incident를 찾을 수 없습니다."));
 
         String body = String.format("""
                 ## 에러 코드: %s
                 ## 요약: %s
-                ## 원본 스택트레이스:
+                ## 원본 :
                 %s
                 """, incident.getErrorCode(), incident.getSummary(), incident.getStackTrace());
 
+        String serviceName = (incident.getServiceName() != null && !incident.getServiceName().isBlank())
+                ? incident.getServiceName()
+                : "unknown-service";
+
+        // title 식별자: 발생일(YYYY-MM-DD) 우선 사용
+        String dateOnly = formatDateOnly(
+                incident.getFirstOccurredAt(),
+                incident.getLastOccurredAt()
+        );
+
+        String title = String.format("[SYSTEM] 에러 현상을 입력하세요 [%s / %s]", serviceName, dateOnly);
+
+        if (title.length() > 255) title = title.substring(0, 255);
+
         KbArticle kb = KbArticle.builder()
                 .incident(incident)
-                .incidentTitle(null) // 의도적으로 null 설정, 현상은 사람이 입력
+                .incidentTitle(title)
                 .content(body)
                 .status(KbStatus.OPEN)
                 .createdBy(CreatedBy.system)
@@ -62,4 +78,17 @@ public class KbArticleService {
         }
         kb.touchActivity();
     }
+
+    private String formatDateOnly(LocalDateTime firstOccurredAt, LocalDateTime lastOccurredAt) {
+        LocalDateTime base = (firstOccurredAt != null) ? firstOccurredAt
+                : (lastOccurredAt != null) ? lastOccurredAt
+                : LocalDateTime.now();
+        return base.toLocalDate().toString(); // yyyy-MM-dd
+    }
+
+    private String shortHash(String logHash) {
+        if (logHash == null || logHash.isBlank()) return "nohash";
+        return logHash.length() <= 8 ? logHash : logHash.substring(0, 8);
+    }
+
 }

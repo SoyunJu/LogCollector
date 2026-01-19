@@ -6,6 +6,7 @@ import com.soyunju.logcollector.dto.lc.LogAnalysisData;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -45,4 +46,38 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
     Optional<LogAnalysisData> findAnalysisDataById(@Param("id") Long id);
 
     Optional<ErrorLog> findByLogHash(String logHash);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+        INSERT INTO error_logs (
+            service_name, host_name, log_level, message, stack_trace, 
+            occurred_time, first_occurred_time, last_occurred_time, 
+            status, error_code, summary, log_hash, repeat_count,
+            created_at, updated_at
+        ) VALUES (
+            :serviceName, :hostName, :logLevel, :message, :stackTrace,
+            :occurredTime, :occurredTime, :occurredTime,
+            'NEW', :errorCode, :summary, :logHash, 1,
+            NOW(), NOW()
+        ) ON DUPLICATE KEY UPDATE
+            repeat_count = repeat_count + 1,
+            last_occurred_time = VALUES(last_occurred_time),
+            occurred_time = VALUES(occurred_time),
+            updated_at = NOW(),
+            status = CASE WHEN status = 'RESOLVED' THEN 'NEW' ELSE status END,
+            resolved_at = CASE WHEN status = 'RESOLVED' THEN NULL ELSE resolved_at END,
+            acknowledged_at = CASE WHEN status = 'RESOLVED' THEN NULL ELSE acknowledged_at END,
+            acknowledged_by = CASE WHEN status = 'RESOLVED' THEN NULL ELSE acknowledged_by END
+        """, nativeQuery = true)
+    int upsertErrorLog(
+            @Param("serviceName") String serviceName,
+            @Param("hostName") String hostName,
+            @Param("logLevel") String logLevel,
+            @Param("message") String message,
+            @Param("stackTrace") String stackTrace,
+            @Param("occurredTime") LocalDateTime occurredTime,
+            @Param("errorCode") String errorCode,
+            @Param("summary") String summary,
+            @Param("logHash") String logHash
+    );
 }

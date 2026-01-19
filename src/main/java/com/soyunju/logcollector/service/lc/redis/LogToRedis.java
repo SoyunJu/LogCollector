@@ -1,5 +1,6 @@
 package com.soyunju.logcollector.service.lc.redis;
 
+import com.soyunju.logcollector.config.LogCollectorRedisProperties;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
 import com.soyunju.logcollector.service.lc.crd.ErrorLogCrdService;
 import lombok.RequiredArgsConstructor;
@@ -8,18 +9,13 @@ import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LogToRedis {
 
-    private static final String LOG_QUEUE_KEY = "error-log-queue";
-    // 큐가 쌓일 때 자동 정리
-    private static final Duration QUEUE_TTL = Duration.ofMinutes(30);
-
     private final RedisTemplate<String, ErrorLogRequest> redisTemplate;
+    private final LogCollectorRedisProperties redisProperties;
     // Redis 장애 시 로그 유실 방지용(폴백)
     private final ErrorLogCrdService errorLogCrdService;
 
@@ -30,9 +26,8 @@ public class LogToRedis {
      */
     public void push(ErrorLogRequest dto) {
         try {
-            redisTemplate.opsForList().rightPush(LOG_QUEUE_KEY, dto);
-            redisTemplate.expire(LOG_QUEUE_KEY, QUEUE_TTL);
-
+            redisTemplate.opsForList().rightPush(redisProperties.getQueueKey(), dto);
+            redisTemplate.expire(redisProperties.getQueueKey(), redisProperties.queueTtl());
         } catch (RedisConnectionFailureException e) {
             log.warn("Redis 연결 실패 → DB direct fallback. msg={}", e.getMessage());
             safeFallbackToDb(dto);
