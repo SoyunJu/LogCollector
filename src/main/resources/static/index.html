@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>LogCollector Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+<div class="max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">LogCollector Admin</h1>
+
+    <div class="flex border-b border-gray-200 mb-6">
+        <button onclick="showTab('logs')" id="tab-logs"
+                class="px-6 py-2 font-bold border-b-2 border-blue-600 text-blue-600">Logs & Registration
+        </button>
+        <button onclick="showTab('incidents')" id="tab-incidents"
+                class="px-6 py-2 font-bold text-gray-500 border-b-2 border-transparent">Incidents
+        </button>
+        <button onclick="showTab('kb')" id="tab-kb"
+                class="px-6 py-2 font-bold text-gray-500 border-b-2 border-transparent">KB Drafts
+        </button>
+    </div>
+
+    <div id="content-logs">
+        <div class="bg-white p-6 rounded shadow mb-6 border-t-4 border-green-500">
+            <h2 class="text-lg font-bold mb-4">📝 수동 로그 등록 (테스트)</h2>
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <input type="text" id="newService" class="border p-2 rounded" placeholder="서비스명 (예: OrderService)">
+                <select id="newLogLevel" class="border p-2 rounded">
+                    <option value="">로그 레벨 자동 탐지</option>
+                    <option value="INFO">INFO (수집 제외 테스트)</option>
+                    <option value="ERROR">ERROR</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                    <option value="FATAL">FATAL</option>
+                </select>
+                <input type="text" id="newHost" class="border p-2 rounded" placeholder="호스트명">
+            </div>
+            <textarea id="newMessage" class="border p-2 rounded w-full h-20 mb-4" placeholder="에러 메시지 (10자 이상)"></textarea>
+            <button onclick="createLog()" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 font-bold">로그 전송</button>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow mb-6 flex gap-4 items-end">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">서비스명 필터</label>
+                <input type="text" id="filterService" class="border p-2 rounded text-sm w-48" placeholder="전체">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">상태 필터</label>
+                <select id="filterStatus" class="border p-2 rounded text-sm w-32">
+                    <option value="">전체 상태</option>
+                    <option value="NEW">NEW</option>
+                    <option value="ACKNOWLEDGED">ACK</option>
+                    <option value="RESOLVED">RESOLVED</option>
+                </select>
+            </div>
+            <button onclick="loadLogs()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-bold text-sm">조회/새로고침</button>
+        </div>
+
+        <div class="bg-white rounded shadow overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left">서비스/레벨</th>
+                    <th class="px-6 py-3 text-left">메시지 요약</th>
+                    <th class="px-6 py-3 text-left">상태 변경</th>
+                    <th class="px-6 py-3 text-left">액션</th>
+                </tr>
+                </thead>
+                <tbody id="logList" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="content-incidents" class="hidden">
+        <div class="bg-white rounded shadow overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left">인시던트 ID</th>
+                    <th class="px-6 py-3 text-left">서비스명</th>
+                    <th class="px-6 py-3 text-left">제목</th>
+                    <th class="px-6 py-3 text-left">상태</th>
+                </tr>
+                </thead>
+                <tbody id="incidentList" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="content-kb" class="hidden">
+        <div class="bg-white rounded shadow overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left">KB ID</th>
+                    <th class="px-6 py-3 text-left">제목</th>
+                    <th class="px-6 py-3 text-left">상태</th>
+                    <th class="px-6 py-3 text-left">생성일</th>
+                </tr>
+                </thead>
+                <tbody id="kbList" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = '/api/logs';
+
+    // 탭 전환 로직
+    function showTab(tabName) {
+        ['logs', 'incidents', 'kb'].forEach(name => {
+            const content = document.getElementById(`content-${name}`);
+            const tabBtn = document.getElementById(`tab-${name}`);
+            if (content) content.classList.add('hidden');
+            if (tabBtn) tabBtn.className = 'px-6 py-2 font-bold text-gray-500 border-b-2 border-transparent';
+        });
+
+        const activeContent = document.getElementById(`content-${tabName}`);
+        const activeTab = document.getElementById(`tab-${tabName}`);
+        if (activeContent) activeContent.classList.remove('hidden');
+        if (activeTab) activeTab.className = 'px-6 py-2 font-bold border-b-2 border-blue-600 text-blue-600';
+
+        if (tabName === 'logs') loadLogs();
+        if (tabName === 'incidents') loadIncidents();
+        if (tabName === 'kb') loadKb();
+    }
+
+    // 로그 목록 로드
+    async function loadLogs() {
+        const service = document.getElementById('filterService').value;
+        const status = document.getElementById('filterStatus').value;
+        const params = new URLSearchParams({ size: 20 });
+        if (service.trim()) params.append('serviceName', service.trim());
+        if (status) params.append('status', status);
+
+        try {
+            const res = await fetch(`${API_BASE}?${params.toString()}`);
+            const data = await res.json();
+            const tbody = document.getElementById('logList');
+
+            if (!data.content || data.content.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-400">조회된 로그가 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.content.map(log => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="font-bold">${log.serviceName}</div>
+                        <div class="text-[10px] text-gray-400 font-mono">${log.logLevel || 'UNKNOWN'}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="truncate max-w-xs" title="${log.summary}">${log.summary}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <select onchange="updateStatus(${log.logId}, this.value)" class="border rounded p-1 text-xs">
+                            <option value="NEW" ${log.status === 'NEW' ? 'selected' : ''}>NEW</option>
+                            <option value="ACKNOWLEDGED" ${log.status === 'ACKNOWLEDGED' ? 'selected' : ''}>ACK</option>
+                            <option value="RESOLVED" ${log.status === 'RESOLVED' ? 'selected' : ''}>RESOLVED</option>
+                        </select>
+                    </td>
+                    <td class="px-6 py-4">
+                        <button onclick="alert('Hash: ${log.logHash}')" class="text-blue-600 hover:underline text-xs">상세</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error("LoadLogs Error:", e);
+        }
+    }
+
+    // 수동 로그 등록
+    async function createLog() {
+        const payload = {
+            serviceName: document.getElementById('newService').value,
+            logLevel: document.getElementById('newLogLevel').value,
+            message: document.getElementById('newMessage').value,
+            hostName: document.getElementById('newHost').value
+        };
+
+        if (!payload.serviceName || !payload.message) {
+            alert("서비스명과 메시지는 필수입니다.");
+            return;
+        }
+
+        try {
+            const res = await fetch(API_BASE, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert("등록 요청이 성공했습니다.");
+                // 입력 폼 초기화
+                ['newService', 'newLogLevel', 'newHost', 'newMessage'].forEach(id => document.getElementById(id).value = '');
+                loadLogs();
+            } else {
+                const err = await res.json();
+                alert("등록 실패: " + (err.message || "조건을 확인하세요."));
+            }
+        } catch (e) {
+            alert("서버 연결에 실패했습니다.");
+        }
+    }
+
+    // 상태 업데이트
+    async function updateStatus(id, status) {
+        try {
+            const res = await fetch(`${API_BASE}/${id}/status?newStatus=${status}`, { method: 'PATCH' });
+            if (res.ok) {
+                alert(`상태가 ${status}로 변경되었습니다.`);
+                loadLogs();
+            }
+        } catch (e) {
+            alert("상태 변경 중 오류가 발생했습니다.");
+        }
+    }
+
+    // 인시던트 로드
+    async function loadIncidents() {
+        const res = await fetch('/api/incidents');
+        const data = await res.json();
+        const tbody = document.getElementById('incidentList');
+        tbody.innerHTML = data.content.map(inc => `
+            <tr>
+                <td class="px-6 py-4">${inc.id}</td>
+                <td class="px-6 py-4">${inc.serviceName}</td>
+                <td class="px-6 py-4 truncate max-w-xs">${inc.title}</td>
+                <td class="px-6 py-4 font-bold text-orange-600">${inc.status}</td>
+            </tr>
+        `).join('');
+    }
+
+    // KB Draft 로드
+    async function loadKb() {
+        const res = await fetch('/api/kb');
+        const data = await res.json();
+        const tbody = document.getElementById('kbList');
+        tbody.innerHTML = data.content.map(kb => `
+            <tr>
+                <td class="px-6 py-4">${kb.id}</td>
+                <td class="px-6 py-4 font-bold">${kb.title}</td>
+                <td class="px-6 py-4"><span class="bg-purple-100 text-purple-800 px-2 py-1 rounded">${kb.status}</span></td>
+                <td class="px-6 py-4 text-gray-500">${new Date(kb.createdAt).toLocaleDateString()}</td>
+            </tr>
+        `).join('');
+    }
+
+    // 초기 실행
+    window.onload = loadLogs;
+</script>
+</body>
+</html>

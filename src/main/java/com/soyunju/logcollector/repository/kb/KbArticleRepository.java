@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,7 +18,7 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
     Optional<KbArticle> findTopByIncident_IdAndCreatedByAndStatusInOrderByCreatedAtDesc(
             Long incidentId,
             CreatedBy createdBy,
-            List<KbStatus> statuses
+            List<KbStatus> status
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -25,6 +26,8 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
     int bulkSetStatusByLastActivity(@Param("toStatus") KbStatus toStatus,
                                     @Param("fromStatuses") List<KbStatus> fromStatuses,
                                     @Param("cutoff") LocalDateTime cutoff);
+
+    boolean existsByIncidentIdAndStatusIn(Long incidentId, Collection<KbStatus> statuses);
 }
 
 

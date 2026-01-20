@@ -10,8 +10,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
-
 
 import java.util.List;
 
@@ -28,26 +26,24 @@ public class SecurityConfig {
 
                 // 2. 엔드포인트별 접근 제어
                 .authorizeHttpRequests(auth -> auth
-                                // 로그 수집 API는 외부 서비스로부터 들어오므로 항상 허용
-                                .requestMatchers(HttpMethod.POST, "/api/logs").permitAll()
-                                // 모든 조회 API는 내부 개발자용이므로 인증 필요 (현재는 개발 편의를 위해 허용)
-                                .requestMatchers(HttpMethod.GET, "/api/logs/**").permitAll()
-                                // === 수정 임시로 모두 허용 ===
-                                .requestMatchers(HttpMethod.PATCH, "/api/logs/**").permitAll()
-                                // 삭제 및 AI 분석 요청은 특정 역할(ADMIN)만 가능하도록 설정 가능
-                                // === 임시로 모두 허용 ===
-                                // .requestMatchers("/api/logs/ai/**").authenticated()
-                                .requestMatchers(HttpMethod.DELETE, "/api/logs/**").permitAll()
-                                .requestMatchers("/api/logs/ai/**").permitAll()
-                                // Incident 조회 API (운영용)
-                                .requestMatchers(HttpMethod.GET, "/api/incidents/**").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/api/kb/**").permitAll()
-                                // 테스트용
-                                .requestMatchers(HttpMethod.POST, "/api/kb/**").permitAll()
-                                .requestMatchers(HttpMethod.POST, "/api/incidents/**").permitAll() // incident 생성 API가 있을 경우 대비(없으면 영향 없음)
+                        // [수정] 메인 대시보드 및 정적 리소스, 에러 페이지 허용
+                        .requestMatchers("/", "/index.html", "/static/**", "/error").permitAll()
 
-                                .requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
-                                .anyRequest().authenticated()
+                        // 로그 수집 API
+                        .requestMatchers(HttpMethod.POST, "/api/logs").permitAll()
+
+                        // [수정] 로그 조회 API: /api/logs(기본)와 /api/logs/**(하위)를 모두 명시해야 함
+                        .requestMatchers(HttpMethod.GET, "/api/logs", "/api/logs/**").permitAll()
+
+                        // 상태 업데이트 및 삭제
+                        .requestMatchers(HttpMethod.PATCH, "/api/logs/**").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/logs/**").permitAll()
+                        .requestMatchers("/api/logs/ai/**").permitAll()
+
+                        // 인시던트 및 KB 조회 권한 추가
+                        .requestMatchers(HttpMethod.GET, "/api/incidents/**", "/api/kb/**").permitAll()
+
+                        .anyRequest().authenticated() // 나머지는 인증 필요
                 );
 
         // 3. CORS 설정 (프론트엔드 연결 대비)

@@ -17,7 +17,7 @@ public class ErrorLogRequest {
 
     private String hostName;
 
-    @NotBlank(message = "로그 레벨은 필수입니다.")
+    // @NotBlank(message = "로그 레벨은 필수입니다.")
     private String logLevel;
 
     @NotBlank(message = "에러 메시지는 필수입니다.")

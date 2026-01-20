@@ -45,6 +45,19 @@ public class LogProcessor {
         return upper.equals("ERROR") || upper.equals("CRITICAL") || upper.equals("FATAL");
     }
 
+    // 로그 메시지 본문에서 로그 레벨을 추론.
+    public String inferLogLevel(String message) {
+        if (message == null || message.isBlank()) return "UNKNOWN";
+
+        String upperMsg = message.toUpperCase();
+        if (upperMsg.contains("FATAL")) return "FATAL";
+        if (upperMsg.contains("CRITICAL")) return "CRITICAL";
+        if (upperMsg.contains("ERROR") || upperMsg.contains("EXCEPTION")) return "ERROR";
+        if (upperMsg.contains("WARN")) return "WARN";
+
+        return "INFO";
+    }
+
     /**
      * incident hash: "서비스명 + 정규화된 메시지 + (스택 상단 일부)"
      * - host/ip는 넣지 않음(영향도는 error_log_hosts에서 관리)
@@ -87,7 +100,10 @@ public class LogProcessor {
                 .summary(log.getSummary())
                 .errorCode(log.getErrorCode())
                 .hostInfo(log.getHostName())
-                .status(log.getStatus()) // 상태 추가용
+                .logLevel(log.getLogLevel())
+                .logHash(log.getLogHash())
+                .status(log.getStatus())
+                .repeatCount(log.getRepeatCount() == null ? 1 : log.getRepeatCount())
                 .build();
     }
 
@@ -98,12 +114,13 @@ public class LogProcessor {
                 .summary(log.getSummary())
                 .errorCode(log.getErrorCode())
                 .hostInfo(log.getHostName())
-                .logHash(log.getLogHash())          // 슬랙 로그 확인용
-                .repeatCount(log.getRepeatCount())  // 알림 조건 판별용
+                .logLevel(log.getLogLevel())
+                .logHash(log.getLogHash())
+                .repeatCount(log.getRepeatCount() == null ? 1 : log.getRepeatCount())
                 .impactedHostCount(impactedHostCount)
+                .status(log.getStatus())
                 .isNew(isNew)
-                .isNewHost(isNewHost)// 확산 알림용
-                .status(log.getStatus()) // 상태 추가용
+                .isNewHost(isNewHost)
                 .build();
     }
 }

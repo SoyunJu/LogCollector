@@ -7,6 +7,7 @@ import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,12 +15,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class KbArticleService {
 
     private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;
+
+    // Draft (초안) 여부 확인을 위한 상태 리스트
+    private static final List<KbStatus> ACTIVE_DRAFT_STATUSES =
+            List.of(KbStatus.OPEN, KbStatus.UNDERWAY);
 
     private Long createSystemDraftInternal(Long incidentId) {
         Incident incident = incidentRepository.findById(incidentId)
@@ -56,9 +62,6 @@ public class KbArticleService {
 
     // LC 에서 RESOLVED 된 ERROR LOG 처리
     // 1. Draft (초안) 단계
-    private static final List<KbStatus> ACTIVE_DRAFT_STATUSES =
-            List.of(KbStatus.OPEN, KbStatus.UNDERWAY);
-
     @Transactional
     public Long createSystemDraft(Long incidentId) {
         return createSystemDraftIfAbsent(incidentId);
@@ -66,16 +69,30 @@ public class KbArticleService {
 
     @Transactional
     public Long createSystemDraftIfAbsent(Long incidentId) {
-        return kbArticleRepository
+        // 수정: 리포지토리 메서드 파라미터 개수(CreatedBy.system 추가) 및 반환 타입(Optional) 처리
+        Optional<KbArticle> existing = kbArticleRepository
+                .findTopByIncident_IdAndCreatedByAndStatusInOrderByCreatedAtDesc(
+                        incidentId, CreatedBy.system, ACTIVE_DRAFT_STATUSES
+                );
+
+        if (existing.isPresent()) {
+            log.info("이미 KB 초안이 존재합니다. incidentId={}, kbId={}",
+                    incidentId, existing.get().getId());
+            return null;
+        }
+        return createSystemDraftInternal(incidentId);
+
+        /* 기존 주석 유지: return kbArticleRepository
                 .findTopByIncident_IdAndCreatedByAndStatusInOrderByCreatedAtDesc(
                         incidentId, CreatedBy.system, ACTIVE_DRAFT_STATUSES
                 )
                 .map(KbArticle::getId)
-                .orElseGet(() -> createSystemDraftInternal(incidentId));
+                .orElseGet(() -> createSystemDraftInternal(incidentId)); */
     }
 
     @Transactional(readOnly = true)
     public Optional<Long> findActiveSystemDraftId(Long incidentId) {
+        // 수정: 파라미터 개수(CreatedBy.system 추가) 맞춤
         return kbArticleRepository
                 .findTopByIncident_IdAndCreatedByAndStatusInOrderByCreatedAtDesc(
                         incidentId, CreatedBy.system, ACTIVE_DRAFT_STATUSES

@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ public class ErrorLogSearchService {
     private final LogProcessor logProcessor;
 
     private static final QErrorLog errorLog = QErrorLog.errorLog;
+
 
     public Page<ErrorLogResponse> findLogs(
             String serviceName,
@@ -56,9 +58,6 @@ public class ErrorLogSearchService {
         return fetchPage(null, pageable, timeOrder, errorLog.serviceName.desc());
     }
 
-    /* =========================
-       공통 로직
-       ========================= */
 
     private BooleanBuilder buildCommonCondition(
             String serviceName,
@@ -67,12 +66,14 @@ public class ErrorLogSearchService {
     ) {
         BooleanBuilder builder = new BooleanBuilder();
 
+        // 상태 필터: null이 아닐 때만 조건 추가
         if (status != null) {
             builder.and(errorLog.status.eq(status));
         }
 
-        if (serviceName != null && !serviceName.isEmpty()) {
-            builder.and(errorLog.serviceName.eq(serviceName));
+        // 서비스명 필터: 빈 문자열이 아닐 때만 조건 추가
+        if (StringUtils.hasText(serviceName)) {
+            builder.and(errorLog.serviceName.containsIgnoreCase(serviceName)); // contains로 검색 유연성 확보
         }
 
         if (isToday) {
@@ -88,19 +89,28 @@ public class ErrorLogSearchService {
             Pageable pageable,
             OrderSpecifier<?>... orderSpecifiers
     ) {
-        List<ErrorLog> results = queryFactory
+        // QueryDSL의 where는 null이나 empty builder를 안전하게 처리하지만, 명시적으로 처리
+        var query = queryFactory
                 .selectFrom(errorLog)
-                .where(condition)
                 .orderBy(orderSpecifiers)
                 .offset(pageable.getOffset())
-                .limit(pageable.getPageSize())
-                .fetch();
+                .limit(pageable.getPageSize());
 
-        Long total = queryFactory
+        if (condition.hasValue()) { // 조건이 있을 때만 where 추가
+            query.where(condition);
+        }
+
+        List<ErrorLog> results = query.fetch();
+
+        var countQuery = queryFactory
                 .select(errorLog.count())
-                .from(errorLog)
-                .where(condition)
-                .fetchOne();
+                .from(errorLog);
+
+        if (condition.hasValue()) {
+            countQuery.where(condition);
+        }
+
+        Long total = countQuery.fetchOne();
 
         return new PageImpl<>(
                 results.stream()
