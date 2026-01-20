@@ -63,6 +63,7 @@ public class ErrorLogCrdService {
             maxAttempts = 3,
             backoff = @Backoff(delay = 100)
     )
+    @Transactional(transactionManager = "lcTransactionManager")
     public ErrorLogResponse saveLog(ErrorLogRequest dto) {
         // 1. 발생 시각 결정
         LocalDateTime occurredTime =

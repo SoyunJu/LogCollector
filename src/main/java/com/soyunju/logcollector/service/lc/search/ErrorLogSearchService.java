@@ -15,7 +15,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -71,9 +70,9 @@ public class ErrorLogSearchService {
             builder.and(errorLog.status.eq(status));
         }
 
-        // 서비스명 필터: 빈 문자열이 아닐 때만 조건 추가
-        if (StringUtils.hasText(serviceName)) {
-            builder.and(errorLog.serviceName.containsIgnoreCase(serviceName)); // contains로 검색 유연성 확보
+        // serviceName이 있을 때만 eq 조건 추가 (index.html의 filterService 대응)
+        if (org.springframework.util.StringUtils.hasText(serviceName)) {
+            builder.and(errorLog.serviceName.eq(serviceName.trim()));
         }
 
         if (isToday) {

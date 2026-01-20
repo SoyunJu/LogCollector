@@ -7,6 +7,7 @@ import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -25,6 +26,16 @@ public class IncidentService {
         return incidentRepository.findByLogHash(logHash);
     }
 
+    // [추가] 인시던트 전체 목록 조회
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<com.soyunju.logcollector.dto.kb.IncidentResponse> findAll(org.springframework.data.domain.Pageable pageable) {
+        return incidentRepository.findAll(pageable).map(com.soyunju.logcollector.dto.kb.IncidentResponse::from);
+    }
+
+    @Transactional(
+            transactionManager = "kbTransactionManager",
+            propagation = Propagation.REQUIRES_NEW
+    )
     public Incident recordOccurrence(
 
             String logHash, String serviceName, String summary,

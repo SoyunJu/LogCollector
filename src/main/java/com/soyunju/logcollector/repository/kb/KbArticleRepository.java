@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -22,6 +23,7 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional(transactionManager = "kbTransactionManager")
     @Query("update KbArticle k set k.status = :toStatus where k.status in :fromStatuses and k.lastActivityAt < :cutoff")
     int bulkSetStatusByLastActivity(@Param("toStatus") KbStatus toStatus,
                                     @Param("fromStatuses") List<KbStatus> fromStatuses,

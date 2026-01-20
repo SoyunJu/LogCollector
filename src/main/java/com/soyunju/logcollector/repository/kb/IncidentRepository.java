@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +28,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
     List<Incident> findAllByLogHashIn(java.util.Set<String> logHashes);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional(transactionManager = "kbTransactionManager")
     @Query(value = """
     INSERT INTO incident (
         log_hash, service_name, summary, stack_trace, error_code,

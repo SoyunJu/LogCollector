@@ -60,6 +60,17 @@ public class KbArticleService {
         return kbArticleRepository.save(kb).getId();
     }
 
+    // [추가] KB 전체 목록 조회 (index.html 필드명에 맞춰 title 매핑)
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<com.soyunju.logcollector.dto.kb.KbArticleResponse> findAll(org.springframework.data.domain.Pageable pageable) {
+        return kbArticleRepository.findAll(pageable).map(kb -> com.soyunju.logcollector.dto.kb.KbArticleResponse.builder()
+                .id(kb.getId())
+                .title(kb.getIncidentTitle() != null ? kb.getIncidentTitle() : "시스템 생성 초안 (내용 확인 필요)")
+                .status(kb.getStatus().name())
+                .createdAt(kb.getCreatedAt())
+                .build());
+    }
+
     // LC 에서 RESOLVED 된 ERROR LOG 처리
     // 1. Draft (초안) 단계
     @Transactional

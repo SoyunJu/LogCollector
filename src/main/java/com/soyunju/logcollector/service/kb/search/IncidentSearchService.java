@@ -33,6 +33,7 @@ public class IncidentSearchService {
 
     private static final QIncident incident = QIncident.incident;
 
+
     public Page<IncidentResponse> findIncidents(
             Boolean excludeResolved,
             IncidentStatus status,

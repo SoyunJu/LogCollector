@@ -19,6 +19,7 @@ public class KbArticleResponse {
     private String createdBy;
     private LocalDateTime lastActivityAt;
     private LocalDateTime createdAt;
+    private String title;
 
     private List<String> tags;      // 키워드 리스트
     private List<AddendumDto> addendums;
