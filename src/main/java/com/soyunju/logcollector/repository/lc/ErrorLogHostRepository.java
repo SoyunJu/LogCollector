@@ -2,6 +2,7 @@ package com.soyunju.logcollector.repository.lc;
 
 import com.soyunju.logcollector.domain.lc.ErrorLogHost;
 import com.soyunju.logcollector.repository.lc.agg.HostAgg;
+import com.soyunju.logcollector.repository.lc.agg.LogHashHostCountAgg;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -57,5 +58,16 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
             GROUP BY i.log_hash
             """, nativeQuery = true)
     List<HostAgg> aggregateByLogHash();
+
+    // Incident hostCount 포함 조회 (N+1 방지)
+    @Query(value = """
+            SELECT
+              log_hash AS logHash,
+              COUNT(*) AS hostCount
+            FROM error_log_hosts
+            WHERE log_hash IN (:logHashes)
+            GROUP BY log_hash
+            """, nativeQuery = true)
+    List<LogHashHostCountAgg> countHostsByLogHashIn(@Param("logHashes") List<String> logHashes);
 
 }

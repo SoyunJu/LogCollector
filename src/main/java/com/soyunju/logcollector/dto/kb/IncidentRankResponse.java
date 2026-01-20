@@ -11,12 +11,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class IncidentResponse {
+public class IncidentRankResponse {
+
+    private String metric;
+    private Long metricValue;
 
     private Long id;
     private String logHash;
     private String serviceName;
-
     private IncidentStatus status;
     private ErrorLevel errorLevel;
 
@@ -29,25 +31,10 @@ public class IncidentResponse {
     private String summary;
     private String errorCode;
 
-    public static IncidentResponse from(Incident incident) {
-        return IncidentResponse.builder()
-                .id(incident.getId())
-                .logHash(incident.getLogHash())
-                .serviceName(incident.getServiceName())
-                .status(incident.getStatus())
-                .errorLevel(incident.getErrorLevel())
-                .repeatCount(incident.getRepeatCount())
-                .hostCount(null)
-                .firstOccurredAt(incident.getFirstOccurredAt())
-                .lastOccurredAt(incident.getLastOccurredAt())
-                .resolvedAt(incident.getResolvedAt())
-                .summary(incident.getSummary())
-                .errorCode(incident.getErrorCode())
-                .build();
-    }
-
-    public static IncidentResponse from(Incident incident, Long hostCount) {
-        return IncidentResponse.builder()
+    public static IncidentRankResponse from(String metric, Long metricValue, Incident incident, Long hostCount) {
+        return IncidentRankResponse.builder()
+                .metric(metric)
+                .metricValue(metricValue)
                 .id(incident.getId())
                 .logHash(incident.getLogHash())
                 .serviceName(incident.getServiceName())

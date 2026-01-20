@@ -76,6 +76,11 @@ dependencies {
     // Retry & AOP (버전을 명시적으로 지정하여 에러 방지)
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework.retry:spring-retry:2.0.11'
+
+    // 관측, 대시보드
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
 }
 
 tasks.named('test') {

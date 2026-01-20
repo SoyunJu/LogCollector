@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,33 +21,27 @@ public class KbArticleService {
     private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;
 
-    // LC 에서 RESOLVED 된 ERROR LOG 처리
-    // 1. Draft (초안) 단계
-    @Transactional
-    public Long createSystemDraft(Long incidentId) {
+    private Long createSystemDraftInternal(Long incidentId) {
         Incident incident = incidentRepository.findById(incidentId)
-                .orElseThrow(() -> new IllegalArgumentException("Incident를 찾을 수 없습니다."));
+                .orElseThrow(() -> new IllegalArgumentException("Incident를 찾을 수 없습니다. incidentId=" + incidentId));
+
+        String serviceName = (incident.getServiceName() == null || incident.getServiceName().isBlank())
+                ? "unknown-service"
+                : incident.getServiceName();
+
+        String title = "[SYSTEM] 에러 현상을 입력하세요 [" + serviceName + "]";
+        if (title.length() > 255) title = title.substring(0, 255);
 
         String body = String.format("""
-                ## 에러 코드: %s
-                ## 요약: %s
-                ## 원본 :
-                %s
-                """, incident.getErrorCode(), incident.getSummary(), incident.getStackTrace());
-
-        String serviceName = (incident.getServiceName() != null && !incident.getServiceName().isBlank())
-                ? incident.getServiceName()
-                : "unknown-service";
-
-        // title 식별자: 발생일(YYYY-MM-DD) 우선 사용
-        String dateOnly = formatDateOnly(
-                incident.getFirstOccurredAt(),
-                incident.getLastOccurredAt()
+                        ## 에러 코드: %s
+                        ## 요약: %s
+                        ## 스택트레이스:
+                        %s
+                        """,
+                incident.getErrorCode(),
+                incident.getSummary(),
+                incident.getStackTrace()
         );
-
-        String title = String.format("[SYSTEM] 에러 현상을 입력하세요 [%s / %s]", serviceName, dateOnly);
-
-        if (title.length() > 255) title = title.substring(0, 255);
 
         KbArticle kb = KbArticle.builder()
                 .incident(incident)
@@ -57,6 +53,36 @@ public class KbArticleService {
 
         return kbArticleRepository.save(kb).getId();
     }
+
+    // LC 에서 RESOLVED 된 ERROR LOG 처리
+    // 1. Draft (초안) 단계
+    private static final List<KbStatus> ACTIVE_DRAFT_STATUSES =
+            List.of(KbStatus.OPEN, KbStatus.UNDERWAY);
+
+    @Transactional
+    public Long createSystemDraft(Long incidentId) {
+        return createSystemDraftIfAbsent(incidentId);
+    }
+
+    @Transactional
+    public Long createSystemDraftIfAbsent(Long incidentId) {
+        return kbArticleRepository
+                .findTopByIncident_IdAndCreatedByAndStatusInOrderByCreatedAtDesc(
+                        incidentId, CreatedBy.system, ACTIVE_DRAFT_STATUSES
+                )
+                .map(KbArticle::getId)
+                .orElseGet(() -> createSystemDraftInternal(incidentId));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Long> findActiveSystemDraftId(Long incidentId) {
+        return kbArticleRepository
+                .findTopByIncident_IdAndCreatedByAndStatusInOrderByCreatedAtDesc(
+                        incidentId, CreatedBy.system, ACTIVE_DRAFT_STATUSES
+                )
+                .map(KbArticle::getId);
+    }
+
 
     // 2. 사용자 입력 단계 (title-현상 필수, content-해결안은 nullable)
     @Transactional

@@ -87,6 +87,7 @@ public class LogProcessor {
                 .summary(log.getSummary())
                 .errorCode(log.getErrorCode())
                 .hostInfo(log.getHostName())
+                .status(log.getStatus()) // 상태 추가용
                 .build();
     }
 
@@ -101,7 +102,8 @@ public class LogProcessor {
                 .repeatCount(log.getRepeatCount())  // 알림 조건 판별용
                 .impactedHostCount(impactedHostCount)
                 .isNew(isNew)
-                .isNewHost(isNewHost)               // 확산 알림용
+                .isNewHost(isNewHost)// 확산 알림용
+                .status(log.getStatus()) // 상태 추가용
                 .build();
     }
 }

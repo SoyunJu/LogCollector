@@ -2,6 +2,7 @@ package com.soyunju.logcollector.service.lc.redis;
 
 import com.soyunju.logcollector.config.LogCollectorRedisProperties;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
+import com.soyunju.logcollector.monitornig.LcMetrics;
 import com.soyunju.logcollector.service.lc.crd.ErrorLogCrdService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ public class LogToRedis {
     private final LogCollectorRedisProperties redisProperties;
     // Redis 장애 시 로그 유실 방지용(폴백)
     private final ErrorLogCrdService errorLogCrdService;
+    private final LcMetrics lcMetrics;
 
     /**
      * 로그를 Redis 큐에 적재
@@ -26,14 +28,17 @@ public class LogToRedis {
      */
     public void push(ErrorLogRequest dto) {
         try {
+            lcMetrics.incRedisEnqueueSuccess();
             redisTemplate.opsForList().rightPush(redisProperties.getQueueKey(), dto);
             redisTemplate.expire(redisProperties.getQueueKey(), redisProperties.queueTtl());
         } catch (RedisConnectionFailureException e) {
             log.warn("Redis 연결 실패 → DB direct fallback. msg={}", e.getMessage());
+            lcMetrics.incRedisEnqueueFailure("redis_connection");
             safeFallbackToDb(dto);
 
         } catch (Exception e) {
             log.warn("Redis push 실패 → DB direct fallback. msg={}", e.getMessage());
+            lcMetrics.incRedisEnqueueFailure("exception");
             safeFallbackToDb(dto);
         }
     }
@@ -41,8 +46,10 @@ public class LogToRedis {
     private void safeFallbackToDb(ErrorLogRequest dto) {
         try {
             errorLogCrdService.saveLog(dto);
+            lcMetrics.incDbFallback("success");
         } catch (Exception ex) {
             log.error("DB fallback 실패(로그 유실 가능). msg={}", ex.getMessage(), ex);
+            lcMetrics.incDbFallback("failure");
         }
     }
 }

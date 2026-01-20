@@ -1,4 +1,43 @@
+version: "3.9"
+
 services:
+  # =========================
+  # APP (added)
+  # =========================
+  app:
+    # Dockerfile 기준으로 빌드하는 형태(일반적인 Spring Boot/백엔드 기준)예요.
+    # 이미 이미지가 있다면 build 대신 image: 로 바꾸면 돼요.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logcollector-app
+    ports:
+      - "8080:8080"
+    environment:
+      # 애플리케이션 설정 키는 프로젝트마다 다르니,
+      # 아래는 "접속 정보 전달"용 기본 예시로만 두고 실제 키에 맞춰 조정하세요.
+      DB_HOST: logcollector-db
+      DB_PORT: "3306"
+      DB_NAME: logcollector
+      DB_USER: root
+      DB_PASSWORD: root
+
+      REDIS_HOST: logcollector-redis
+      REDIS_PORT: "6379"
+
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: "9200"
+    depends_on:
+      logcollector-db:
+        condition: service_healthy
+      logcollector-redis:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+
+  # =========================
+  # Infra
+  # =========================
   logcollector-db:
     image: mariadb:latest
     container_name: logcollector-mariadb
@@ -6,9 +45,9 @@ services:
       MARIADB_DATABASE: logcollector
       MARIADB_ROOT_PASSWORD: root
     ports:
-      - "13306:3306"
+      - "3306:3306"
     healthcheck:
-      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent"]
+      test: [ "CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -20,32 +59,46 @@ services:
     container_name: logcollector-redis
     ports:
       - "6379:6379"
-    command: ["redis-server", "--appendonly", "yes"]
+    command: [ "redis-server", "--appendonly", "yes" ]
     volumes:
       - logcollector-redis-data:/data
 
-  log-app:
-    build:
-      context: ../..
-    container_name: log-collector-app
-    ports:
-      - "8081:8081"
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: logcollector-es
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mariadb://logcollector-db:3306/logcollector
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_DATA_REDIS_HOST: logcollector-redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_PROFILES_ACTIVE: docker
-      # Draft policy (env override)
-      DRAFT_POLICY_HOST_SPREAD_THRESHOLD: 3
-      DRAFT_POLICY_HIGH_RECUR_THRESHOLD: 10
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: lc-prometheus.yml
+    volumes:
+      - ./prometheus.yml.yml:/etc/prometheus.yml/prometheus.yml.yml:ro
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: lc-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
-      logcollector-db:
-        condition: service_healthy
-      logcollector-redis:
-        condition: service_started
+      - prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   logcollector-db-data:
   logcollector-redis-data:
+  es-data:

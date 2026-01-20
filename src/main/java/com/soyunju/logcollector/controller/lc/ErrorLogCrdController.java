@@ -31,6 +31,21 @@ public class ErrorLogCrdController {
     }
 
     // 상태 업데이트 API (Update)
+   /* @PatchMapping("/{logId}/status")
+    public ResponseEntity<Void> updateStatus(
+            @PathVariable Long logId,
+            @RequestParam ErrorStatus newStatus) {
+        errorLogCrdService.updateStatus(logId, newStatus);
+        return ResponseEntity.ok().build();
+    } */
+
+    // 다중 로그 삭제 API (Delete)
+    @DeleteMapping
+    public ResponseEntity<Void> deleteLogs(@RequestBody List<Long> logIds) {
+        errorLogCrdService.deleteLogs(logIds);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{logId}/status")
     public ResponseEntity<Void> updateStatus(
             @PathVariable Long logId,
@@ -39,10 +54,4 @@ public class ErrorLogCrdController {
         return ResponseEntity.ok().build();
     }
 
-    // 다중 로그 삭제 API (Delete)
-    @DeleteMapping
-    public ResponseEntity<Void> deleteLogs(@RequestBody List<Long> logIds) {
-        errorLogCrdService.deleteLogs(logIds);
-        return ResponseEntity.noContent().build();
-    }
 }

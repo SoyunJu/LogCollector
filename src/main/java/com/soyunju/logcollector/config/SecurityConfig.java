@@ -10,6 +10,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
+
 
 import java.util.List;
 
@@ -37,8 +39,15 @@ public class SecurityConfig {
                                 // .requestMatchers("/api/logs/ai/**").authenticated()
                                 .requestMatchers(HttpMethod.DELETE, "/api/logs/**").permitAll()
                                 .requestMatchers("/api/logs/ai/**").permitAll()
-                      /* requestMatchers(HttpMethod.DELETE, "/api/logs").hasRole("ADMIN")
-                        .anyRequest().authenticated() */
+                                // Incident 조회 API (운영용)
+                                .requestMatchers(HttpMethod.GET, "/api/incidents/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/kb/**").permitAll()
+                                // 테스트용
+                                .requestMatchers(HttpMethod.POST, "/api/kb/**").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/incidents/**").permitAll() // incident 생성 API가 있을 경우 대비(없으면 영향 없음)
+
+                                .requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
+                                .anyRequest().authenticated()
                 );
 
         // 3. CORS 설정 (프론트엔드 연결 대비)

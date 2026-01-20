@@ -1,0 +1,233 @@
+{
+  "uid": "logcollector",
+  "title": "LogCollector",
+  "tags": ["logcollector", "lc"],
+  "timezone": "browser",
+  "schemaVersion": 42,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-6h", "to": "now" },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "job",
+        "type": "query",
+        "datasource": "prometheus",
+        "refresh": 2,
+        "query": "label_values(up, job)",
+        "current": { "selected": true, "text": "logcollector-app", "value": "logcollector-app" }
+      },
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": "prometheus",
+        "refresh": 2,
+        "query": "label_values(up{job=\"$job\"}, instance)",
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": ".*" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "UP (logcollector-app)",
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min(up{job=\"$job\", instance=~\"$instance\"})",
+          "legendFormat": "up"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto" }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "RPS (total)",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"$job\", instance=~\"$instance\", uri!=\"/actuator/prometheus\"}[1m]))",
+          "legendFormat": "rps"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "HTTP 5xx (%)",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(rate(http_server_requests_seconds_count{job=\"$job\", instance=~\"$instance\", status=~\"5..\", uri!=\"/actuator/prometheus\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"$job\", instance=~\"$instance\", uri!=\"/actuator/prometheus\"}[5m]))",
+          "legendFormat": "5xx%"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Latency p95 (s)",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"$job\", instance=~\"$instance\", uri!=\"/actuator/prometheus\"}[5m])))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "JVM Heap Used (%)",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 4 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(jvm_memory_used_bytes{job=\"$job\", instance=~\"$instance\", area=\"heap\"}) / sum(jvm_memory_max_bytes{job=\"$job\", instance=~\"$instance\", area=\"heap\"})",
+          "legendFormat": "heap%"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "SaveLog (success/failure/skipped) rate",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (rate({job=\"$job\", instance=~\"$instance\", __name__=~\"(lc_save_log_total|logcollector_save_log_total|savelog_total|save_log_total|lc_savelog_total)\"}[5m]))",
+          "legendFormat": "{{result}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (status) (rate({job=\"$job\", instance=~\"$instance\", __name__=~\"(lc_save_log_total|logcollector_save_log_total|savelog_total|save_log_total|lc_savelog_total)\"}[5m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "SaveLog failure rate (%)",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(rate({job=\"$job\", instance=~\"$instance\", __name__=~\"(lc_save_log_total|logcollector_save_log_total|savelog_total|save_log_total|lc_savelog_total)\", result=\"failure\"}[5m])) / sum(rate({job=\"$job\", instance=~\"$instance\", __name__=~\"(lc_save_log_total|logcollector_save_log_total|savelog_total|save_log_total|lc_savelog_total)\"}[5m]))",
+          "legendFormat": "failure%"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Redis Queue Depth (main/dlq)",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 12 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"$job\", instance=~\"$instance\", __name__=~\"(lc_redis_queue_depth|logcollector_redis_queue_depth|redis_queue_depth|lc_queue_depth)\"}",
+          "legendFormat": "{{__name__}} {{type}} {{queue}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Incident Upsert rate",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate({job=\"$job\", instance=~\"$instance\", __name__=~\"(lc_incident_total|logcollector_incident_total|incident_upsert_total|lc_incident_upsert_total)\"}[5m]))",
+          "legendFormat": "incident_total"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (result) (rate({job=\"$job\", instance=~\"$instance\", __name__=~\"(lc_incident_total|logcollector_incident_total|incident_upsert_total|lc_incident_upsert_total)\"}[5m]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "KB Draft Create rate",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate({job=\"$job\", instance=~\"$instance\", __name__=~\"(lc_kb_draft_total|logcollector_kb_draft_total|kb_draft_total|lc_kb_total)\"}[5m]))",
+          "legendFormat": "kb_draft_total"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (result) (rate({job=\"$job\", instance=~\"$instance\", __name__=~\"(lc_kb_draft_total|logcollector_kb_draft_total|kb_draft_total|lc_kb_total)\"}[5m]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "CPU (process)",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 28 },
+      "targets": [
+        { "refId": "A", "expr": "rate(process_cpu_seconds_total{job=\"$job\", instance=~\"$instance\"}[1m])", "legendFormat": "cpu" }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "GC pause (s/s)",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 28 },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(jvm_gc_pause_seconds_sum{job=\"$job\", instance=~\"$instance\"}[5m]))", "legendFormat": "gc_pause" }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Threads (live)",
+      "datasource": "prometheus",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 28 },
+      "targets": [
+        { "refId": "A", "expr": "jvm_threads_live_threads{job=\"$job\", instance=~\"$instance\"}", "legendFormat": "threads" }
+      ]
+    }
+  ]
+}
