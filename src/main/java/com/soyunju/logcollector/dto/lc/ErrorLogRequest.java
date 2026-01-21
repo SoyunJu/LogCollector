@@ -1,5 +1,6 @@
 package com.soyunju.logcollector.dto.lc;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ErrorLogRequest {
     @NotBlank(message = "서비스명은 필수입니다.")
     private String serviceName;
@@ -27,4 +29,6 @@ public class ErrorLogRequest {
     private String stackTrace;
 
     private LocalDateTime occurredTime;
+
+    private String logHash;
 }

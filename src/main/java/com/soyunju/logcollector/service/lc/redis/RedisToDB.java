@@ -1,6 +1,5 @@
 package com.soyunju.logcollector.service.lc.redis;
 
-import com.soyunju.logcollector.config.LogCollectorRedisProperties;
 import com.soyunju.logcollector.domain.lc.ErrorStatus;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
 import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
@@ -10,87 +9,114 @@ import com.soyunju.logcollector.service.lc.notification.SlackService;
 import com.soyunju.logcollector.service.lc.processor.LogProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RedisToDB {
 
-    private final RedisTemplate<String, ErrorLogRequest> redisTemplate;
     private final ErrorLogCrdService errorLogCrdService;
-    private final SlackService slackService;
-    private final LogCollectorRedisProperties props;
+    private final RedisTemplate<String, ErrorLogRequest> errorLogRequestRedisTemplate;
     private final LogProcessor logProcessor;
+    private final SlackService slackService;
     private final LcMetrics lcMetrics;
 
+    @Value("${logcollector.redis.queue-key:errorlog:queue}")
+    private String queueKey;
 
-    // 이전 실행 끝난 뒤 delay 하고 다시 실행, 내부에서 blocking pop(timeout) 으로 빈 큐 대기 처리
-    @Scheduled(fixedDelay = 1000)
-    public void consumeBatch() {
-        int processed = 0;
-        try {
-            for (int i = 0; i < props.getBatchSize(); i++) {
-                // 빈 큐면 최대 popTimeoutSeconds 만큼 대기 후 null 반환 (busy polling 방지)
-                ErrorLogRequest request = redisTemplate.opsForList()
-                        .leftPop(props.getQueueKey(), Duration.ofSeconds(props.getPopTimeoutSeconds()));
-                if (request == null) break;
-                processed++;
-                handleOne(request);
-            }
-            if (processed > 0) {
-                log.debug("Redis batch consume 완료: {}건", processed);
-            }
-        } catch (RedisConnectionFailureException e) {
-            // Redis 장애: 다음 스케줄에서 재시도
-            log.warn("Redis 연결 실패로 consume 스킵. msg={}", e.getMessage());
-        } catch (Exception e) {
-            log.error("Redis consumeBatch 중 예외. msg={}", e.getMessage(), e);
+    @Value("${logcollector.redis.dlq-key:errorlog:dlq}")
+    private String dlqKey;
+
+    @Value("${logcollector.redis.dlq-ttl-seconds:86400}")
+    private long dlqTtlSeconds;
+
+    @Value("${logcollector.redis.batch-size:50}")
+    private int batchSize;
+
+    @Value("${logcollector.redis.pop-timeout-seconds:2}")
+    private long popTimeoutSeconds;
+
+    @Scheduled(fixedDelayString = "${logcollector.redis.consumer-fixed-delay-ms:200}")
+    public void pollAndProcess() {
+        List<ErrorLogRequest> batch = popBatch();
+        if (batch.isEmpty()) return;
+
+        for (ErrorLogRequest dto : batch) {
+            handleOne(dto);
         }
     }
 
-    // 1건 처리. 실패시 DB로
+    private List<ErrorLogRequest> popBatch() {
+        List<ErrorLogRequest> batch = new ArrayList<>(batchSize);
+        
+        ErrorLogRequest first = errorLogRequestRedisTemplate.opsForList()
+                .leftPop(queueKey, Duration.ofSeconds(popTimeoutSeconds));
+        if (first == null) return batch;
+        batch.add(first);
+
+        // batchSize 까지 큐 채움
+        for (int i = 1; i < batchSize; i++) {
+            ErrorLogRequest next = errorLogRequestRedisTemplate.opsForList().leftPop(queueKey);
+            if (next == null) break;
+            batch.add(next);
+        }
+        return batch;
+    }
+
+    // 1건 처리. 실패시 DLQ로
     private void handleOne(ErrorLogRequest request) {
         var lagSample = lcMetrics.startPersistLagTimer();
+
         try {
             String logHash = logProcessor.generateIncidentHash(
-                    request.getServiceName(), request.getMessage(), request.getStackTrace());
+                    request.getServiceName(), request.getMessage(), request.getStackTrace()
+            );
 
             if (errorLogCrdService.isIgnored(logHash)) {
                 lcMetrics.incIgnored();
                 lcMetrics.recordPersistLagSeconds(lagSample, "ignored");
-                return; // IGNORED 상태라면 트랜잭션 타기 전에 종료
-            }
-            ErrorLogResponse response = errorLogCrdService.saveLog(request);
-            if (response == null) {
-                lcMetrics.recordPersistLagSeconds(lagSample, "Null skipped");
                 return;
             }
+
+            ErrorLogResponse response = errorLogCrdService.saveLog(request);
+            if (response == null) {
+                lcMetrics.recordPersistLagSeconds(lagSample, "skipped");
+                return;
+            }
+
             lcMetrics.incConsumeProcessed();
             lcMetrics.recordPersistLagSeconds(lagSample, "success");
 
-            // 3. 알람 조건 판단 (ACKNOWLEDGED 상태면 알람 스킵)
+            // ACKNOWLEDGED면 알람 스킵
             boolean isAcknowledged = response.getStatus() == ErrorStatus.ACKNOWLEDGED;
             if (isAcknowledged) {
                 lcMetrics.incSlackNotify("skipped_ack");
                 return;
             }
 
-            boolean shouldNotify = !isAcknowledged && (
+            boolean shouldNotify =
                     response.isNew() ||
                             response.isNewHost() ||
-                            response.getRepeatCount() == 10);
+                            response.getRepeatCount() == 10;
 
             if (shouldNotify) {
                 lcMetrics.incSlackNotify("sent");
+
                 String title = determineTitle(response);
-                String summaryWithCount = String.format("%s\n(현재 누적 발생: %d회)",
-                        response.getSummary(), response.getRepeatCount());
+                String summaryWithCount = String.format(
+                        "%s\n(현재 누적 발생: %d회)",
+                        response.getSummary(),
+                        response.getRepeatCount()
+                );
+
                 slackService.sendErrorNotification(
                         title,
                         response.getServiceName(),
@@ -100,17 +126,18 @@ public class RedisToDB {
             }
 
         } catch (Exception e) {
-            log.error("로그 처리 실패 → DLQ 적재. msg={}", e.getMessage(), e);
+            log.error("로그 처리 실패 → DLQ 적재. serviceName={} msg={}",
+                    safe(request.getServiceName()), e.getMessage(), e);
             lcMetrics.recordPersistLagSeconds(lagSample, "failure");
             pushToDlq(request);
         }
     }
 
-    // DLQ 적재 + TTL
+    // DLQ 적재 + TTL 갱신
     private void pushToDlq(ErrorLogRequest request) {
         try {
-            redisTemplate.opsForList().rightPush(props.getDlqKey(), request);
-            redisTemplate.expire(props.getDlqKey(), Duration.ofDays(props.getDlqTtlDays()));
+            errorLogRequestRedisTemplate.opsForList().rightPush(dlqKey, request);
+            errorLogRequestRedisTemplate.expire(dlqKey, Duration.ofSeconds(dlqTtlSeconds));
         } catch (Exception e) {
             log.error("DLQ 적재 실패(로그 유실 가능). msg={}", e.getMessage(), e);
         }
@@ -120,5 +147,9 @@ public class RedisToDB {
         if (response.isNew()) return "🚨 *[신규 에러 발생]*";
         if (response.isNewHost()) return "⚠️ *[에러 확산 감지]*";
         return "🔥 *[다건 발생 경고]*";
+    }
+
+    private String safe(String s) {
+        return (s == null) ? "null" : s;
     }
 }

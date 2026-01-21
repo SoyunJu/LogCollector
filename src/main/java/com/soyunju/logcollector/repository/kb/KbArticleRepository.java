@@ -30,6 +30,10 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
                                     @Param("cutoff") LocalDateTime cutoff);
 
     boolean existsByIncidentIdAndStatusIn(Long incidentId, Collection<KbStatus> statuses);
+
+    @Query("select k from KbArticle k join fetch k.incident where k.id = :id")
+    Optional<KbArticle> findByIdWithIncident(@Param("id") Long id);
+
 }
 
 

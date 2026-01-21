@@ -9,7 +9,7 @@ import com.soyunju.logcollector.domain.lc.QErrorLog;
 import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
 import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
 import com.soyunju.logcollector.service.lc.processor.LogProcessor;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -21,15 +21,24 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ErrorLogSearchService {
 
     private final JPAQueryFactory queryFactory;
+    private static final QErrorLog errorLog = QErrorLog.errorLog;
+
+    public ErrorLogSearchService(
+            @Qualifier("lcQueryFactory") JPAQueryFactory queryFactory,
+            ErrorLogRepository errorLogRepository,
+            LogProcessor logProcessor
+    ) {
+        this.queryFactory = queryFactory;
+        this.errorLogRepository = errorLogRepository;
+        this.logProcessor = logProcessor;
+    }
+
     private final ErrorLogRepository errorLogRepository;
     private final LogProcessor logProcessor;
-
-    private static final QErrorLog errorLog = QErrorLog.errorLog;
 
 
     public Page<ErrorLogResponse> findLogs(

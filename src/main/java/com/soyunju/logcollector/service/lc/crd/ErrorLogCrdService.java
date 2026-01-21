@@ -65,11 +65,10 @@ public class ErrorLogCrdService {
     )
     @Transactional(transactionManager = "lcTransactionManager")
     public ErrorLogResponse saveLog(ErrorLogRequest dto) {
-        // 1. 발생 시각 결정
         LocalDateTime occurredTime =
                 (dto.getOccurredTime() != null) ? dto.getOccurredTime() : LocalDateTime.now();
 
-        // 2. 로그 레벨 확정 (메시지에서 CRITICAL/FATAL이 발견되면 더 높은 레벨을 우선 적용)
+        // 1. 로그 레벨 확정 (CRITICAL/FATAL 우선 적용)
         String inferred = logProcessor.inferLogLevel(dto.getMessage());
         String effectiveLevel;
         if (!StringUtils.hasText(dto.getLogLevel())) {
@@ -81,26 +80,22 @@ public class ErrorLogCrdService {
                 effectiveLevel = dto.getLogLevel();
             }
         }
-        // 3. 수집 대상 여부 검사 및 필터링
+        // 2. 수집 대상 여부
         if (!logProcessor.isTargetLevel(effectiveLevel)) {
-            // 사용자가 UI 등에서 명시적으로 수집 대상이 아닌 레벨(예: INFO)을 보낸 경우 예외 발생
             if (StringUtils.hasText(dto.getLogLevel())) {
                 throw new IllegalArgumentException("수집 대상 로그 레벨이 아닙니다: " + dto.getLogLevel());
             }
-            // 자동 추론 결과가 INFO 등이거나 레벨이 없는 경우는 조용히 무시 (Batch/Agent 수집용)
             return null;
         }
-
-        // 4. 해시 생성 및 중복 확인 (이후 확정된 effectiveLevel 사용)
+        // 3. 해시 생성 및 중복 확인
         String logHash = logProcessor.generateIncidentHash(dto.getServiceName(), dto.getMessage(), dto.getStackTrace());
 
+        // 4. Host 집계 Upsert
         String hostName = (dto.getHostName() == null || dto.getHostName().isBlank()) ? "UNKNOWN_HOST" : dto.getHostName();
-
-        // 1. Host 집계 Upsert
         int hostUpsertResult = errorLogHostRepository.upsertHostCounter(logHash, dto.getServiceName(), hostName, null, occurredTime);
         boolean isNewHost = (hostUpsertResult == 1);
 
-        // 2. ErrorLog Upsert (Atomic 처리)
+        // 5. ErrorLog Upsert
         String errorCode = LogNormalization.generateErrorCode(dto.getMessage(), dto.getStackTrace());
         String summary = logProcessor.extractSummary(dto.getMessage());
 
@@ -109,43 +104,28 @@ public class ErrorLogCrdService {
                 dto.getMessage(), dto.getStackTrace(), occurredTime,
                 errorCode, summary, logHash
         );
-
-        // 신규 insert는 1, update는 2를 반환함
+        //  insert=1, update=2 return
         boolean isNewIncident = (logUpsertResult == 1);
 
-        // 3. 결과 반환을 위한 엔티티 조회
         ErrorLog targetLog = errorLogRepository.findByLogHash(logHash)
                 .orElseThrow(() -> new IllegalStateException("Log not found after upsert"));
-
+        // 영향 host agg
         long impactedHostCount = errorLogHostRepository.countHostsByLogHash(logHash);
-
-        // 4. Incident 연동 (수정: 반환된 Incident 객체를 변수에 할당)
+        // 6. Incident 연동
         Incident incident = incidentService.recordOccurrence(
                 logHash, dto.getServiceName(), targetLog.getSummary(),
                 dto.getStackTrace(), errorCode, effectiveLevel, occurredTime
         );
-
-        // 5. repeat_count가 10회 이상일 때 KB 초안 생성
+        // KB Draft 생성
         if (targetLog.getRepeatCount() >= 10) {
-            // 이제 위에서 할당한 incident 변수를 사용하여 getId() 호출 가능
             kbDraftService.createSystemDraft(incident.getId());
         }
-
-       /*  // 4. Incident 연동 (IncidentService도 동일하게 Upsert 방식으로 수정 권장)
-        incidentService.recordOccurrence(
-                logHash, dto.getServiceName(), targetLog.getSummary(),
-                dto.getStackTrace(), errorCode, effectiveLevel, occurredTime
-        );
-
-        if (targetLog.getRepeatCount() >= 10) {
-            kbArticleService.createSystemDraft(incident.getId());
-        } */
-
         try {
             if (!logProcessor.isTargetLevel(effectiveLevel)) {
                 lcMetrics.incSaveLog("skipped");
                 return null;
             }
+            // host agg -> KB Draft
             ErrorLogResponse response = logProcessor.convertToResponse(targetLog, impactedHostCount, isNewIncident, isNewHost);
             lcMetrics.incSaveLog("success");
             return response;
@@ -186,7 +166,7 @@ public class ErrorLogCrdService {
                     if (actor != null && !actor.isBlank()) {
                         errorLog.setAcknowledgedBy(actor);
                     } else {
-                        errorLog.setAcknowledgedBy("Operations Manager");
+                        errorLog.setAcknowledgedBy("Operations Manager"); // TODO : 하드코딩에서 계정으로 변경
                     }
                 }
                 errorLog.setResolvedAt(null);
@@ -200,7 +180,6 @@ public class ErrorLogCrdService {
                 incidentRepository.findByLogHash(errorLog.getLogHash())
                         .ifPresentOrElse(
                                 incident -> kbDraftService.createSystemDraft(incident.getId()),
-                                // [수정] 이제 여기서 log.warn은 Slf4j 로거를 정상적으로 참조합니다.
                                 () -> log.warn("로그 해시({})에 해당하는 인시던트를 찾을 수 없어 KB 초안을 생성하지 못했습니다.", errorLog.getLogHash())
                         );
             }
@@ -209,10 +188,9 @@ public class ErrorLogCrdService {
                 errorLog.setAcknowledgedAt(null);
                 errorLog.setAcknowledgedBy(null);
             }
-            case IGNORED -> {
-                // no-op
-            }
+            case IGNORED -> { }
         }
+
         auditLogService.write(
                 "ERRORLOG_STATUS_CHANGED",
                 "ERROR_LOG",
@@ -223,7 +201,7 @@ public class ErrorLogCrdService {
     }
 
     @Transactional
-    public void deleteLogs(List<Long> logIds) {
+    public void deleteLogs(List<Long> logIds) { // TODO : 권한 부여
         if (logIds == null || logIds.isEmpty()) {
             return;
         }

@@ -16,12 +16,12 @@ import java.time.LocalDateTime;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class KbArticleService {
+@Transactional(transactionManager = "kbTransactionManager")
+public class KbCrdService {
 
     private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;
     private final SystemDraftRepository systemDraftRepository;
-    private final KbDraftService kbDraftService;
 
     // 사용자 입력 단계 (title-현상 필수, content-해결안은 nullable)
     @Transactional
@@ -29,22 +29,28 @@ public class KbArticleService {
         KbArticle kb = kbArticleRepository.findById(kbArticleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 KB를 찾을 수 없습니다."));
 
-        if (title != null && !title.isBlank()) { kb.setIncidentTitle(title); }
+        if (title != null && !title.isBlank()) {
+            kb.setIncidentTitle(title);
+            // incident 동기화
+            if (kb.getIncident() != null) {
+                kb.getIncident().setIncidentTitle(title);
+            }
+        }
         if (content != null) { kb.setContent(content); }
 
         if (kb.getCreatedBy() != CreatedBy.system) {
             if (org.springframework.util.StringUtils.hasText(title) && org.springframework.util.StringUtils.hasText(content)) {
-                kb.setStatus(KbStatus.RESPONDED);
+                kb.setStatus(KbStatus.RESPONDED); // TODO : Draft 있을 시 삭제 로직 필요
                 kb.setPublishedAt(LocalDateTime.now());
             } else {
-                kb.setStatus(KbStatus.UNDERWAY);
+                kb.setStatus(KbStatus.UNDERWAY); // TODO : Draft 삭제 로직 필요
             }
         } else {
             if (org.springframework.util.StringUtils.hasText(content)) {
-                kb.setStatus(KbStatus.RESPONDED);
+                kb.setStatus(KbStatus.RESPONDED); // TODO : Draft 삭제 로직 필요
             }
         }
-        kb.touchActivity(); // 활동 시간 갱신
+        kb.touchActivity();
     }
 
     private String formatDateOnly(LocalDateTime firstOccurredAt, LocalDateTime lastOccurredAt) {
@@ -58,5 +64,6 @@ public class KbArticleService {
         if (logHash == null || logHash.isBlank()) return "nohash";
         return logHash.length() <= 8 ? logHash : logHash.substring(0, 8);
     }
+
 
 }

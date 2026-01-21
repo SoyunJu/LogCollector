@@ -30,22 +30,21 @@ public class KbDraftService {
     private static final List<KbStatus> ACTIVE_DRAFT_STATUSES =
             List.of(KbStatus.OPEN, KbStatus.UNDERWAY);
 
-    public KbDraftService(IncidentRepository incidentRepository, KbArticleRepository kbArticleRepository, SystemDraftRepository systemDraftRepository) {
+    public KbDraftService(IncidentRepository incidentRepository, KbArticleRepository kbArticleRepository, SystemDraftRepository systemDraftRepository, KbCrdService kbCrdService) {
         this.incidentRepository = incidentRepository;
         this.kbArticleRepository = kbArticleRepository;
         this.systemDraftRepository = systemDraftRepository;
     }
 
     // LC 에서 RESOLVED 된 ERROR LOG 처리
-    // Draft (초안) 단계
     @Transactional(transactionManager = "kbTransactionManager")
     public Long createSystemDraft(Long incidentId) {
-        return createSystemDraftIfAbsent(incidentId, 0, 0, DraftReason.HIGH_RECUR);
+        return createSystemDraft(incidentId, 0, 0, DraftReason.HIGH_RECUR);
     }
 
-    // System Draft 중복 방지
+    // System Draft 중복 방지 적용
     @Transactional(transactionManager = "kbTransactionManager")
-    public Long createSystemDraftIfAbsent(Long incidentId,
+    public Long createSystemDraft(Long incidentId,
                                           int hostCount,
                                           int repeatCount,
                                           DraftReason reason) {
@@ -75,7 +74,8 @@ public class KbDraftService {
         }
     }
 
-    @Transactional(readOnly = true)
+    // draft 유무 체크
+    @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
     public Optional<Long> findActiveSystemDraftId(Long incidentId) {
         return kbArticleRepository
                 .findTopByIncident_IdAndCreatedByAndStatusInOrderByCreatedAtDesc(
@@ -84,7 +84,31 @@ public class KbDraftService {
                 .map(KbArticle::getId);
     }
 
-    // Draft create
+
+    @Transactional(transactionManager = "kbTransactionManager")
+    public void updateDraft(Long kbArticleId, String title, String content) {
+        KbArticle kb = kbArticleRepository.findById(kbArticleId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 Draft를 찾을 수 없습니다. ID: " + kbArticleId));
+
+        if (title != null && !title.isBlank()) {
+            kb.setIncidentTitle(title);
+            // incident 동기화
+            if (kb.getIncident() != null) {
+                kb.getIncident().setIncidentTitle(title);
+            }
+        }
+        kb.setContent(content != null ? content : kb.getContent());
+
+        // status 변경 조건 로직
+        if (org.springframework.util.StringUtils.hasText(content)) {
+            kb.setStatus(KbStatus.RESPONDED);
+        } else {
+            kb.setStatus(KbStatus.UNDERWAY);
+        }
+        kb.touchActivity();
+    }
+
+    // System create KbArticle
     @Transactional(transactionManager = "kbTransactionManager")
     private Long createSystemKbArticle(Long incidentId) {
 
@@ -96,6 +120,8 @@ public class KbDraftService {
                 : incident.getServiceName();
 
         String title = "[SYSTEM] 에러 현상을 입력하세요 [" + serviceName + "]";
+        incident.setIncidentTitle(title);
+
         if (title.length() > 255) title = title.substring(0, 255);
 
         String body = String.format("""
@@ -119,22 +145,6 @@ public class KbDraftService {
                 .build();
 
         return kbArticleRepository.save(kb).getId();
-    }
-
-    @Transactional
-    public void postDraft(Long kbArticleId, String title, String content) {
-        KbArticle kb = kbArticleRepository.findById(kbArticleId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 Draft를 찾을 수 없습니다. ID: " + kbArticleId));
-
-        if (title != null && !title.isBlank()) { kb.setIncidentTitle(title); }
-        kb.setContent(content != null ? content : kb.getContent());
-        // status 변경 조건 로직
-        if (org.springframework.util.StringUtils.hasText(content)) {
-            kb.setStatus(KbStatus.RESPONDED);
-        } else {
-            kb.setStatus(KbStatus.UNDERWAY);
-        }
-        kb.touchActivity();
     }
 
 }

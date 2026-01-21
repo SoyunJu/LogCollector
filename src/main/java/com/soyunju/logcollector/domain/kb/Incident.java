@@ -25,6 +25,9 @@ public class Incident {
     @Column(name = "service_name", nullable = false, length = 100)
     private String serviceName;
 
+    @Column(name = "incident_title")
+    private String incidentTitle;
+
     @Lob
     @Column(columnDefinition = "TEXT")
     private String summary;

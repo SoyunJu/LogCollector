@@ -12,7 +12,7 @@ import com.soyunju.logcollector.dto.kb.IncidentRankResponse;
 import com.soyunju.logcollector.dto.kb.IncidentResponse;
 import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
 import com.soyunju.logcollector.repository.lc.agg.LogHashHostCountAgg;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -24,15 +24,19 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class IncidentSearchService {
 
     private final JPAQueryFactory queryFactory;
-    private final ErrorLogHostRepository errorLogHostRepository;
-
     private static final QIncident incident = QIncident.incident;
 
+    public IncidentSearchService(@Qualifier("kbQueryFactory") JPAQueryFactory queryFactory,
+                                 ErrorLogHostRepository errorLogHostRepository) {
+        this.queryFactory = queryFactory;
+        this.errorLogHostRepository = errorLogHostRepository;
+    }
+
+    private final ErrorLogHostRepository errorLogHostRepository;
 
     public Page<IncidentResponse> findIncidents(
             Boolean excludeResolved,

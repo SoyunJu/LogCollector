@@ -5,7 +5,7 @@ import com.soyunju.logcollector.domain.kb.enums.DraftReason;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.service.kb.autopolicy.DraftPolicyService.DraftCandidate;
 import com.soyunju.logcollector.service.kb.autopolicy.DraftPolicyService.DraftRunResult;
-import com.soyunju.logcollector.service.kb.crd.KbArticleService;
+import com.soyunju.logcollector.service.kb.crd.KbCrdService;
 import com.soyunju.logcollector.service.kb.crd.KbDraftService;
 import com.soyunju.logcollector.service.kb.search.KbArticleSearchService;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class DraftPolicyKbWriter {
 
     private final IncidentRepository incidentRepository; // KB
-    private final KbArticleService kbArticleService;      // KB
+    private final KbCrdService kbCrdService;      // KB
     private final KbArticleSearchService kbArticleSearchService;
     private final KbDraftService kbDraftService;
 
@@ -65,17 +65,17 @@ public class DraftPolicyKbWriter {
                     continue;
                 }
 
+                // Draft 조건
                 DraftReason reason = (c.hostCount() >= hostSpreadThreshold)
                         ? DraftReason.HOST_SPREAD
                         : DraftReason.HIGH_RECUR;
 
-                // (선택) 사전 체크: 최종 중복 방지는 system_draft UNIQUE + 서비스 내부에서 처리
                 if (kbDraftService.findActiveSystemDraftId(incident.getId()).isPresent()) {
                     skippedExists++;
                     continue;
                 }
 
-                Long kbArticleId = kbDraftService.createSystemDraftIfAbsent(
+                Long kbArticleId = kbDraftService.createSystemDraft(
                         incident.getId(),
                         c.hostCount(),
                         c.repeatCount(),
@@ -85,10 +85,8 @@ public class DraftPolicyKbWriter {
                 if (kbArticleId != null) {
                     created++;
                 } else {
-                    // 중복/스킵(null 반환)
                     skippedExists++;
                 }
-
             } catch (Exception e) {
                 failed++;
                 log.error("[AUTO_DRAFT][FAILED] logHash={} hostCount={} repeatCount={}",
