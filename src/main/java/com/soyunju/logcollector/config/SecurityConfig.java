@@ -10,6 +10,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 
 import java.util.List;
 
@@ -20,35 +21,31 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // 1. CSRF 및 세션 관리 설정 (Stateless API 기준)
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // 2. 엔드포인트별 접근 제어
                 .authorizeHttpRequests(auth -> auth
-                        // [수정] 메인 대시보드 및 정적 리소스, 에러 페이지 허용
+                        // 1. [추가] Spring Boot가 제공하는 기본 정적 리소스 위치(favicon.ico, css, js 등) 모두 허용
+                        .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
+                        .requestMatchers("/favicon.ico").permitAll()
+
+                        // 2. [기존] 메인 페이지 및 에러 페이지 허용
                         .requestMatchers("/", "/index.html", "/static/**", "/error").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
 
-                        // 로그 수집 API
+                        // 3. 로그 관련 API (조회, 생성, 상태변경)
                         .requestMatchers(HttpMethod.POST, "/api/logs").permitAll()
-
-                        // [수정] 로그 조회 API: /api/logs(기본)와 /api/logs/**(하위)를 모두 명시해야 함
                         .requestMatchers(HttpMethod.GET, "/api/logs", "/api/logs/**").permitAll()
-
-                        // 상태 업데이트 및 삭제
                         .requestMatchers(HttpMethod.PATCH, "/api/logs/**").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/api/logs/**").permitAll()
                         .requestMatchers("/api/logs/ai/**").permitAll()
 
-                        // 인시던트 및 KB 조회 권한 추가
-                        .requestMatchers(HttpMethod.GET, "/api/incidents/**", "/api/kb/**").permitAll()
+                        // 4. [수정] 인시던트 및 KB 관련 API 권한 확장
+                        // 기존 GET만 허용하던 것을 POST, PUT까지 허용하여 index.html에서 '저장'이 가능하도록 변경
+                        .requestMatchers("/api/incidents/**").permitAll()
+                        .requestMatchers("/api/kb/**").permitAll()
 
-                        .anyRequest().authenticated() // 나머지는 인증 필요
+                        .anyRequest().authenticated()
                 );
-
-        // 3. CORS 설정 (프론트엔드 연결 대비)
-        // cors(cors -> cors.configurationSource(corsConfigurationSource()));
-
         return http.build();
     }
 

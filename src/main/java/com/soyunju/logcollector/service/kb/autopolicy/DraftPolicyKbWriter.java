@@ -6,6 +6,8 @@ import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.service.kb.autopolicy.DraftPolicyService.DraftCandidate;
 import com.soyunju.logcollector.service.kb.autopolicy.DraftPolicyService.DraftRunResult;
 import com.soyunju.logcollector.service.kb.crd.KbArticleService;
+import com.soyunju.logcollector.service.kb.crd.KbDraftService;
+import com.soyunju.logcollector.service.kb.search.KbArticleSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,8 @@ public class DraftPolicyKbWriter {
 
     private final IncidentRepository incidentRepository; // KB
     private final KbArticleService kbArticleService;      // KB
+    private final KbArticleSearchService kbArticleSearchService;
+    private final KbDraftService kbDraftService;
 
     @Transactional(transactionManager = "kbTransactionManager", propagation = Propagation.REQUIRES_NEW)
     public DraftRunResult applyCandidates(
@@ -66,12 +70,12 @@ public class DraftPolicyKbWriter {
                         : DraftReason.HIGH_RECUR;
 
                 // (선택) 사전 체크: 최종 중복 방지는 system_draft UNIQUE + 서비스 내부에서 처리
-                if (kbArticleService.findActiveSystemDraftId(incident.getId()).isPresent()) {
+                if (kbDraftService.findActiveSystemDraftId(incident.getId()).isPresent()) {
                     skippedExists++;
                     continue;
                 }
 
-                Long kbArticleId = kbArticleService.createSystemDraftIfAbsent(
+                Long kbArticleId = kbDraftService.createSystemDraftIfAbsent(
                         incident.getId(),
                         c.hostCount(),
                         c.repeatCount(),
@@ -98,7 +102,6 @@ public class DraftPolicyKbWriter {
             log.info("[AUTO_DRAFT][SUMMARY] created={} skippedExists={} skippedNoIncident={} skippedNotMatched={}",
                     created, skippedExists, skippedNoIncident, skippedNotMatched);
         }
-
         return new DraftRunResult(created, skippedExists, skippedNoIncident, skippedNotMatched, failed);
     }
 }

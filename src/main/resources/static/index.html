@@ -10,32 +10,26 @@
     <h1 class="text-3xl font-bold mb-6 text-gray-800">LogCollector Admin</h1>
 
     <div class="flex border-b border-gray-200 mb-6">
-        <button onclick="showTab('logs')" id="tab-logs"
-                class="px-6 py-2 font-bold border-b-2 border-blue-600 text-blue-600">Logs & Registration
-        </button>
-        <button onclick="showTab('incidents')" id="tab-incidents"
-                class="px-6 py-2 font-bold text-gray-500 border-b-2 border-transparent">Incidents
-        </button>
-        <button onclick="showTab('kb')" id="tab-kb"
-                class="px-6 py-2 font-bold text-gray-500 border-b-2 border-transparent">KB Drafts
-        </button>
+        <button onclick="showTab('logs')" id="tab-logs" class="px-6 py-2 font-bold border-b-2 border-blue-600 text-blue-600">Logs & Registration</button>
+        <button onclick="showTab('incidents')" id="tab-incidents" class="px-6 py-2 font-bold text-gray-500 border-b-2 border-transparent">Incidents</button>
+        <button onclick="showTab('kb')" id="tab-kb" class="px-6 py-2 font-bold text-gray-500 border-b-2 border-transparent">KB Drafts</button>
     </div>
 
     <div id="content-logs">
         <div class="bg-white p-6 rounded shadow mb-6 border-t-4 border-green-500">
-            <h2 class="text-lg font-bold mb-4">📝 수동 로그 등록 (테스트)</h2>
+            <h2 class="text-lg font-bold mb-4">수동 로그 등록 (테스트용)</h2>
             <div class="grid grid-cols-3 gap-4 mb-4">
-                <input type="text" id="newService" class="border p-2 rounded" placeholder="서비스명 (예: OrderService)">
+                <input type="text" id="newService" class="border p-2 rounded" placeholder="서비스명 (예: Order-API)">
                 <select id="newLogLevel" class="border p-2 rounded">
                     <option value="">로그 레벨 자동 탐지</option>
-                    <option value="INFO">INFO (수집 제외 테스트)</option>
+                    <option value="INFO">INFO</option>
                     <option value="ERROR">ERROR</option>
                     <option value="CRITICAL">CRITICAL</option>
                     <option value="FATAL">FATAL</option>
                 </select>
                 <input type="text" id="newHost" class="border p-2 rounded" placeholder="호스트명">
             </div>
-            <textarea id="newMessage" class="border p-2 rounded w-full h-20 mb-4" placeholder="에러 메시지 (10자 이상)"></textarea>
+            <textarea id="newMessage" class="border p-2 rounded w-full h-20 mb-4" placeholder="에러 메시지 (10자 이상 입력)"></textarea>
             <button onclick="createLog()" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 font-bold">로그 전송</button>
         </div>
 
@@ -55,7 +49,6 @@
             </div>
             <button onclick="loadLogs()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-bold text-sm">조회/새로고침</button>
         </div>
-
         <div class="bg-white rounded shadow overflow-hidden">
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50">
@@ -72,87 +65,110 @@
     </div>
 
     <div id="content-incidents" class="hidden">
-        <div class="bg-white rounded shadow overflow-hidden">
-            <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <div class="bg-white p-6 rounded shadow mb-6 border-t-4 border-orange-500">
+            <div class="flex gap-4 mb-4">
+                <input type="text" id="filterIncService" placeholder="서비스명 검색" class="border p-2 rounded w-1/4">
+                <select id="filterIncStatus" class="border p-2 rounded">
+                    <option value="">전체 상태</option>
+                    <option value="OPEN">OPEN</option>
+                    <option value="RESOLVED">RESOLVED</option>
+                </select>
+                <button onclick="loadIncidents()" class="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600 font-bold">검색</button>
+            </div>
+            <table class="min-w-full text-sm">
                 <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left">인시던트 ID</th>
+                    <th class="px-6 py-3 text-left">ID</th>
                     <th class="px-6 py-3 text-left">서비스명</th>
                     <th class="px-6 py-3 text-left">제목</th>
                     <th class="px-6 py-3 text-left">상태</th>
                 </tr>
                 </thead>
-                <tbody id="incidentList" class="bg-white divide-y divide-gray-200"></tbody>
+                <tbody id="incidentList" class="divide-y divide-gray-200"></tbody>
             </table>
         </div>
     </div>
 
     <div id="content-kb" class="hidden">
-        <div class="bg-white rounded shadow overflow-hidden">
-            <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <div class="bg-white p-6 rounded shadow mb-6 border-t-4 border-purple-500">
+            <div class="flex gap-4 mb-4">
+                <input type="text" id="filterKbTitle" placeholder="제목(현상) 검색" class="border p-2 rounded w-1/3">
+                <select id="sortKb" class="border p-2 rounded">
+                    <option value="createdAt,desc">최신순</option>
+                    <option value="createdAt,asc">과거순</option>
+                </select>
+                <button onclick="loadKb()" class="bg-purple-500 text-white px-6 py-2 rounded hover:bg-purple-600 font-bold">검색</button>
+            </div>
+            <table class="min-w-full text-sm">
                 <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left">KB ID</th>
-                    <th class="px-6 py-3 text-left">제목</th>
+                    <th class="px-6 py-3 text-left">ID</th>
+                    <th class="px-6 py-3 text-left">제목(현상)</th>
                     <th class="px-6 py-3 text-left">상태</th>
                     <th class="px-6 py-3 text-left">생성일</th>
+                    <th class="px-6 py-3 text-left">관리</th>
                 </tr>
                 </thead>
-                <tbody id="kbList" class="bg-white divide-y divide-gray-200"></tbody>
+                <tbody id="kbList" class="divide-y divide-gray-200"></tbody>
             </table>
         </div>
     </div>
-</div>
 
-<script>
-    const API_BASE = '/api/logs';
+    <div id="detailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h3 id="modalTitle" class="text-xl font-bold text-gray-800">상세 정보</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div id="modalBody" class="p-6"></div>
+            <div class="p-6 border-t bg-gray-50 flex justify-end gap-3" id="modalFooter">
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-300 rounded">닫기</button>
+            </div>
+        </div>
+    </div>
 
-    // 탭 전환 로직
-    function showTab(tabName) {
-        ['logs', 'incidents', 'kb'].forEach(name => {
-            const content = document.getElementById(`content-${name}`);
-            const tabBtn = document.getElementById(`tab-${name}`);
-            if (content) content.classList.add('hidden');
-            if (tabBtn) tabBtn.className = 'px-6 py-2 font-bold text-gray-500 border-b-2 border-transparent';
-        });
+    <script>
+        const API_BASE = '/api/logs';
 
-        const activeContent = document.getElementById(`content-${tabName}`);
-        const activeTab = document.getElementById(`tab-${tabName}`);
-        if (activeContent) activeContent.classList.remove('hidden');
-        if (activeTab) activeTab.className = 'px-6 py-2 font-bold border-b-2 border-blue-600 text-blue-600';
+        function showTab(tabName) {
+            ['logs', 'incidents', 'kb'].forEach(name => {
+                document.getElementById(`content-${name}`).classList.add('hidden');
+                document.getElementById(`tab-${name}`).className = 'px-6 py-2 font-bold text-gray-500 border-b-2 border-transparent';
+            });
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).className = 'px-6 py-2 font-bold border-b-2 border-blue-600 text-blue-600';
+            if (tabName === 'logs') loadLogs();
+            if (tabName === 'incidents') loadIncidents();
+            if (tabName === 'kb') loadKb();
+        }
 
-        if (tabName === 'logs') loadLogs();
-        if (tabName === 'incidents') loadIncidents();
-        if (tabName === 'kb') loadKb();
-    }
+        // 수동 로그 등록 (createLog)
+        async function createLog() {
+            const payload = {
+                serviceName: document.getElementById('newService').value,
+                logLevel: document.getElementById('newLogLevel').value,
+                message: document.getElementById('newMessage').value,
+                hostName: document.getElementById('newHost').value
+            };
+            if (!payload.serviceName || !payload.message) return alert("서비스명과 메시지를 입력하세요.");
+            const res = await fetch(API_BASE, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) { alert("로그 전송 성공"); loadLogs(); }
+            else alert("전송 실패");
+        }
 
-    // 로그 목록 로드
-    async function loadLogs() {
-        const service = document.getElementById('filterService').value;
-        const status = document.getElementById('filterStatus').value;
-        const params = new URLSearchParams({ size: 20 });
-        if (service.trim()) params.append('serviceName', service.trim());
-        if (status) params.append('status', status);
-
-        try {
-            const res = await fetch(`${API_BASE}?${params.toString()}`);
+        async function loadLogs() {
+            const service = document.getElementById('filterService').value;
+            const status = document.getElementById('filterStatus').value;
+            const res = await fetch(`${API_BASE}?serviceName=${service}&status=${status}`);
             const data = await res.json();
-            const tbody = document.getElementById('logList');
-
-            if (!data.content || data.content.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-400">조회된 로그가 없습니다.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = data.content.map(log => `
+            document.getElementById('logList').innerHTML = data.content.map(log => `
                 <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4">
-                        <div class="font-bold">${log.serviceName}</div>
-                        <div class="text-[10px] text-gray-400 font-mono">${log.logLevel || 'UNKNOWN'}</div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="truncate max-w-xs" title="${log.summary}">${log.summary}</div>
-                    </td>
+                    <td class="px-6 py-4"><b>${log.serviceName}</b><br><small>${log.logLevel || 'ERROR'}</small></td>
+                    <td class="px-6 py-4"><div class="truncate max-w-xs">${log.summary}</div></td>
                     <td class="px-6 py-4">
                         <select onchange="updateStatus(${log.logId}, this.value)" class="border rounded p-1 text-xs">
                             <option value="NEW" ${log.status === 'NEW' ? 'selected' : ''}>NEW</option>
@@ -160,96 +176,92 @@
                             <option value="RESOLVED" ${log.status === 'RESOLVED' ? 'selected' : ''}>RESOLVED</option>
                         </select>
                     </td>
-                    <td class="px-6 py-4">
-                        <button onclick="alert('Hash: ${log.logHash}')" class="text-blue-600 hover:underline text-xs">상세</button>
-                    </td>
+                    <td class="px-6 py-4"><button onclick="alert('Hash: ${log.logHash}')" class="text-blue-600 hover:underline">상세</button></td>
                 </tr>
             `).join('');
-        } catch (e) {
-            console.error("LoadLogs Error:", e);
-        }
-    }
-
-    // 수동 로그 등록
-    async function createLog() {
-        const payload = {
-            serviceName: document.getElementById('newService').value,
-            logLevel: document.getElementById('newLogLevel').value,
-            message: document.getElementById('newMessage').value,
-            hostName: document.getElementById('newHost').value
-        };
-
-        if (!payload.serviceName || !payload.message) {
-            alert("서비스명과 메시지는 필수입니다.");
-            return;
         }
 
-        try {
-            const res = await fetch(API_BASE, {
+        async function updateStatus(id, status) {
+            await fetch(`${API_BASE}/${id}/status?newStatus=${status}`, { method: 'PATCH' });
+            loadLogs();
+        }
+
+        // 인시던트 로드 (검색 필터 반영)
+        async function loadIncidents() {
+            const service = document.getElementById('filterIncService').value;
+            const status = document.getElementById('filterIncStatus').value;
+            const res = await fetch(`/api/incidents?serviceName=${service}&status=${status}`);
+            const data = await res.json();
+            document.getElementById('incidentList').innerHTML = data.content.map(inc => `
+                <tr>
+                    <td class="px-6 py-4">${inc.id}</td>
+                    <td class="px-6 py-4">${inc.serviceName}</td>
+                    <td class="px-6 py-4">${inc.title}</td>
+                    <td class="px-6 py-4 font-bold text-orange-600">${inc.status}</td>
+                </tr>
+            `).join('');
+        }
+
+        // KB Drafts 로드 (제목, 생성일 표시)
+        async function loadKb() {
+            const title = document.getElementById('filterKbTitle').value;
+            const sort = document.getElementById('sortKb').value;
+            const res = await fetch(`/api/kb?title=${title}&sort=${sort}`);
+            const data = await res.json();
+            document.getElementById('kbList').innerHTML = data.content.map(kb => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">${kb.id}</td>
+                    <td class="px-6 py-4 font-bold">${kb.incidentTitle || '제목 없음'}</td>
+                    <td class="px-6 py-4"><span class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">${kb.status}</span></td>
+                    <td class="px-6 py-4 text-xs text-gray-500">${new Date(kb.createdAt).toLocaleString()}</td>
+                    <td class="px-6 py-4"><button onclick="openKbDetail(${kb.id})" class="text-purple-600 hover:underline">편집</button></td>
+                </tr>
+            `).join('');
+        }
+
+        // KB 상세 모달 (작성자, 상태 정보 추가)
+        async function openKbDetail(id) {
+            const res = await fetch(`/api/kb/${id}`);
+            const kb = await res.json();
+            document.getElementById('modalTitle').innerText = `KB 편집 (#${id})`;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="grid grid-cols-3 gap-4 mb-4 text-xs bg-gray-50 p-3 rounded border">
+                    <div><span class="font-bold">작성자:</span> ${kb.createdBy || 'Unknown'}</div>
+                    <div><span class="font-bold">상태:</span> ${kb.status}</div>
+                    <div><span class="font-bold">생성일:</span> ${new Date(kb.createdAt).toLocaleString()}</div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-bold mb-1">장애 현상 (Title)</label>
+                    <input type="text" id="editKbTitle" value="${kb.incidentTitle}" class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">해결 방안 (Content)</label>
+                    <textarea id="editKbContent" rows="12" class="w-full border p-2 rounded font-mono text-sm">${kb.content || ''}</textarea>
+                </div>
+            `;
+            document.getElementById('modalFooter').innerHTML = `
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-300 rounded">취소</button>
+                <button onclick="saveKbArticle(${id})" class="bg-purple-600 text-white px-4 py-2 rounded font-bold">저장 및 게시 (User 전환)</button>
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        async function saveKbArticle(id) {
+            const title = document.getElementById('editKbTitle').value;
+            const content = document.getElementById('editKbContent').value;
+            await fetch(`/api/kb/articles/${id}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ title, content })
             });
-
-            if (res.ok) {
-                alert("등록 요청이 성공했습니다.");
-                // 입력 폼 초기화
-                ['newService', 'newLogLevel', 'newHost', 'newMessage'].forEach(id => document.getElementById(id).value = '');
-                loadLogs();
-            } else {
-                const err = await res.json();
-                alert("등록 실패: " + (err.message || "조건을 확인하세요."));
-            }
-        } catch (e) {
-            alert("서버 연결에 실패했습니다.");
+            alert("저장되었습니다. 작성자가 User로 전환되고 상태가 업데이트됩니다.");
+            closeModal();
+            loadKb();
         }
-    }
 
-    // 상태 업데이트
-    async function updateStatus(id, status) {
-        try {
-            const res = await fetch(`${API_BASE}/${id}/status?newStatus=${status}`, { method: 'PATCH' });
-            if (res.ok) {
-                alert(`상태가 ${status}로 변경되었습니다.`);
-                loadLogs();
-            }
-        } catch (e) {
-            alert("상태 변경 중 오류가 발생했습니다.");
-        }
-    }
+        function closeModal() { document.getElementById('detailModal').classList.add('hidden'); }
 
-    // 인시던트 로드
-    async function loadIncidents() {
-        const res = await fetch('/api/incidents');
-        const data = await res.json();
-        const tbody = document.getElementById('incidentList');
-        tbody.innerHTML = data.content.map(inc => `
-            <tr>
-                <td class="px-6 py-4">${inc.id}</td>
-                <td class="px-6 py-4">${inc.serviceName}</td>
-                <td class="px-6 py-4 truncate max-w-xs">${inc.title}</td>
-                <td class="px-6 py-4 font-bold text-orange-600">${inc.status}</td>
-            </tr>
-        `).join('');
-    }
-
-    // KB Draft 로드
-    async function loadKb() {
-        const res = await fetch('/api/kb');
-        const data = await res.json();
-        const tbody = document.getElementById('kbList');
-        tbody.innerHTML = data.content.map(kb => `
-            <tr>
-                <td class="px-6 py-4">${kb.id}</td>
-                <td class="px-6 py-4 font-bold">${kb.title}</td>
-                <td class="px-6 py-4"><span class="bg-purple-100 text-purple-800 px-2 py-1 rounded">${kb.status}</span></td>
-                <td class="px-6 py-4 text-gray-500">${new Date(kb.createdAt).toLocaleDateString()}</td>
-            </tr>
-        `).join('');
-    }
-
-    // 초기 실행
-    window.onload = loadLogs;
-</script>
+        window.onload = loadLogs;
+    </script>
 </body>
 </html>

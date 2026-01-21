@@ -12,7 +12,7 @@ import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
 import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
 import com.soyunju.logcollector.service.audit.AuditLogService;
 import com.soyunju.logcollector.service.kb.crd.IncidentService;
-import com.soyunju.logcollector.service.kb.crd.KbArticleService;
+import com.soyunju.logcollector.service.kb.crd.KbDraftService;
 import com.soyunju.logcollector.service.lc.processor.LogNormalization;
 import com.soyunju.logcollector.service.lc.processor.LogProcessor;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ public class ErrorLogCrdService {
     private final LogProcessor logProcessor;
 
     // KB 연동을 위한 서비스 및 레파지토리 주입
-    private final KbArticleService kbArticleService;
+    private final KbDraftService kbDraftService;
     private final IncidentService incidentService;
     private final IncidentRepository incidentRepository;
 
@@ -121,7 +121,7 @@ public class ErrorLogCrdService {
         // 5. repeat_count가 10회 이상일 때 KB 초안 생성
         if (targetLog.getRepeatCount() >= 10) {
             // 이제 위에서 할당한 incident 변수를 사용하여 getId() 호출 가능
-            kbArticleService.createSystemDraft(incident.getId());
+            kbDraftService.createSystemDraft(incident.getId());
         }
 
        /*  // 4. Incident 연동 (IncidentService도 동일하게 Upsert 방식으로 수정 권장)
@@ -192,7 +192,7 @@ public class ErrorLogCrdService {
 
                 incidentRepository.findByLogHash(errorLog.getLogHash())
                         .ifPresentOrElse(
-                                incident -> kbArticleService.createSystemDraft(incident.getId()),
+                                incident -> kbDraftService.createSystemDraft(incident.getId()),
                                 // [수정] 이제 여기서 log.warn은 Slf4j 로거를 정상적으로 참조합니다.
                                 () -> log.warn("로그 해시({})에 해당하는 인시던트를 찾을 수 없어 KB 초안을 생성하지 못했습니다.", errorLog.getLogHash())
                         );
