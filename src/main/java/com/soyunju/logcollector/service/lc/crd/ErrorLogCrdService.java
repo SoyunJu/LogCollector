@@ -69,11 +69,18 @@ public class ErrorLogCrdService {
         LocalDateTime occurredTime =
                 (dto.getOccurredTime() != null) ? dto.getOccurredTime() : LocalDateTime.now();
 
-        // 2. 로그 레벨 확정 (입력값이 있으면 사용, 없으면 메시지에서 추론)
-        String effectiveLevel = StringUtils.hasText(dto.getLogLevel())
-                ? dto.getLogLevel()
-                : logProcessor.inferLogLevel(dto.getMessage());
-
+        // 2. 로그 레벨 확정 (메시지에서 CRITICAL/FATAL이 발견되면 더 높은 레벨을 우선 적용)
+        String inferred = logProcessor.inferLogLevel(dto.getMessage());
+        String effectiveLevel;
+        if (!StringUtils.hasText(dto.getLogLevel())) {
+            effectiveLevel = inferred;
+        } else {
+            if (inferred.equals("CRITICAL") || inferred.equals("FATAL")) {
+                effectiveLevel = inferred;
+            } else {
+                effectiveLevel = dto.getLogLevel();
+            }
+        }
         // 3. 수집 대상 여부 검사 및 필터링
         if (!logProcessor.isTargetLevel(effectiveLevel)) {
             // 사용자가 UI 등에서 명시적으로 수집 대상이 아닌 레벨(예: INFO)을 보낸 경우 예외 발생
