@@ -4,8 +4,10 @@ import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
+
 
 @Getter @Setter
 @NoArgsConstructor
@@ -43,13 +45,15 @@ public class KbArticle {
     @Column(name = "created_by", nullable = false)
     private CreatedBy createdBy;
 
-    @Column(name = "published_at")
-    private LocalDateTime publishedAt;
+    @CreatedDate
+    @Column(nullable = false, updatable = false,name = "published_at")
+    private CreatedBy publishedAt;
 
     @Column(name = "last_activity_at", nullable = false)
     private LocalDateTime lastActivityAt;
 
-    @Column(name = "created_at", nullable = false)
+    @CreatedDate
+    @Column(nullable = false, updatable = false,name = "created_at")
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
@@ -69,6 +73,7 @@ public class KbArticle {
         if (updatedAt == null) updatedAt = now;
         if (lastActivityAt == null) lastActivityAt = now;
         if (createdBy == null) createdBy = CreatedBy.system;
+        if (publishedAt == null) publishedAt = CreatedBy.system;
     }
 
     @PreUpdate

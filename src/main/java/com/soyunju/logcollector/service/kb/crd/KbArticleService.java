@@ -2,12 +2,16 @@ package com.soyunju.logcollector.service.kb.crd;
 
 import com.soyunju.logcollector.domain.kb.Incident;
 import com.soyunju.logcollector.domain.kb.KbArticle;
+import com.soyunju.logcollector.domain.kb.SystemDraft;
 import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
+import com.soyunju.logcollector.domain.kb.enums.DraftReason;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
+import com.soyunju.logcollector.repository.kb.SystemDraftRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,12 +26,15 @@ public class KbArticleService {
 
     private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;
+    private final SystemDraftRepository systemDraftRepository;
 
     // Draft (초안) 여부 확인을 위한 상태 리스트
     private static final List<KbStatus> ACTIVE_DRAFT_STATUSES =
             List.of(KbStatus.OPEN, KbStatus.UNDERWAY);
 
-    private Long createSystemDraftInternal(Long incidentId) {
+    @Transactional(transactionManager = "kbTransactionManager")
+    private Long createSystemKbArticle(Long incidentId) {
+
         Incident incident = incidentRepository.findById(incidentId)
                 .orElseThrow(() -> new IllegalArgumentException("Incident를 찾을 수 없습니다. incidentId=" + incidentId));
 
@@ -55,12 +62,13 @@ public class KbArticleService {
                 .content(body)
                 .status(KbStatus.OPEN)
                 .createdBy(CreatedBy.system)
+                .publishedAt(CreatedBy.system)
                 .build();
 
         return kbArticleRepository.save(kb).getId();
     }
 
-    // [추가] KB 전체 목록 조회 (index.html 필드명에 맞춰 title 매핑)
+    // KB 전체 목록 조회 (index.html 필드명에 맞춰 title 매핑)
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public org.springframework.data.domain.Page<com.soyunju.logcollector.dto.kb.KbArticleResponse> findAll(org.springframework.data.domain.Pageable pageable) {
         return kbArticleRepository.findAll(pageable).map(kb -> com.soyunju.logcollector.dto.kb.KbArticleResponse.builder()
@@ -72,33 +80,42 @@ public class KbArticleService {
     }
 
     // LC 에서 RESOLVED 된 ERROR LOG 처리
-    // 1. Draft (초안) 단계
-    @Transactional
+    // Draft (초안) 단계
+    @Transactional(transactionManager = "kbTransactionManager")
     public Long createSystemDraft(Long incidentId) {
-        return createSystemDraftIfAbsent(incidentId);
+        return createSystemDraftIfAbsent(incidentId, 0, 0, DraftReason.HIGH_RECUR);
     }
 
-    @Transactional
-    public Long createSystemDraftIfAbsent(Long incidentId) {
-        // 수정: 리포지토리 메서드 파라미터 개수(CreatedBy.system 추가) 및 반환 타입(Optional) 처리
-        Optional<KbArticle> existing = kbArticleRepository
-                .findTopByIncident_IdAndCreatedByAndStatusInOrderByCreatedAtDesc(
-                        incidentId, CreatedBy.system, ACTIVE_DRAFT_STATUSES
-                );
+    // System Draft 중복 방지
+    @Transactional(transactionManager = "kbTransactionManager")
+    public Long createSystemDraftIfAbsent(Long incidentId,
+                                          int hostCount,
+                                          int repeatCount,
+                                          DraftReason reason) {
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new IllegalArgumentException("Incident를 찾을 수 없습니다. incidentId=" + incidentId));
 
-        if (existing.isPresent()) {
-            log.info("이미 KB 초안이 존재합니다. incidentId={}, kbId={}",
-                    incidentId, existing.get().getId());
+        try {
+            SystemDraft draft = systemDraftRepository.save(
+                    SystemDraft.builder()
+                            .incident(incident)
+                            .hostCount(hostCount)
+                            .repeatCount(repeatCount)
+                            .reason(reason)
+                            .createdAt(LocalDateTime.now())
+                            .build()
+            );
+            Long kbArticleId = createSystemKbArticle(incidentId);
+            // system_draft 테이블과 kb_article 테이블 연결
+            draft.setCreatedKbArticleId(kbArticleId);
+            systemDraftRepository.save(draft);
+
+            return kbArticleId;
+
+        } catch (DataIntegrityViolationException e) {
+            log.info("[SYSTEM][SKIP] DRAFT가 이미 존재합니다. incidentId={}", incidentId);
             return null;
         }
-        return createSystemDraftInternal(incidentId);
-
-        /* 기존 주석 유지: return kbArticleRepository
-                .findTopByIncident_IdAndCreatedByAndStatusInOrderByCreatedAtDesc(
-                        incidentId, CreatedBy.system, ACTIVE_DRAFT_STATUSES
-                )
-                .map(KbArticle::getId)
-                .orElseGet(() -> createSystemDraftInternal(incidentId)); */
     }
 
     @Transactional(readOnly = true)
