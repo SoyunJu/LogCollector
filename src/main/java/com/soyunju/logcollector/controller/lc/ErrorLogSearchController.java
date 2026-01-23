@@ -22,10 +22,11 @@ public class ErrorLogSearchController {
     @GetMapping
     public ResponseEntity<Page<ErrorLogResponse>> getLogs(
             @RequestParam(required = false) String serviceName,
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) ErrorStatus status,
             @RequestParam(defaultValue = "false") boolean isToday,
             @PageableDefault(size = 20, sort = "occurredTime", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ResponseEntity.ok(errorLogSearchService.findLogs(serviceName, status, isToday, pageable));
+        return ResponseEntity.ok(errorLogSearchService.findLogs(serviceName, keyword, status, isToday, pageable));
     }
 
     // 상태별 필터링 조회 API

@@ -31,13 +31,13 @@ public class LogProcessor {
         return sb.toString().trim();
     }
 
-   /* public String generateErrorCode(String message) {
+    public String generateErrorCode(String message) {
         if (message == null) return "GEN-ERR-999";
         if (message.contains("Database") || message.contains("SQL")) return "DB-ERR-001";
         if (message.contains("Timeout") || message.contains("Connection")) return "NET-ERR-001";
         if (message.contains("NullPointer")) return "SYS-ERR-001";
         return "GEN-ERR-999";
-    } */
+    }
 
     public boolean isTargetLevel(String level) {
         if (level == null) return false;
@@ -98,6 +98,12 @@ public class LogProcessor {
                 .logId(log.getId())
                 .serviceName(log.getServiceName())
                 .summary(log.getSummary())
+                .summary(log.getSummary())
+                .message(log.getMessage())
+                .stackTrace(log.getStackTrace())
+                .occurredTime(log.getOccurredTime())
+                .firstOccurredTime(log.getFirstOccurredTime())
+                .lastOccurredTime(log.getLastOccurredTime())
                 .errorCode(log.getErrorCode())
                 .hostInfo(log.getHostName())
                 .logLevel(log.getLogLevel())
@@ -112,6 +118,12 @@ public class LogProcessor {
                 .logId(log.getId())
                 .serviceName(log.getServiceName())
                 .summary(log.getSummary())
+                .summary(log.getSummary())
+                .message(log.getMessage())
+                .stackTrace(log.getStackTrace())
+                .occurredTime(log.getOccurredTime())
+                .firstOccurredTime(log.getFirstOccurredTime())
+                .lastOccurredTime(log.getLastOccurredTime())
                 .errorCode(log.getErrorCode())
                 .hostInfo(log.getHostName())
                 .logLevel(log.getLogLevel())

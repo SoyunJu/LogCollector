@@ -60,6 +60,14 @@ return (
                 onChange={e => setFilter({...filter, serviceName: e.target.value})}
         />
         </Col>
+        <Col xs="auto">
+        <Form.Control
+                type="text"
+                placeholder="키워드 검색..."
+                value={filter.keyword}
+                onChange={e => setFilter({...filter, keyword: e.target.value})}
+        />
+        </Col>
         <Col className="text-end">
         <Button variant="primary" onClick={fetchLogs}>새로고침</Button>
         </Col>

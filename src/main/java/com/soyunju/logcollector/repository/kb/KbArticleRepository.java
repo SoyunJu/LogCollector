@@ -38,15 +38,33 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
 
     // 7일 지나도록 초안상태인 Kbarticle 은 del 조치
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("DELETE FROM KbArticle k WHERE k.createdBy = :createdBy AND k.status = :status AND k.updatedAt < :threshold")
-    void deleteExpiredSystemDrafts(
-            @Param("createdBy") com.soyunju.logcollector.domain.kb.enums.CreatedBy createdBy,
-            @Param("status") com.soyunju.logcollector.domain.kb.enums.KbStatus status,
-            @Param("threshold") java.time.LocalDateTime threshold
-    );
+    @Transactional(transactionManager = "kbTransactionManager")
+    @Query("""
+            delete from KbArticle k
+            where k.createdBy = :createdBy
+              and k.status = :status
+              and k.createdAt < :createdBefore
+              and k.lastActivityAt < :lastActivityBefore
+            """)
+    int deleteExpiredSystemDrafts(@Param("createdBy") com.soyunju.logcollector.domain.kb.enums.CreatedBy createdBy,
+                                  @Param("status") com.soyunju.logcollector.domain.kb.enums.KbStatus status,
+                                  @Param("createdBefore") java.time.LocalDateTime createdBefore,
+                                  @Param("lastActivityBefore") java.time.LocalDateTime lastActivityBefore);
 
     Optional<KbArticle> findByIncident_Id(Long incidentId);
 
+    // DEFINITE status
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional(transactionManager = "kbTransactionManager")
+    @Query("""
+            update KbArticle k
+            set k.status = :toStatus, k.confidenceLevel = :confidenceLevel
+            where k.status in :fromStatuses and k.lastActivityAt < :cutoff
+            """)
+    int bulkPromoteDefiniteByLastActivity(@Param("toStatus") KbStatus toStatus,
+                                          @Param("confidenceLevel") int confidenceLevel,
+                                          @Param("fromStatuses") List<KbStatus> fromStatuses,
+                                          @Param("cutoff") LocalDateTime cutoff);
 }
 
 

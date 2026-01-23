@@ -3,6 +3,7 @@ package com.soyunju.logcollector.service.kb.crud;
 import com.soyunju.logcollector.domain.kb.Incident;
 import com.soyunju.logcollector.domain.kb.KbArticle;
 import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
+import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
@@ -64,18 +65,59 @@ public class KbCrudService {
             } catch (IllegalArgumentException e) {
 
             }
+
+            if (kb.getCreatedBy() != CreatedBy.system) {
+                if (StringUtils.hasText(title) && StringUtils.hasText(content)) {
+                    kb.setStatus(KbStatus.RESPONDED);
+                    kb.setUpdatedAt(LocalDateTime.now());
+                    kb.setLastActivityAt(LocalDateTime.now());
+                } else {
+                    kb.setStatus(KbStatus.UNDERWAY);
+                }
+            }
+            //  Incident 상태 역방향 동기화
+            if (kb.getIncident() != null) {
+                Incident incident = kb.getIncident();
+                if (kb.getStatus() == KbStatus.RESPONDED) {
+                    incident.setStatus(IncidentStatus.RESOLVED);
+                }
+                else if (kb.getStatus() == KbStatus.UNDERWAY) {
+                    incident.setStatus(IncidentStatus.UNDERWAY);
+                }
+                // *주의: 여기서 incidentRepository.save(incident)는 영속성 컨텍스트에 의해 자동 처리되지만 명시해도 됨
+            }
+            kb.touchActivity();
         }
 
+/*
+        }
+        if (kb.getCreatedBy() != CreatedBy.system && StringUtils.hasText(title) && StringUtils.hasText(content)) {
+            kb.setStatus(KbStatus.RESPONDED);
+            kb.setUpdatedAt(LocalDateTime.now());
+            kb.touchActivity();
+
+            if (kb.getIncident() != null) {
+                kb.getIncident().setStatus(com.soyunju.logcollector.domain.kb.enums.IncidentStatus.RESOLVED);
+            }
+        } else {
+            throw new IllegalArgumentException("게시(RESPONDED)에는 title 과 content가 모두 필요합니다.");
+        }
+
+ */
+
+        /*
         // Status Update
         if (kb.getCreatedBy() != CreatedBy.system) {
             if (StringUtils.hasText(title) && StringUtils.hasText(content)) {
                 kb.setStatus(KbStatus.RESPONDED); // 제목+내용 있으면 응답 완료
-                kb.setPublishedAt(LocalDateTime.now());
+                kb.setUpdatedAt(LocalDateTime.now());
             } else {
                 kb.setStatus(KbStatus.UNDERWAY); // 하나라도 부족하면 진행 중
             }
             kb.touchActivity();
         }
+
+         */
     }
 
     private String formatDateOnly(LocalDateTime firstOccurredAt, LocalDateTime lastOccurredAt) {

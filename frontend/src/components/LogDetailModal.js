@@ -7,9 +7,9 @@ const [incident, setIncident] = useState(null);
 const [aiResult, setAiResult] = useState(null);
 const [loadingAi, setLoadingAi] = useState(false);
 
-// [수정] KB 연동을 위한 Incident 조회 (logHash 사용)
+// KB 연동을 위한 Incident 조회 (logHash 사용)
 useEffect(() => {
-if (log.logHash) {
+if (log?.logHash) {
 LogCollectorApi.getIncidentByHash(log.logHash)
 .then(res => setIncident(res.data))
 .catch(() => setIncident(null));
@@ -23,28 +23,26 @@ await LogCollectorApi.updateLogStatus(log.logId, newStatus);
 alert('상태가 변경되었습니다.');
 onClose();
 } catch (err) {
-alert('상태 변경 실패: ' + err.message);
+alert('상태 변경 실패: ' + (err.response?.data?.message || err.message));
 }
 };
 
-// [수정] AI 분석 요청 시 logId -> logHash 사용
 const handleAiAnalyze = async () => {
+if (!log.logHash) {
+alert("로그 해시가 없어 분석할 수 없습니다.");
+return;
+}
 setLoadingAi(true);
 try {
-// AnalysisController는 @PathVariable String logHash를 받음
+// [수정] 백엔드 규격에 맞춰 logHash 사용
 const res = await LogCollectorApi.analyzeAi(log.logHash);
 setAiResult(res.data);
 } catch (err) {
-alert("분석 실패: " + (err.response?.data?.cause || "시스템 오류"));
+const errMsg = err.response?.data?.message || err.message || "시스템 오류";
+alert("AI 분석 실패: " + errMsg);
 } finally {
 setLoadingAi(false);
 }
-};
-
-// [추가] KB 등록 페이지로 이동 (Incident가 있을 경우)
-const handleCreateKb = () => {
-// 실제 라우팅 구현에 따라 navigate('/kb/new', { state: { incident } }) 등을 사용
-alert("KB 등록 기능은 KB 페이지에서 진행해주세요.");
 };
 
 return (
@@ -58,15 +56,18 @@ return (
                 <Badge bg="dark" className="me-2">{log.serviceName}</Badge>
                 <Badge bg={log.status === 'RESOLVED' ? 'success' : 'danger'}>{log.status}</Badge>
             </div>
-            <small className="text-muted">{new Date(log.occurredTime).toLocaleString()}</small>
+            <small className="text-muted">{log.occurredTime ? new Date(log.occurredTime).toLocaleString() : ''}</small>
         </div>
 
-        <h6>Message</h6>
-        <div className="p-3 bg-light border rounded mb-3">{log.message}</div>
+        <h6>Summary / Message</h6>
+        <div className="p-3 bg-light border rounded mb-3">
+            {/* [수정] message가 없으면 summary 표시 */}
+            {log.summary || log.message || "No content"}
+        </div>
 
         <h6>Stack Trace</h6>
         <div className="p-3 bg-light border rounded mb-3 font-monospace small" style={{maxHeight: '200px', overflowY: 'auto'}}>
-        {log.stackTrace}
+        {log.stackTrace || "(No stack trace available)"}
         </div>
 
         {/* AI 분석 결과 표시 영역 */}
@@ -90,7 +91,6 @@ return (
             <Button style={{backgroundColor: '#6f42c1', color: 'white'}} onClick={handleAiAnalyze} disabled={loadingAi}>
             {loadingAi ? '분석 중...' : '🤖 AI 분석'}
             </Button>
-            {/* 인시던트가 존재하면 KB 등록 버튼 활성화 (정책상 필요 시) */}
             {incident && (
             <Button variant="primary" disabled>📝 KB 연결됨 (#{incident.id})</Button>
             )}

@@ -3,6 +3,7 @@ package com.soyunju.logcollector.service.kb.crud;
 import com.soyunju.logcollector.domain.kb.Incident;
 import com.soyunju.logcollector.domain.kb.enums.ErrorLevel;
 import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
+import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
@@ -62,6 +63,15 @@ public class IncidentService {
         } else {
             incident.setResolvedAt(null);
         }
+        kbArticleRepository.findByIncident_Id(incident.getId()).ifPresent(kb -> {
+            if (status == IncidentStatus.OPEN) {
+                kb.setStatus(KbStatus.OPEN);
+            } else if (status == IncidentStatus.UNDERWAY) {
+                kb.setStatus(KbStatus.UNDERWAY);
+            } else if (status == IncidentStatus.RESOLVED) {
+                kb.setStatus(KbStatus.RESPONDED);
+            }
+        });
         incidentRepository.save(incident);
     }
 
@@ -102,8 +112,18 @@ public class IncidentService {
             if (createdBy != null && !createdBy.isBlank()) {
                 incident.setCreatedBy(createdBy);
             }
-            //  RESOLVED
+            //  RESOLVED Draft
             if (status != null) {
+                // Incident -> KB Status 동기화
+                kbArticleRepository.findByIncident_Id(incident.getId()).ifPresent(kb -> {
+                    if (status == IncidentStatus.OPEN) {
+                        kb.setStatus(KbStatus.OPEN);
+                    } else if (status == IncidentStatus.UNDERWAY) {
+                        kb.setStatus(KbStatus.UNDERWAY);
+                    } else if (status == IncidentStatus.RESOLVED) {
+                        kb.setStatus(KbStatus.RESPONDED);
+                    }
+                });
                 incident.setStatus(status);
                 if (status == IncidentStatus.RESOLVED) {
                     if (incident.getResolvedAt() == null) {

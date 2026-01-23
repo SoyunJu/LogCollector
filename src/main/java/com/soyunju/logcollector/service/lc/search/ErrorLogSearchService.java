@@ -43,11 +43,12 @@ public class ErrorLogSearchService {
 
     public Page<ErrorLogResponse> findLogs(
             String serviceName,
+            String keyword,
             ErrorStatus status,
             boolean isToday,
             Pageable pageable
     ) {
-        BooleanBuilder builder = buildCommonCondition(serviceName, status, isToday);
+        BooleanBuilder builder = buildCommonCondition(serviceName, keyword, status, isToday);
         return fetchPage(builder, pageable, errorLog.occurredTime.desc());
     }
 
@@ -69,6 +70,7 @@ public class ErrorLogSearchService {
 
     private BooleanBuilder buildCommonCondition(
             String serviceName,
+            String keyword,
             ErrorStatus status,
             boolean isToday
     ) {
@@ -77,6 +79,16 @@ public class ErrorLogSearchService {
         // 상태 필터: null이 아닐 때만 조건 추가
         if (status != null) {
             builder.and(errorLog.status.eq(status));
+        }
+
+        if (org.springframework.util.StringUtils.hasText(keyword)) {
+            String k = keyword.trim();
+            builder.and(
+                    errorLog.message.containsIgnoreCase(k)
+                            .or(errorLog.summary.containsIgnoreCase(k))
+                            .or(errorLog.errorCode.containsIgnoreCase(k))
+                            .or(errorLog.logHash.containsIgnoreCase(k))
+            );
         }
 
         // serviceName이 있을 때만 eq 조건 추가 (index.html의 filterService 대응)

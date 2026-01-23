@@ -45,10 +45,6 @@ public class KbArticle {
     @Column(name = "created_by", nullable = false)
     private CreatedBy createdBy;
 
-    @CreatedDate
-    @Column(nullable = false, updatable = false,name = "published_at")
-    private LocalDateTime publishedAt;
-
     @Column(name = "last_activity_at", nullable = false)
     private LocalDateTime lastActivityAt;
 
@@ -73,7 +69,6 @@ public class KbArticle {
         if (updatedAt == null) updatedAt = now;
         if (lastActivityAt == null) lastActivityAt = now;
         if (createdBy == null) createdBy = CreatedBy.system;
-        if (publishedAt == null) publishedAt = now;
     }
 
     @PreUpdate

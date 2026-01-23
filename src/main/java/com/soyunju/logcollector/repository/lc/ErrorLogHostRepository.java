@@ -96,6 +96,6 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
     List<com.soyunju.logcollector.repository.lc.agg.HostAgg> findTopHashesByHostCount(@Param("limit") int limit);
 
     @Query(value = "SELECT COUNT(*) FROM error_log_hosts WHERE log_hash = :logHash", nativeQuery = true)
-    long countHostsByLogHash(@Param("logHash") String logHash);
+    int countHostsByLogHash(@Param("logHash") String logHash);
 
 }

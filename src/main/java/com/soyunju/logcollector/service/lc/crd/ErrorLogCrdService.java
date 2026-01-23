@@ -34,6 +34,12 @@ import java.util.Optional;
 @Transactional
 public class ErrorLogCrdService {
 
+    @org.springframework.beans.factory.annotation.Value("${draft.policy.host-spread-threshold:3}")
+    private int hostSpreadThreshold;
+
+    @org.springframework.beans.factory.annotation.Value("${draft.policy.high-recur-threshold:10}")
+    private int highRecurThreshold;
+
     private final ErrorLogRepository errorLogRepository;
     private final ErrorLogHostRepository errorLogHostRepository;
     private final LogProcessor logProcessor;
@@ -80,6 +86,9 @@ public class ErrorLogCrdService {
                 effectiveLevel = dto.getLogLevel();
             }
         }
+
+        // String ms = logProcessor.generateErrorCode(dto.getMessage());
+
         // 2. 수집 대상 여부
         if (!logProcessor.isTargetLevel(effectiveLevel)) {
             if (StringUtils.hasText(dto.getLogLevel())) {
@@ -110,7 +119,8 @@ public class ErrorLogCrdService {
         ErrorLog targetLog = errorLogRepository.findByLogHash(logHash)
                 .orElseThrow(() -> new IllegalStateException("Log not found after upsert"));
         // 영향 host agg
-        long impactedHostCount = errorLogHostRepository.countHostsByLogHash(logHash);
+        int impactedHostCount = errorLogHostRepository.countHostsByLogHash(logHash);
+
         // 6. Incident 연동
         Incident incident = incidentService.recordOccurrence(
                 logHash,
@@ -118,12 +128,25 @@ public class ErrorLogCrdService {
                 targetLog.getSummary(),
                 dto.getStackTrace(),
                 errorCode,
-                dto.getLogLevel(),
+                effectiveLevel,
                 occurredTime
         );
         // KB Draft 생성
-        if (targetLog.getRepeatCount() >= 10) {
-            kbDraftService.createSystemDraft(incident.getId());
+        int repeatCount = (targetLog.getRepeatCount() == null) ? 1 : targetLog.getRepeatCount();
+
+        boolean matched = (impactedHostCount >= hostSpreadThreshold) || (repeatCount >= highRecurThreshold);
+        if (matched) {
+            com.soyunju.logcollector.domain.kb.enums.DraftReason reason =
+                    (impactedHostCount >= hostSpreadThreshold)
+                            ? com.soyunju.logcollector.domain.kb.enums.DraftReason.HOST_SPREAD
+                            : com.soyunju.logcollector.domain.kb.enums.DraftReason.HIGH_RECUR;
+            try {
+                kbDraftService.createSystemDraft(incident.getId(), impactedHostCount, repeatCount, reason);
+            } catch (RuntimeException e) {
+                // LC 저장(카운트) 롤백 방지: Draft 생성 실패는 로깅만 하고 계속 진행
+                log.warn("[DRAFT][SKIP] createSystemDraft failed. incidentId={}, logHash={}, hostCount={}, repeatCount={}, reason={}, err={}",
+                        incident.getId(), logHash, impactedHostCount, repeatCount, reason, e.toString());
+            }
         }
         try {
             if (!logProcessor.isTargetLevel(effectiveLevel)) {
@@ -140,12 +163,12 @@ public class ErrorLogCrdService {
         }
     }
 
-    @Transactional
+    @Transactional(transactionManager = "lcTransactionManager")
     public void updateStatus(Long logId, ErrorStatus status) {
         updateStatus(logId, status, null);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "lcTransactionManager")
     public void updateStatus(Long logId, ErrorStatus status, String actor) {
         ErrorLog errorLog = errorLogRepository.findById(logId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 로그 ID: " + logId));
@@ -183,7 +206,14 @@ public class ErrorLogCrdService {
 
                 incidentRepository.findByLogHash(errorLog.getLogHash())
                         .ifPresentOrElse(
-                                incident -> kbDraftService.createSystemDraft(incident.getId()),
+                                incident -> {
+                                    try {
+                                        kbDraftService.createSystemDraft(incident.getId());
+                                    } catch (RuntimeException e) {
+                                        log.warn("[DRAFT][SKIP] createSystemDraft on RESOLVED failed. incidentId={}, logHash={}, err={}",
+                                                incident.getId(), errorLog.getLogHash(), e.toString());
+                                    }
+                                },
                                 () -> log.warn("로그 해시({})에 해당하는 인시던트를 찾을 수 없어 KB 초안을 생성하지 못했습니다.", errorLog.getLogHash())
                         );
 
@@ -207,7 +237,7 @@ public class ErrorLogCrdService {
         );
     }
 
-    @Transactional
+    @Transactional(transactionManager = "lcTransactionManager")
     public void deleteLogs(List<Long> logIds) { // TODO : 권한 부여
         if (logIds == null || logIds.isEmpty()) {
             return;

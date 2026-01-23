@@ -38,7 +38,7 @@ public class IncidentRepositoryImpl implements IncidentRepositoryCustom {
                 .orderBy(incident.lastOccurredAt.desc()) // 최근 발생 순 정렬
                 .fetch();
 
-        long total = queryFactory
+        Long total = queryFactory
                 .select(incident.count())
                 .from(incident)
                 .where(
@@ -50,11 +50,13 @@ public class IncidentRepositoryImpl implements IncidentRepositoryCustom {
                 )
                 .fetchOne();
 
-        return new PageImpl<>(content, pageable, total);
+        long totalCount = (total == null) ? 0L : total;
+
+        return new PageImpl<>(content, pageable, totalCount);
     }
 
     private BooleanExpression serviceNameEq(String serviceName) {
-        return StringUtils.hasText(serviceName) ? incident.serviceName.eq(serviceName) : null;
+        return StringUtils.hasText(serviceName) ? incident.serviceName.containsIgnoreCase(serviceName.trim()) : null;
     }
 
     private BooleanExpression statusEq(com.soyunju.logcollector.domain.kb.enums.IncidentStatus status) {
@@ -72,6 +74,8 @@ public class IncidentRepositoryImpl implements IncidentRepositoryCustom {
 
     private BooleanExpression keywordContains(String keyword) {
         return StringUtils.hasText(keyword) ?
-                incident.incidentTitle.contains(keyword).or(incident.summary.contains(keyword)) : null;
+                incident.incidentTitle.containsIgnoreCase(keyword)
+                        .or(incident.summary.containsIgnoreCase(keyword))
+                        .or(incident.serviceName.containsIgnoreCase(keyword)) : null;
     }
 }

@@ -86,27 +86,68 @@ public class KbDraftService {
 
 
     @Transactional(transactionManager = "kbTransactionManager")
-    public void updateDraft(Long kbArticleId, String title, String content) {
+    public void updateDraft(Long kbArticleId, String title, String content, String createdBy) {
         KbArticle kb = kbArticleRepository.findById(kbArticleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 Draft를 찾을 수 없습니다. ID: " + kbArticleId));
-
+        // incident title, content 동기화
         if (title != null && !title.isBlank()) {
             kb.setIncidentTitle(title);
-            // incident 동기화
             if (kb.getIncident() != null) {
                 kb.getIncident().setIncidentTitle(title);
             }
         }
         kb.setContent(content != null ? content : kb.getContent());
 
-        // status 변경 조건 로직
+        // ===== createdBy(작성자) 갱신 =====
+        if (createdBy != null && !createdBy.isBlank()) {
+            try {
+                com.soyunju.logcollector.domain.kb.enums.CreatedBy cb =
+                        com.soyunju.logcollector.domain.kb.enums.CreatedBy.valueOf(createdBy.toUpperCase());
+                kb.setCreatedBy(cb);
+            } catch (IllegalArgumentException e) {
+                // 잘못된 createdBy 값은 무시 (system/user/admin 외 값 방어)
+            }
+        }
+
+        // ===== KB Status 결정 =====
+        if (kb.getStatus() != KbStatus.DEFINITE) {
+            boolean hasTitle = kb.getIncidentTitle() != null && !kb.getIncidentTitle().isBlank();
+            boolean hasContent = kb.getContent() != null && !kb.getContent().isBlank();
+
+            if (hasTitle && hasContent) {
+                kb.setStatus(KbStatus.RESPONDED);
+            } else {
+                kb.setStatus(KbStatus.UNDERWAY);
+            }
+        }
+
+        // ===== Incident Status 동기화 =====
+        if (kb.getIncident() != null) {
+            var incident = kb.getIncident();
+
+            // RESPONDED -> Incident RESOLVED
+            if (kb.getStatus() == KbStatus.RESPONDED) {
+                if (incident.getStatus() != com.soyunju.logcollector.domain.kb.enums.IncidentStatus.RESOLVED) {
+                    incident.setStatus(com.soyunju.logcollector.domain.kb.enums.IncidentStatus.RESOLVED);
+                    incident.setResolvedAt(java.time.LocalDateTime.now());
+                }
+            }
+            // Draft 진행 중인데 Incident가 OPEN이면 UNDERWAY로만 끌어올림
+            else if (incident.getStatus() == com.soyunju.logcollector.domain.kb.enums.IncidentStatus.OPEN) {
+                incident.setStatus(com.soyunju.logcollector.domain.kb.enums.IncidentStatus.UNDERWAY);
+            }
+        }
+        kb.touchActivity();
+    }
+
+        /*
         if (org.springframework.util.StringUtils.hasText(content)) {
             kb.setStatus(KbStatus.RESPONDED);
         } else {
             kb.setStatus(KbStatus.UNDERWAY);
         }
         kb.touchActivity();
-    }
+    } */
 
     // System create KbArticle
     @Transactional(transactionManager = "kbTransactionManager")
@@ -144,7 +185,7 @@ public class KbDraftService {
                 .content(body)
                 .status(KbStatus.OPEN)
                 .createdBy(CreatedBy.system)
-                .publishedAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         return kbArticleRepository.save(kb).getId();
@@ -154,10 +195,12 @@ public class KbDraftService {
     @Transactional(transactionManager = "kbTransactionManager")
     public void cleanupExpiredDrafts() {
         java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusDays(7);
+
         kbArticleRepository.deleteExpiredSystemDrafts(
                 com.soyunju.logcollector.domain.kb.enums.CreatedBy.system,
                 com.soyunju.logcollector.domain.kb.enums.KbStatus.OPEN,
-                threshold
+                threshold, // created_at
+                threshold // last_activity_at
         );
     }
 

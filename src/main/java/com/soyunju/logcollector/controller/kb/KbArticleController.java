@@ -64,7 +64,14 @@ public class KbArticleController {
     public ResponseEntity<Void> updateDraft(
             @PathVariable Long kbArticleId,
             @RequestBody KbAddendumCreateRequest request) {
-        kbDraftService.updateDraft(kbArticleId, request.getTitle(), request.getContent());
+
+        kbDraftService.updateDraft(
+                kbArticleId,
+                request.getTitle(),
+                request.getContent(),
+                request.getCreatedBy()
+        );
+
         return ResponseEntity.ok().build();
     }
 
