@@ -50,4 +50,12 @@ public class IncidentController {
                 incidentSearchService.top(metric, limit, serviceName, status, from, to)
         );
     }
+
+    @PatchMapping("/{incidentId}/status")
+    public ResponseEntity<Void> updateStatus(
+            @PathVariable Long incidentId,
+            @RequestParam IncidentStatus status) {
+        incidentService.updateStatus(incidentId, status); // Service에 이 메서드가 구현되어 있어야 함
+        return ResponseEntity.ok().build();
+    }
 }

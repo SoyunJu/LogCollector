@@ -28,6 +28,7 @@ public class IncidentResponse {
 
     private String summary;
     private String errorCode;
+    private String createdBy;
 
     public static IncidentResponse from(Incident incident) {
         return IncidentResponse.builder()

@@ -1,15 +1,16 @@
 package com.soyunju.logcollector.service.kb.crd;
 
+import com.soyunju.logcollector.domain.kb.Incident;
 import com.soyunju.logcollector.domain.kb.KbArticle;
 import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
-import com.soyunju.logcollector.repository.kb.SystemDraftRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -21,36 +22,60 @@ public class KbCrdService {
 
     private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;
-    private final SystemDraftRepository systemDraftRepository;
 
     // 사용자 입력 단계 (title-현상 필수, content-해결안은 nullable)
     @Transactional
-    public void postArticle(Long kbArticleId, String title, String content) {
+    public void postArticle(Long kbArticleId, String title, String content, String createdBy) {
+        // KB Article 조회
         KbArticle kb = kbArticleRepository.findById(kbArticleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 KB를 찾을 수 없습니다."));
 
-        if (title != null && !title.isBlank()) {
-            kb.setIncidentTitle(title);
-            // incident 동기화
-            if (kb.getIncident() != null) {
-                kb.getIncident().setIncidentTitle(title);
+        // Incident 동기화
+        if (kb.getIncident() != null) {
+            Long incidentId = kb.getIncident().getId();
+            Incident incident = incidentRepository.findById(incidentId)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 Incident를 찾을 수 없습니다."));
+
+            // Title 동기화
+            if (StringUtils.hasText(title)) {
+                incident.setIncidentTitle(title);
+            }
+
+            // CreatedBy 동기화
+            if (StringUtils.hasText(createdBy)) {
+                try {
+                    incident.setCreatedBy(String.valueOf(CreatedBy.valueOf(createdBy)));
+                } catch (IllegalArgumentException e) {
+                    // Enum 매핑 실패 시 무시 or 예외 처리
+                }
             }
         }
-        if (content != null) { kb.setContent(content); }
 
+        if (StringUtils.hasText(title)) {
+            kb.setIncidentTitle(title);
+        }
+        if (content != null) {
+            kb.setContent(content);
+        }
+
+        if (StringUtils.hasText(createdBy)) {
+            try {
+                kb.setCreatedBy(CreatedBy.valueOf(createdBy));
+            } catch (IllegalArgumentException e) {
+
+            }
+        }
+
+        // Status Update
         if (kb.getCreatedBy() != CreatedBy.system) {
-            if (org.springframework.util.StringUtils.hasText(title) && org.springframework.util.StringUtils.hasText(content)) {
-                kb.setStatus(KbStatus.RESPONDED); // TODO : Draft 있을 시 삭제 로직 필요
+            if (StringUtils.hasText(title) && StringUtils.hasText(content)) {
+                kb.setStatus(KbStatus.RESPONDED); // 제목+내용 있으면 응답 완료
                 kb.setPublishedAt(LocalDateTime.now());
             } else {
-                kb.setStatus(KbStatus.UNDERWAY); // TODO : Draft 삭제 로직 필요
+                kb.setStatus(KbStatus.UNDERWAY); // 하나라도 부족하면 진행 중
             }
-        } else {
-            if (org.springframework.util.StringUtils.hasText(content)) {
-                kb.setStatus(KbStatus.RESPONDED); // TODO : Draft 삭제 로직 필요
-            }
+            kb.touchActivity();
         }
-        kb.touchActivity();
     }
 
     private String formatDateOnly(LocalDateTime firstOccurredAt, LocalDateTime lastOccurredAt) {

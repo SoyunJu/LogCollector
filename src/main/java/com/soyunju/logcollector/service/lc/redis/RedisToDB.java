@@ -1,5 +1,6 @@
 package com.soyunju.logcollector.service.lc.redis;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soyunju.logcollector.domain.lc.ErrorStatus;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
 import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
@@ -28,6 +29,7 @@ public class RedisToDB {
     private final LogProcessor logProcessor;
     private final SlackService slackService;
     private final LcMetrics lcMetrics;
+    private final ObjectMapper objectMapper;
 
     @Value("${logcollector.redis.queue-key:errorlog:queue}")
     private String queueKey;
@@ -46,7 +48,7 @@ public class RedisToDB {
 
     @Scheduled(fixedDelayString = "${logcollector.redis.consumer-fixed-delay-ms:200}")
     public void pollAndProcess() {
-        List<ErrorLogRequest> batch = popBatch();
+        List<ErrorLogRequest> batch = popBatch(batchSize);
         if (batch.isEmpty()) return;
 
         for (ErrorLogRequest dto : batch) {
@@ -55,8 +57,9 @@ public class RedisToDB {
     }
 
     private List<ErrorLogRequest> popBatch() {
+
         List<ErrorLogRequest> batch = new ArrayList<>(batchSize);
-        
+
         ErrorLogRequest first = errorLogRequestRedisTemplate.opsForList()
                 .leftPop(queueKey, Duration.ofSeconds(popTimeoutSeconds));
         if (first == null) return batch;
@@ -67,6 +70,38 @@ public class RedisToDB {
             ErrorLogRequest next = errorLogRequestRedisTemplate.opsForList().leftPop(queueKey);
             if (next == null) break;
             batch.add(next);
+        }
+        return batch;
+    }
+
+    private List<ErrorLogRequest> popBatch(int batchSize) {
+        List<ErrorLogRequest> batch = new ArrayList<>(batchSize);
+
+        for (int i = 0; i < batchSize; i++) {
+            try {
+                // 1. Redis에서 객체 가져오기 (List Operation)
+                Object rawEntry = errorLogRequestRedisTemplate.opsForList().leftPop(queueKey);
+
+                if (rawEntry == null) break; // 큐가 비었으면 중단
+
+                ErrorLogRequest request = null;
+
+                // 2. 타입 변환 (LinkedHashMap -> DTO)
+                if (rawEntry instanceof java.util.LinkedHashMap) {
+                    request = objectMapper.convertValue(rawEntry, ErrorLogRequest.class);
+                } else if (rawEntry instanceof ErrorLogRequest) {
+                    request = (ErrorLogRequest) rawEntry;
+                } else {
+                    log.warn("Unknown type in Redis: {}", rawEntry.getClass());
+                    continue;
+                }
+
+                if (request != null) {
+                    batch.add(request);
+                }
+            } catch (Exception e) {
+                log.error("Redis pop failed", e);
+            }
         }
         return batch;
     }

@@ -112,7 +112,7 @@ public class IncidentSearchService {
 
         if (logHashes.isEmpty()) return Collections.emptyMap();
 
-        List<LogHashHostCountAgg> rows = errorLogHostRepository.countHostsByLogHashIn(logHashes);
+        List<LogHashHostCountAgg> rows = errorLogHostRepository.countHostsByLogHash(logHashes);
 
         Map<String, Long> map = new HashMap<>(rows.size());
         for (LogHashHostCountAgg r : rows) {
@@ -219,9 +219,6 @@ public class IncidentSearchService {
         QIncident i = QIncident.incident;
         QErrorLogHost eh = QErrorLogHost.errorLogHost;
 
-        // ONLY_FULL_GROUP_BY 환경 회피:
-        // 1) (incident_id, hostCount)만 먼저 뽑고
-        // 2) incident는 id IN (...)으로 한 번 더 조회
         List<com.querydsl.core.Tuple> tuples = queryFactory
                 .select(i.id, eh.id.count())
                 .from(i)

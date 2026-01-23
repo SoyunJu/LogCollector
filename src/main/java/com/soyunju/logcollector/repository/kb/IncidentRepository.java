@@ -1,6 +1,7 @@
 package com.soyunju.logcollector.repository.kb;
 
 import com.soyunju.logcollector.domain.kb.Incident;
+import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -58,5 +59,9 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
             @Param("errorLevel") String errorLevel,
             @Param("ts") LocalDateTime ts
     );
+
+    // Not RESOLVED incident
+    @Query("SELECT i.logHash FROM Incident i WHERE i.status <> :status")
+    List<String> findNotResolvedLogHash(@Param("status") IncidentStatus status);
 
 }

@@ -43,21 +43,18 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
     long countHostsByLogHash(@Param("logHash") String logHash);
 
     // System Draft 위해 추가
-    // 집계 제외 조건:
-    // - incident.status = RESOLVED
     @Query(value = """
             SELECT
-              i.log_hash AS logHash,
-              COUNT(*) AS hostCount,
-              COALESCE(SUM(eh.repeat_count), 0) AS repeatCount,
+              eh.log_hash AS logHash,
+              CAST(COUNT(*) AS SIGNED) AS hostCount,
+              CAST(COALESCE(SUM(eh.repeat_count), 0) AS SIGNED) AS repeatCount,
               MAX(eh.service_name) AS serviceName
-            FROM incident i
-            JOIN error_log_hosts eh
-              ON eh.log_hash = i.log_hash
-            WHERE i.status <> 'RESOLVED'
-            GROUP BY i.log_hash
+            FROM error_log_hosts eh
+            WHERE eh.log_hash IN (:logHashes)
+            GROUP BY eh.log_hash
             """, nativeQuery = true)
-    List<HostAgg> aggregateByLogHash();
+    List<HostAgg> aggregateByLogHash(@Param("logHashes") List<String> logHashes);
+
 
     // Incident hostCount 포함 조회 (N+1 방지)
     @Query(value = """
@@ -68,6 +65,6 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
             WHERE log_hash IN (:logHashes)
             GROUP BY log_hash
             """, nativeQuery = true)
-    List<LogHashHostCountAgg> countHostsByLogHashIn(@Param("logHashes") List<String> logHashes);
+    List<LogHashHostCountAgg> countHostsByLogHash(@Param("logHashes") List<String> logHashes);
 
 }

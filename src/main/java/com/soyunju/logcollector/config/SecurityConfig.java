@@ -44,17 +44,19 @@ public class SecurityConfig {
                         .requestMatchers("/api/incidents/**").permitAll()
                         .requestMatchers("/api/kb/**").permitAll()
 
-                        .anyRequest().authenticated()
+                       // .anyRequest().authenticated()
                 );
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
         return http.build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000")); // 프론트 주소
+        config.setAllowedOrigins(List.of("http://localhost", "http://localhost:80", "http://localhost:3000"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

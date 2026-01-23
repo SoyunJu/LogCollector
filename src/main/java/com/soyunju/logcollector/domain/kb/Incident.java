@@ -32,6 +32,9 @@ public class Incident {
     @Column(columnDefinition = "TEXT")
     private String summary;
 
+    @Column(name = "created_by")
+    private String createdBy;
+
     @Lob
     @Column(name = "stack_trace", columnDefinition = "LONGTEXT")
     private String stackTrace;

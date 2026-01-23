@@ -55,7 +55,7 @@ public class KbArticleController {
     public ResponseEntity<Void> postArticle(
             @PathVariable Long kbArticleId,
             @RequestBody KbAddendumCreateRequest request) {
-        kbCrdService.postArticle(kbArticleId, request.getTitle(), request.getContent());
+        kbCrdService.postArticle(kbArticleId, request.getTitle(), request.getContent(), request.getCreatedBy() );
         return ResponseEntity.ok().build();
     }
 

@@ -75,6 +75,13 @@ public class IncidentService {
         return s == null || s.isBlank();
     }
 
-
+    @Transactional
+    public Incident updateStatus(Long incidentId, IncidentStatus status) {
+        // 조회 -> 예외처리 -> 상태변경 -> 객체반환
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 Incident를 찾을 수 없습니다. id=" + incidentId));
+        incident.setStatus(status);
+        return incident;
+    }
 
 }
