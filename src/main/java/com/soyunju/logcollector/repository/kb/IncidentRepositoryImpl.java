@@ -4,7 +4,7 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.soyunju.logcollector.domain.kb.Incident;
 import com.soyunju.logcollector.dto.kb.IncidentSearch;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -14,10 +14,13 @@ import java.util.List;
 
 import static com.soyunju.logcollector.domain.kb.QIncident.incident;
 
-@RequiredArgsConstructor
 public class IncidentRepositoryImpl implements IncidentRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
+
+    public IncidentRepositoryImpl(@Qualifier("kbQueryFactory") JPAQueryFactory queryFactory) {
+        this.queryFactory = queryFactory;
+    }
 
     @Override
     public Page<Incident> search(IncidentSearch condition, Pageable pageable) {

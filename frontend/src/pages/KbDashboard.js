@@ -1,21 +1,54 @@
 import React, { useEffect, useState } from 'react';
 import { LogCollectorApi } from '../api/logCollectorApi';
-import { Table, Badge, Button, Card } from 'react-bootstrap';
+// [수정] Form을 추가했습니다.
+import { Table, Badge, Button, Card, Form } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 
 const KbDashboard = () => {
 const [articles, setArticles] = useState([]);
+// [추가] 검색 필터 상태
+const [search, setSearch] = useState({ status: '', keyword: '' });
 const navigate = useNavigate();
 
+// 목록 조회 함수 (필터 적용)
+const fetchArticles = () => {
+const params = {};
+if (search.status) params.status = search.status;
+if (search.keyword) params.keyword = search.keyword;
+
+LogCollectorApi.getKbArticles(params).then(res => setArticles(res.data.content));
+};
+
 useEffect(() => {
-// KB 목록 조회
-LogCollectorApi.getKbArticles({}).then(res => setArticles(res.data.content));
+fetchArticles();
+// eslint-disable-next-line
 }, []);
+
+const handleSearch = (e) => {
+e.preventDefault();
+fetchArticles();
+};
 
 return (
 <Card className="shadow-sm border-0">
-    <Card.Header className="bg-white py-3">
+    <Card.Header className="bg-white py-3 d-flex justify-content-between align-items-center">
         <h5 className="mb-0 fw-bold">📚 지식 베이스 (Knowledge Base)</h5>
+
+        {/* 검색 폼 */}
+        <Form onSubmit={handleSearch} className="d-flex gap-2">
+            <Form.Select size="sm" value={search.status} onChange={e => setSearch({...search, status: e.target.value})}>
+            <option value="">전체 상태</option>
+            <option value="OPEN">OPEN (초안)</option>
+            <option value="RESPONDED">RESPONDED (완료)</option>
+            </Form.Select>
+            <Form.Control
+                    size="sm"
+                    placeholder="제목 검색..."
+                    value={search.keyword}
+                    onChange={e => setSearch({...search, keyword: e.target.value})}
+            />
+            <Button size="sm" variant="dark" type="submit">검색</Button>
+        </Form>
     </Card.Header>
     <Table hover responsive className="mb-0 align-middle">
         <thead className="table-light">

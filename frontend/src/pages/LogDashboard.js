@@ -6,19 +6,19 @@ import { Badge, Table, Form, Button, Card, Row, Col } from 'react-bootstrap';
 const LogDashboard = () => {
 const [logs, setLogs] = useState([]);
 const [selectedLog, setSelectedLog] = useState(null);
-const [filter, setFilter] = useState({ isToday: false, status: '' });
+// serviceName 필터 추가
+const [filter, setFilter] = useState({ isToday: false, status: '', serviceName: '' });
 
 const fetchLogs = async () => {
 try {
 const res = await LogCollectorApi.getLogs({
 isToday: filter.isToday,
 status: filter.status || null,
+serviceName: filter.serviceName || null,
 size: 20
 });
 setLogs(res.data.content);
-} catch (err) {
-console.error("로그 로딩 실패:", err);
-}
+} catch (err) { console.error(err); }
 };
 
 useEffect(() => { fetchLogs(); }, [filter]);
@@ -39,8 +39,7 @@ return (
         <Col xs="auto">
         <Form.Check
                 type="switch" id="today-switch" label="오늘 발생만 보기"
-                checked={filter.isToday}
-                onChange={e => setFilter({...filter, isToday: e.target.checked})}
+                checked={filter.isToday} onChange={e => setFilter({...filter, isToday: e.target.checked})}
         />
         </Col>
         <Col xs="auto">
@@ -51,6 +50,15 @@ return (
         <option value="RESOLVED">🟢 RESOLVED</option>
         <option value="IGNORED">⚪ IGNORED</option>
         </Form.Select>
+        </Col>
+        {/* 서비스명 검색 필터 */}
+        <Col xs="auto">
+        <Form.Control
+                type="text"
+                placeholder="서비스명 검색..."
+                value={filter.serviceName}
+                onChange={e => setFilter({...filter, serviceName: e.target.value})}
+        />
         </Col>
         <Col className="text-end">
         <Button variant="primary" onClick={fetchLogs}>새로고침</Button>
@@ -87,8 +95,6 @@ return (
       </tbody>
     </Table>
   </Card>
-
-  {/* 여기가 수정된 부분입니다: 이전에 잘못 들어간 </Card> 태그를 제거했습니다. */}
 
   {selectedLog && (
   <LogDetailModal
