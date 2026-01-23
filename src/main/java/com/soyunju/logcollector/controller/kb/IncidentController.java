@@ -1,16 +1,11 @@
 package com.soyunju.logcollector.controller.kb;
 
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
-import com.soyunju.logcollector.dto.kb.IncidentRankResponse;
 import com.soyunju.logcollector.dto.kb.IncidentResponse;
 import com.soyunju.logcollector.service.kb.crud.IncidentService;
 import com.soyunju.logcollector.service.kb.search.IncidentSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/incidents")
@@ -29,7 +24,6 @@ public class IncidentController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // [추가] 인시던트 전체 목록 조회 (index.html loadIncidents 대응)
     @GetMapping
     public ResponseEntity<org.springframework.data.domain.Page<com.soyunju.logcollector.dto.kb.IncidentResponse>> getIncidents(
             @org.springframework.data.web.PageableDefault(size = 20) org.springframework.data.domain.Pageable pageable) {
@@ -37,7 +31,7 @@ public class IncidentController {
     }
 
     // 랭킹 조회
-    @GetMapping("/top")
+ /*   @GetMapping("/top")
     public ResponseEntity<List<IncidentRankResponse>> top(
             @RequestParam(defaultValue = "repeatCount") String metric,
             @RequestParam(defaultValue = "20") int limit,
@@ -49,7 +43,7 @@ public class IncidentController {
         return ResponseEntity.ok(
                 incidentSearchService.top(metric, limit, serviceName, status, from, to)
         );
-    }
+    } */
 
   /*  @PatchMapping("/{incidentId}/status")
     public ResponseEntity<Void> updateStatus(

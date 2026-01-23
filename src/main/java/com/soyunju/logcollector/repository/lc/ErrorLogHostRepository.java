@@ -2,7 +2,6 @@ package com.soyunju.logcollector.repository.lc;
 
 import com.soyunju.logcollector.domain.lc.ErrorLogHost;
 import com.soyunju.logcollector.repository.lc.agg.HostAgg;
-import com.soyunju.logcollector.repository.lc.agg.LogHashHostCountAgg;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -39,8 +38,8 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
             @Param("now") LocalDateTime now
     );
 
-    @Query(value = "SELECT COUNT(*) FROM error_log_hosts WHERE log_hash = :logHash", nativeQuery = true)
-    long countHostsByLogHash(@Param("logHash") String logHash);
+  /*  @Query(value = "SELECT COUNT(*) FROM error_log_hosts WHERE log_hash = :logHash", nativeQuery = true)
+    long countHostsByLogHash(@Param("logHash") String logHash); */
 
     // System Draft 위해 추가
     @Query(value = """
@@ -57,7 +56,7 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
 
 
     // Incident hostCount 포함 조회 (N+1 방지)
-    @Query(value = """
+  /*  @Query(value = """
             SELECT
               log_hash AS logHash,
               COUNT(*) AS hostCount
@@ -66,5 +65,37 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
             GROUP BY log_hash
             """, nativeQuery = true)
     List<LogHashHostCountAgg> countHostsByLogHash(@Param("logHashes") List<String> logHashes);
+
+   */
+
+    // 영향 호스트 수 및 repeat_count Agg
+    @Query(value = """
+            SELECT 
+                log_hash AS logHash, 
+                COUNT(*) AS hostCount, 
+                SUM(repeat_count) AS repeatCount, 
+                MAX(service_name) AS serviceName
+            FROM error_log_hosts 
+            WHERE log_hash IN (:logHashes) 
+            GROUP BY log_hash
+            """, nativeQuery = true)
+    List<com.soyunju.logcollector.repository.lc.agg.HostAgg> countHostsByLogHash(@Param("logHashes") List<String> logHashes);
+
+    // 영향 호스트 기준 rank
+    @Query(value = """
+            SELECT 
+                log_hash AS logHash, 
+                COUNT(*) AS hostCount, 
+                SUM(repeat_count) AS repeatCount, 
+                MAX(service_name) AS serviceName
+            FROM error_log_hosts 
+            GROUP BY log_hash 
+            ORDER BY hostCount DESC 
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<com.soyunju.logcollector.repository.lc.agg.HostAgg> findTopHashesByHostCount(@Param("limit") int limit);
+
+    @Query(value = "SELECT COUNT(*) FROM error_log_hosts WHERE log_hash = :logHash", nativeQuery = true)
+    long countHostsByLogHash(@Param("logHash") String logHash);
 
 }

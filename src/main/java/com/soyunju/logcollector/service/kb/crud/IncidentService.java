@@ -92,4 +92,37 @@ public class IncidentService {
                 // KB에 없으면 AI 분석 호출
                 .orElseGet(() -> aiAnalysisService.AiAnalyze(incident.getId()));
     }
+
+    @Transactional(transactionManager = "kbTransactionManager")
+    public void updateDetails(String logHash, String title, String createdBy, IncidentStatus status) {
+        incidentRepository.findByLogHash(logHash).ifPresent(incident -> {
+            if (title != null && !title.isBlank()) {
+                incident.setIncidentTitle(title);
+            }
+            if (createdBy != null && !createdBy.isBlank()) {
+                incident.setCreatedBy(createdBy);
+            }
+            //  RESOLVED
+            if (status != null) {
+                incident.setStatus(status);
+                if (status == IncidentStatus.RESOLVED) {
+                    if (incident.getResolvedAt() == null) {
+                        incident.setResolvedAt(LocalDateTime.now());
+                    }
+                    kbDraftService.createSystemDraft(incident.getId());
+                } else {
+                    incident.setResolvedAt(null);
+                }
+            }
+            incidentRepository.save(incident);
+
+            kbArticleRepository.findByIncident_Id(incident.getId()).ifPresent(kb -> {
+                if (title != null && !title.isBlank()) {
+                    kb.setIncidentTitle(title);
+                    kbArticleRepository.save(kb);
+                }
+            });
+        });
+    }
+
 }
