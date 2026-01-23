@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.dto.lc;
+package com.soyunju.logcollector.dto.kb;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

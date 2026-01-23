@@ -3,8 +3,8 @@ package com.soyunju.logcollector.controller.kb;
 import com.soyunju.logcollector.dto.kb.KbAddendumCreateRequest;
 import com.soyunju.logcollector.dto.kb.KbArticleResponse;
 import com.soyunju.logcollector.dto.kb.KbArticleSearch;
-import com.soyunju.logcollector.service.kb.crd.KbCrdService;
-import com.soyunju.logcollector.service.kb.crd.KbDraftService;
+import com.soyunju.logcollector.service.kb.crud.KbCrudService;
+import com.soyunju.logcollector.service.kb.crud.KbDraftService;
 import com.soyunju.logcollector.service.kb.search.KbArticleSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/kb")
 public class KbArticleController {
 
-    private final KbCrdService kbCrdService;
+    private final KbCrudService kbCrudService;
     private final KbDraftService kbDraftService;
     private final KbArticleSearchService kbArticleSearchService;
 
@@ -55,7 +55,7 @@ public class KbArticleController {
     public ResponseEntity<Void> postArticle(
             @PathVariable Long kbArticleId,
             @RequestBody KbAddendumCreateRequest request) {
-        kbCrdService.postArticle(kbArticleId, request.getTitle(), request.getContent(), request.getCreatedBy() );
+        kbCrudService.postArticle(kbArticleId, request.getTitle(), request.getContent(), request.getCreatedBy() );
         return ResponseEntity.ok().build();
     }
 

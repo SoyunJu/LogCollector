@@ -3,7 +3,7 @@ package com.soyunju.logcollector.kb;
 import com.soyunju.logcollector.domain.kb.Incident;
 import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
-import com.soyunju.logcollector.service.kb.crd.IncidentService;
+import com.soyunju.logcollector.service.kb.crud.IncidentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

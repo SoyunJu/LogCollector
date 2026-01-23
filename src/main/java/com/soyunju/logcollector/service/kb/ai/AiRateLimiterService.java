@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.service.lc.ai;
+package com.soyunju.logcollector.service.kb.ai;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;

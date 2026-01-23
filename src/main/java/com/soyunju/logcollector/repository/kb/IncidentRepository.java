@@ -16,13 +16,14 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface IncidentRepository extends JpaRepository<Incident, Long> {
+public interface IncidentRepository extends JpaRepository<Incident, Long>, IncidentRepositoryCustom {
+
+    Optional<Incident> findById(Long id);
+    Optional<Incident> findByLogHash(String logHash);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM Incident i WHERE i.logHash = :logHash")
     Optional<Incident> findByLogHashWithLock(@Param("logHash") String logHash);
-
-    Optional<Incident> findByLogHash(String logHash);
 
     // 추가: DraftPolicyService에서 대량 조회를 위해 필요함
     // N + 1 방지

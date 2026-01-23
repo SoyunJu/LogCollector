@@ -1,6 +1,6 @@
-package com.soyunju.logcollector.service.lc.ai;
+package com.soyunju.logcollector.service.kb.ai;
 
-import com.soyunju.logcollector.dto.lc.AiAnalysisResult;
+import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 public class MockAiAnalysisService implements AiAnalysisService {
 
     @Override
-    public AiAnalysisResult analyze(Long logId) {
+    public AiAnalysisResult AiAnalyze(Long incidentId) {
         // DB 조회 없이 고정된 결과 반환 (테스트 용도)
         return new AiAnalysisResult(
                 "테스트용 분석 결과: DB 커넥션 풀 고갈 가능성이 높습니다.",

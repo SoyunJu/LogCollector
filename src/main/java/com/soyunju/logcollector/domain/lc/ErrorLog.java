@@ -1,5 +1,6 @@
 package com.soyunju.logcollector.domain.lc;
 
+import com.soyunju.logcollector.domain.kb.enums.AnalysisStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

@@ -1,7 +1,8 @@
-package com.soyunju.logcollector.service.lc.ai;
+package com.soyunju.logcollector.service.kb.ai;
 
-import com.soyunju.logcollector.dto.lc.AiAnalysisResult;
-import com.soyunju.logcollector.dto.lc.LogAnalysisData;
+import com.soyunju.logcollector.domain.kb.Incident;
+import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
+import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,24 +29,37 @@ public class OpenAiAnalysisService implements AiAnalysisService {
     private final ErrorLogRepository errorLogRepository;
     private final RestClient restClient;
     private final AiRateLimiterService rateLimiterService;
+    private final IncidentRepository incidentRepository;
 
     @Override
-    public AiAnalysisResult analyze(Long logId) {
+    public AiAnalysisResult AiAnalyze(Long incidentId) {
         // 1. 호출 제한 체크
         if (!rateLimiterService.isAllowed()) {
-            return new AiAnalysisResult("분석 실패: 시스템 전체 일일 AI 호출 제한에 도달했습니다.", "내일 다시 시도하거나 관리자에게 문의하십시오.");
+            return new AiAnalysisResult("분석 실패: 시스템 전체 일일 AI 호출 제한에 도달했습니다.", "내일 다시 시도하십시오.");
         }
-        // 2. 데이터 조회
-        LogAnalysisData data = errorLogRepository.findAnalysisDataById(logId).orElseThrow(() -> new IllegalArgumentException("분석 데이터를 찾을 수 없습니다. ID: " + logId));
+
+        // 2. 인시던트 데이터 조회
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다. ID: " + incidentId));
+
         // 3. 필수 필드 검증
-        validateRequiredFields(data);
+        validateIncidentFields(incident);
+
         try {
-            // 4. API 호출 및 결과 파싱
-            String rawContent = callOpenAiApi(data);
+            // 4. 프롬프트
+            String prompt = String.format("당신은 전문 SRE 엔지니어입니다. 다음 에러 정보를 분석하세요.\\n" +
+                            "요약: %s\\n 스택트레이스: %s",
+                            incident.getSummary(), incident.getStackTrace());
+                           // "에러코드: %s\\n요약: %s\\n스택트레이스: %s",
+                        // incident.getErrorCode(), incident.getSummary(), incident.getStackTrace());
+
+            // 5. API 호출 및 결과 파싱
+            String rawContent = callOpenAiApi(prompt);
             return new AiAnalysisResult(parseResult(rawContent, "원인:"), parseResult(rawContent, "조치:"));
+
         } catch (org.springframework.web.client.HttpClientErrorException e) {
             if (e.getStatusCode().value() == 429) {
-                return new AiAnalysisResult("OpenAI API 할당량 초과", "잠시 후 다시 시도하십시오.");
+                return new AiAnalysisResult("OpenAI API 할당량 초과", "잠시 후 다시 시도하거나 관리자에게 문의하십시오.");
             }
             return new AiAnalysisResult("분석 요청 오류 (" + e.getStatusCode() + ")", "입력 데이터 형식을 확인하십시오.");
         } catch (Exception e) {
@@ -53,32 +67,25 @@ public class OpenAiAnalysisService implements AiAnalysisService {
         }
     }
 
-    private void validateRequiredFields(LogAnalysisData data) {
-        if (data.errorCode() == null) throw new IllegalStateException("errorCode 필드가 null입니다.");
-        if (data.summary() == null) throw new IllegalStateException("summary 필드가 null입니다.");
-        if (data.message() == null) throw new IllegalStateException("message 필드가 null입니다.");
+    private void validateIncidentFields(Incident incident) {
+        // if (incident.getErrorCode() == null) throw new IllegalStateException("errorCode 필드가 null입니다.");
+        if (incident.getSummary() == null) throw new IllegalStateException("summary 필드가 null입니다.");
+        if (incident.getStackTrace() == null) throw new IllegalStateException("StackTrace 필드가 null입니다.");
     }
 
-    private String callOpenAiApi(LogAnalysisData data) {
-        String prompt = String.format("당신은 전문 SRE 엔지니어입니다. 다음 에러 정보를 분석하세요.\\n" + "에러코드: %s\\n요약: %s\\n메시지: %s\\n\\n" + "응답은 반드시 아래 형식을 엄격히 지켜야 하며, 다른 부연 설명은 하지 마세요.\\n" + "원인: [상세한 발생 원인 한 줄]\\n" + "조치: [구체적인 단계별 해결 방법]", data.errorCode(), data.summary(), data.message());
-
-        // 수정: ParameterizedTypeReference를 사용하여 Unchecked 캐스팅 경고 해결
+    private String callOpenAiApi(String prompt) {
         Map<String, Object> response = restClient.post()
                 .uri(apiUrl)
                 .header("Authorization", "Bearer " + apiKey)
-                .body(Map.of("model", model, "messages", List.of(Map.of("role", "system", "content", "You are a professional system analyst."), Map.of("role", "user", "content", prompt))))
+                .body(Map.of("model", model, "messages", List.of(
+                        Map.of("role", "system", "content", "You are a professional SRE engineer."),
+                        Map.of("role", "user", "content", prompt)
+                )))
                 .retrieve()
-                .body(new ParameterizedTypeReference<Map<String, Object>>() {
-                });
+                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
 
-        if (response == null) throw new RuntimeException("AI API 응답이 비어있습니다.");
-
-        @SuppressWarnings("unchecked") // choices 구조는 고정되어 있으므로 한정적 허용
         List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-
-        @SuppressWarnings("unchecked")
         Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-
         return (String) message.get("content");
     }
 

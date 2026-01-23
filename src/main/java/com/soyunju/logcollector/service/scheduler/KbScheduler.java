@@ -3,6 +3,7 @@ package com.soyunju.logcollector.service.scheduler;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
 import com.soyunju.logcollector.service.kb.autopolicy.DraftPolicyService;
+import com.soyunju.logcollector.service.kb.crud.KbDraftService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,6 +19,7 @@ public class KbScheduler {
 
     private final DraftPolicyService draftPolicyService;
     private final KbArticleRepository kbArticleRepository;
+    private final KbDraftService kbDraftService;
 
     @Scheduled(cron = "0 0/30 * * * *")
     public void runAutoDrafting() {
@@ -35,5 +37,10 @@ public class KbScheduler {
                 List.of(KbStatus.OPEN, KbStatus.UNDERWAY, KbStatus.RESPONDED),
                 cutoff
         );
+    }
+
+    @Scheduled(cron = "0 0 3 * * *")
+    public void scheduleDraftCleanup() {
+        kbDraftService.cleanupExpiredDrafts();
     }
 }

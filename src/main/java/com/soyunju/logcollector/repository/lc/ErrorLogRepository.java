@@ -2,7 +2,7 @@ package com.soyunju.logcollector.repository.lc;
 
 import com.soyunju.logcollector.domain.lc.ErrorLog;
 import com.soyunju.logcollector.domain.lc.ErrorStatus;
-import com.soyunju.logcollector.dto.lc.LogAnalysisData;
+import com.soyunju.logcollector.dto.kb.LogAnalysisData;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,7 +41,7 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
     long countDistinctHostsByLogHash(@Param("logHash") String logHash);
 
     // AI 분석 전용: 특정 필드만 조회하여 DB 부하 최적화 (DTO로 분리)
-    @Query("SELECT new com.soyunju.logcollector.dto.lc.LogAnalysisData(e.errorCode, e.summary, e.message) " +
+    @Query("SELECT new com.soyunju.logcollector.dto.kb.LogAnalysisData(e.errorCode, e.summary, e.message) " +
             "FROM ErrorLog e WHERE e.id = :id")
     Optional<LogAnalysisData> findAnalysisDataById(@Param("id") Long id);
 
@@ -80,4 +80,5 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
             @Param("summary") String summary,
             @Param("logHash") String logHash
     );
+
 }

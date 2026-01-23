@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.service.kb.crd;
+package com.soyunju.logcollector.service.kb.crud;
 
 import com.soyunju.logcollector.domain.kb.Incident;
 import com.soyunju.logcollector.domain.kb.KbArticle;
@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 @Transactional(transactionManager = "kbTransactionManager")
-public class KbCrdService {
+public class KbCrudService {
 
     private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;

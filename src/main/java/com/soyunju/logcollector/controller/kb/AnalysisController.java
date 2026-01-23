@@ -1,7 +1,7 @@
-package com.soyunju.logcollector.controller.lc;
+package com.soyunju.logcollector.controller.kb;
 
-import com.soyunju.logcollector.dto.lc.AiAnalysisResult;
-import com.soyunju.logcollector.service.lc.ai.AiAnalysisService;
+import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
+import com.soyunju.logcollector.service.kb.crud.IncidentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,15 +10,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/logs/ai")
+@RequestMapping("/api/logs/analyze")
 @RequiredArgsConstructor
-public class ErrorLogAiController {
+public class AnalysisController {
 
-    private final AiAnalysisService aiAnalysisService;
+    private final IncidentService incidentService;
 
     // 특정 로그 ID에 대한 AI 분석 요청
-    @PostMapping("/{logId}/analyze")
+   /*  @PostMapping("/{logId}/analyze")
     public ResponseEntity<AiAnalysisResult> startAiAnalysis(@PathVariable Long logId) {
         return ResponseEntity.ok(aiAnalysisService.analyze(logId));
+    } */
+
+    @PostMapping("/{logHash}")
+    public ResponseEntity<AiAnalysisResult> analyzeIncident(@PathVariable String logHash) {
+        return ResponseEntity.ok(incidentService.analyze(logHash));
     }
 }

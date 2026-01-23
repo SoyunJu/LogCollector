@@ -3,7 +3,7 @@ package com.soyunju.logcollector.controller.kb;
 import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.dto.kb.IncidentRankResponse;
 import com.soyunju.logcollector.dto.kb.IncidentResponse;
-import com.soyunju.logcollector.service.kb.crd.IncidentService;
+import com.soyunju.logcollector.service.kb.crud.IncidentService;
 import com.soyunju.logcollector.service.kb.search.IncidentSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -51,11 +51,30 @@ public class IncidentController {
         );
     }
 
-    @PatchMapping("/{incidentId}/status")
+  /*  @PatchMapping("/{incidentId}/status")
     public ResponseEntity<Void> updateStatus(
             @PathVariable Long incidentId,
             @RequestParam IncidentStatus status) {
         incidentService.updateStatus(incidentId, status); // Service에 이 메서드가 구현되어 있어야 함
         return ResponseEntity.ok().build();
+    } */
+
+    @PatchMapping("/{logHash}/status")
+    public ResponseEntity<Void> updateStatus(
+            @PathVariable String logHash,
+            @RequestParam com.soyunju.logcollector.domain.kb.enums.IncidentStatus newStatus) {
+        incidentService.updateStatus(logHash, newStatus);
+        return ResponseEntity.ok().build();
     }
+
+    @PatchMapping("/{logHash}/details")
+    public ResponseEntity<Void> updateDetails(
+            @PathVariable String logHash,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String createdBy,
+            @RequestParam(required = false) com.soyunju.logcollector.domain.kb.enums.IncidentStatus status) {
+        incidentService.updateDetails(logHash, title, createdBy, status);
+        return ResponseEntity.ok().build();
+    }
+
 }

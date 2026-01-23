@@ -11,8 +11,8 @@ import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
 import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
 import com.soyunju.logcollector.service.audit.AuditLogService;
-import com.soyunju.logcollector.service.kb.crd.IncidentService;
-import com.soyunju.logcollector.service.kb.crd.KbDraftService;
+import com.soyunju.logcollector.service.kb.crud.IncidentService;
+import com.soyunju.logcollector.service.kb.crud.KbDraftService;
 import com.soyunju.logcollector.service.lc.processor.LogNormalization;
 import com.soyunju.logcollector.service.lc.processor.LogProcessor;
 import lombok.RequiredArgsConstructor;
@@ -113,8 +113,13 @@ public class ErrorLogCrdService {
         long impactedHostCount = errorLogHostRepository.countHostsByLogHash(logHash);
         // 6. Incident 연동
         Incident incident = incidentService.recordOccurrence(
-                logHash, dto.getServiceName(), targetLog.getSummary(),
-                dto.getStackTrace(), errorCode, effectiveLevel, occurredTime
+                logHash,
+                dto.getServiceName(),
+                targetLog.getSummary(),
+                dto.getStackTrace(),
+                errorCode,
+                dto.getLogLevel(),
+                occurredTime
         );
         // KB Draft 생성
         if (targetLog.getRepeatCount() >= 10) {
@@ -142,7 +147,6 @@ public class ErrorLogCrdService {
 
     @Transactional
     public void updateStatus(Long logId, ErrorStatus status, String actor) {
-        // [수정] 변수명을 log에서 errorLog로 변경하여 Slf4j 로거(log)와 충돌 방지
         ErrorLog errorLog = errorLogRepository.findById(logId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 로그 ID: " + logId));
 
@@ -150,9 +154,9 @@ public class ErrorLogCrdService {
         errorLog.setStatus(status);
         lcMetrics.incStatusChange(from, status);
 
-        ErrorStatus to = status;
-        if (from != null && to != null && from != to && !isAllowedTransition(from, to)) {
-            throw new InvalidStatusTransitionException("허용되지 않는 상태 전이: " + from + " -> " + to);
+        ErrorStatus es = status;
+        if (from != null && es != null && from != es && !isAllowedTransition(from, es)) {
+            throw new InvalidStatusTransitionException("허용되지 않는 상태 전이: " + from + " -> " + es);
         }
 
         errorLog.setStatus(status);
@@ -182,11 +186,14 @@ public class ErrorLogCrdService {
                                 incident -> kbDraftService.createSystemDraft(incident.getId()),
                                 () -> log.warn("로그 해시({})에 해당하는 인시던트를 찾을 수 없어 KB 초안을 생성하지 못했습니다.", errorLog.getLogHash())
                         );
+
+                incidentService.updateStatus(errorLog.getLogHash(), com.soyunju.logcollector.domain.kb.enums.IncidentStatus.RESOLVED);
             }
             case NEW -> {
                 errorLog.setResolvedAt(null);
                 errorLog.setAcknowledgedAt(null);
                 errorLog.setAcknowledgedBy(null);
+                incidentService.updateStatus(errorLog.getLogHash(), com.soyunju.logcollector.domain.kb.enums.IncidentStatus.OPEN);
             }
             case IGNORED -> { }
         }
@@ -196,7 +203,7 @@ public class ErrorLogCrdService {
                 "ERROR_LOG",
                 String.valueOf(logId),
                 actor,
-                "from=" + from + ", to=" + to + ", logHash=" + errorLog.getLogHash()
+                "from=" + from + ", to=" + es + ", logHash=" + errorLog.getLogHash()
         );
     }
 

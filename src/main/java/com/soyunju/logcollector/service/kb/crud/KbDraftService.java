@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.service.kb.crd;
+package com.soyunju.logcollector.service.kb.crud;
 
 import com.soyunju.logcollector.domain.kb.Incident;
 import com.soyunju.logcollector.domain.kb.KbArticle;
@@ -30,7 +30,7 @@ public class KbDraftService {
     private static final List<KbStatus> ACTIVE_DRAFT_STATUSES =
             List.of(KbStatus.OPEN, KbStatus.UNDERWAY);
 
-    public KbDraftService(IncidentRepository incidentRepository, KbArticleRepository kbArticleRepository, SystemDraftRepository systemDraftRepository, KbCrdService kbCrdService) {
+    public KbDraftService(IncidentRepository incidentRepository, KbArticleRepository kbArticleRepository, SystemDraftRepository systemDraftRepository, KbCrudService kbCrudService) {
         this.incidentRepository = incidentRepository;
         this.kbArticleRepository = kbArticleRepository;
         this.systemDraftRepository = systemDraftRepository;
@@ -112,6 +112,9 @@ public class KbDraftService {
     @Transactional(transactionManager = "kbTransactionManager")
     private Long createSystemKbArticle(Long incidentId) {
 
+        Optional<KbArticle> existing = kbArticleRepository.findByIncident_Id(incidentId);
+        if (existing.isPresent()) return existing.get().getId();
+
         Incident incident = incidentRepository.findById(incidentId)
                 .orElseThrow(() -> new IllegalArgumentException("Incident를 찾을 수 없습니다. incidentId=" + incidentId));
 
@@ -145,6 +148,17 @@ public class KbDraftService {
                 .build();
 
         return kbArticleRepository.save(kb).getId();
+    }
+
+    // 7일간 초안 유지 -> DEL 조치
+    @Transactional(transactionManager = "kbTransactionManager")
+    public void cleanupExpiredDrafts() {
+        java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusDays(7);
+        kbArticleRepository.deleteExpiredSystemDrafts(
+                com.soyunju.logcollector.domain.kb.enums.CreatedBy.system,
+                com.soyunju.logcollector.domain.kb.enums.KbStatus.OPEN,
+                threshold
+        );
     }
 
 }

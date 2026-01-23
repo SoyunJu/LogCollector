@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.dto.lc;
+package com.soyunju.logcollector.dto.kb;
 
 // AI 분석용
 public record LogAnalysisData(
@@ -7,3 +7,4 @@ public record LogAnalysisData(
         String message
 ) {
 }
+
