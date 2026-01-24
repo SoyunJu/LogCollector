@@ -1,5 +1,6 @@
 package com.soyunju.logcollector.controller.kb;
 
+import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.dto.kb.KbAddendumCreateRequest;
 import com.soyunju.logcollector.dto.kb.KbAddendumResponse;
 import com.soyunju.logcollector.dto.kb.KbArticleResponse;
@@ -59,28 +60,36 @@ public class KbArticleController {
         return ResponseEntity.ok(kbArticleSearchService.getArticle(kbArticleId, addendumPage, addendumSize));
     }
 
-    // 사용자 KB Addendum Post
+    // KB Addendum Post
     @PostMapping("/articles/{kbArticleId}")
     public ResponseEntity<Void> postArticle(
             @PathVariable Long kbArticleId,
             @RequestBody KbAddendumCreateRequest request) {
-        kbCrudService.postArticle(kbArticleId, request.getTitle(), request.getContent(), request.getCreatedBy() );
+        kbCrudService.postArticle(kbArticleId, request.getTitle(), request.getContent(), request.getCreatedBy());
         return ResponseEntity.ok().build();
     }
 
-    // Draft Update
-    @PostMapping("/draft/{kbArticleId}")
+    // KB 상태 변경 API
+    @PatchMapping("/articles/{kbArticleId}/status")
+    public ResponseEntity<Void> updateStatus(
+            @PathVariable Long kbArticleId,
+            @RequestParam KbStatus status) {
+        kbCrudService.updateStatus(kbArticleId, status);
+        return ResponseEntity.ok().build();
+    }
+
+    // Draft Update (title 과 addendum 만)
+    @PostMapping("/draft/{kbArticleId}/update")
     public ResponseEntity<Void> updateDraft(
             @PathVariable Long kbArticleId,
             @RequestBody KbAddendumCreateRequest request) {
 
-        kbDraftService.updateDraft(
+        kbCrudService.postArticle(
                 kbArticleId,
                 request.getTitle(),
-                request.getContent(),
+                null,
                 request.getCreatedBy()
         );
-
         return ResponseEntity.ok().build();
     }
 

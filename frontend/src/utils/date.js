@@ -1,7 +1,7 @@
 const pad2 = (n) => String(n).padStart(2, '0');
 const pad3 = (n) => String(n).padStart(3, '0');
 
-const toIsoKst = (y, mo, d, h = 0, mi = 0, s = 0, ms = 0) =>
+export const toIsoKst = (y, mo, d, h = 0, mi = 0, s = 0, ms = 0) =>
 `${y}-${pad2(mo)}-${pad2(d)}T${pad2(h)}:${pad2(mi)}:${pad2(s)}.${pad3(ms)}+09:00`;
 
 const parseServerDate = (v) => {

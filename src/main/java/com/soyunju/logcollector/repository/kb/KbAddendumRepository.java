@@ -11,4 +11,7 @@ public interface KbAddendumRepository extends JpaRepository<KbAddendum, Long> {
     List<KbAddendum> findByKbArticle_IdOrderByCreatedAtDesc(Long kbArticleId);
 
     List<KbAddendum> findByKbArticle_IdOrderByCreatedAtDesc(Long kbArticleId, Pageable pageable);
+
+    boolean existsByKbArticle_Id(Long kbArticleId);
+
 }

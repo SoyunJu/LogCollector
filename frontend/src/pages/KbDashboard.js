@@ -15,12 +15,25 @@ try {
 const res = await LogCollectorApi.listKb(q);
 const data = res.data?.content ?? res.data ?? [];
 setRows(data);
+} catch (e) {
+console.error(e);
 } finally {
 setLoading(false);
 }
 };
 
 useEffect(() => { load(); }, [q.page, q.size]);
+
+// 스케줄러 수동 실행
+const runScheduler = async () => {
+if(!window.confirm("스케줄러(Outbox 처리 등)를 즉시 실행하시겠습니까?")) return;
+try {
+await LogCollectorApi.runScheduler();
+alert("스케줄러 실행 요청이 전송되었습니다.");
+} catch(e) {
+alert("실패: " + (e.response?.data?.message || e.message));
+}
+};
 
 const getStatusBadge = (status) => {
 switch (status) {
@@ -34,12 +47,17 @@ default: return <Badge bg="light" text="dark">{status}</Badge>;
 
 return (
 <Container className="page py-3">
+    {/* 상단 헤더 */}
+    <div className="d-flex justify-content-between align-items-center mb-3">
+        <h3 className="m-0">📚 KB Articles</h3>
+        <Button variant="outline-danger" size="sm" onClick={runScheduler}>
+            ⚡ Run Scheduler Now
+        </Button>
+    </div>
+
+    {/* 검색 필터 */}
     <Card className="mb-4 shadow-sm">
         <Card.Body>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-                <h3 className="m-0">📚 KB Articles</h3>
-                <small className="text-muted">Total: {rows.length} items</small>
-            </div>
             <Row className="g-2">
                 <Col md={3}>
                 <Form.Select value={q.status} onChange={(e) => setQ({ ...q, status: e.target.value })}>
@@ -51,7 +69,6 @@ return (
                 </Form.Select>
                 </Col>
                 <Col md={3}>
-                {/* [수정] CreatedBy를 SelectBox로 변경 (system, user, admin) */}
                 <Form.Select value={q.createdBy} onChange={(e) => setQ({ ...q, createdBy: e.target.value })}>
                 <option value="">(All Authors)</option>
                 <option value="system">SYSTEM</option>
@@ -64,6 +81,7 @@ return (
                         placeholder="Keyword (Title)"
                         value={q.keyword}
                         onChange={(e) => setQ({ ...q, keyword: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && load()}
                 />
                 </Col>
                 <Col md={2}>
@@ -75,16 +93,17 @@ return (
         </Card.Body>
     </Card>
 
+    {/* 목록 테이블 */}
     <Card className="shadow-sm">
         <Table hover responsive className="align-middle mb-0">
             <thead className="table-light">
             <tr>
-                <th style={{width:'80px'}}>ID</th>
-                <th style={{width:'120px'}}>Status</th>
+                <th style={{width:'60px'}}>ID</th>
+                <th style={{width:'100px'}}>Status</th>
                 <th>Title</th>
-                <th style={{width:'150px'}}>Author</th>
-                <th style={{width:'180px'}}>Last Activity</th>
-                <th style={{width:'100px'}}>Action</th>
+                <th style={{width:'120px'}}>Author</th>
+                <th style={{width:'160px'}}>Last Activity</th>
+                <th style={{width:'80px'}}>Actions</th>
             </tr>
             </thead>
             <tbody>
@@ -92,24 +111,29 @@ return (
             <tr><td colSpan="6" className="text-center py-4 text-muted">문서가 없습니다.</td></tr>
             ) : rows.map((r) => (
             <tr key={r.id}>
-                <td><small className="text-muted">#{r.id}</small></td>
+                <td className="text-muted small">#{r.id}</td>
                 <td>{getStatusBadge(r.status)}</td>
                 <td>
-                    <Link to={`/kb/${r.id}`} className="text-decoration-none fw-bold text-dark text-truncate d-block" style={{maxWidth: '400px'}}>
-                    {r.incidentTitle || '(No Title)'}
+                    <Link to={`/kb/${r.id}`} className="text-decoration-none fw-bold text-dark">
+                    {r.title || r.incidentTitle || <span className="text-muted fst-italic">(No Title)</span>}
                     </Link>
                 </td>
-                <td><small>{r.createdBy ?? '-'}</small></td>
+                <td>
+                    <Badge bg="light" text="dark" className="border">
+                        {r.createdBy ?? 'Unknown'}
+                    </Badge>
+                </td>
                 <td className="small text-muted">{formatKst(r.lastActivityAt ?? r.updatedAt ?? r.createdAt)}</td>
                 <td>
-                    <Link to={`/kb/${r.id}`} className="btn btn-sm btn-outline-primary">Detail</Link>
+                    <Link to={`/kb/${r.id}`} className="btn btn-sm btn-outline-secondary">
+                    View
+                    </Link>
                 </td>
             </tr>
             ))}
             </tbody>
         </Table>
 
-        {/* 페이지네이션 생략 (기존 코드 유지) */}
         <div className="d-flex justify-content-center gap-2 p-3">
             <Button variant="outline-primary" disabled={q.page === 0} onClick={() => setQ({ ...q, page: Math.max(0, q.page - 1) })}>Prev</Button>
             <span className="align-self-center">Page {q.page}</span>

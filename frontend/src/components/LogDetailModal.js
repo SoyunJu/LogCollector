@@ -103,19 +103,6 @@ return (
         </ButtonGroup>
 
         <div className="d-flex gap-2">
-            <Button style={{backgroundColor: '#6f42c1', borderColor: '#6f42c1'}} onClick={handleAiAnalyze} disabled={loadingAi}>
-            {loadingAi ? <Spinner size="sm" animation="border"/> : '🤖 AI 분석'}
-            </Button>
-
-            {/* [수정] KB 버튼 활성화 및 Link 연결 */}
-            {incident ? (
-            <Button variant="primary" as={Link} to={`/kb/${incident.kbArticleId}`}>
-                📝 KB 연결됨 (#{incident.kbArticleId})
-            </Button>
-            ) : (
-            <Button variant="secondary" disabled>KB 미연동</Button>
-            )}
-
             <Button variant="outline-secondary" onClick={onClose}>Close</Button>
         </div>
     </Modal.Footer>

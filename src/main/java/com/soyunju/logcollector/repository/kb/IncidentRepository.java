@@ -106,5 +106,12 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, Incid
             @Param("threshold") LocalDateTime threshold
     );
 
+    // 자동 close 후보 조회
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT k.incident FROM KbArticle k " +
+            "WHERE k.incident.status = 'RESOLVED' " +
+            "AND k.status = 'PUBLISHED' " +
+            "AND k.incident.lastOccurredAt <= :threshold")
+    java.util.List<Incident> findAutoCloseCandidates(@org.springframework.data.repository.query.Param("threshold") LocalDateTime threshold);
+
 
 }

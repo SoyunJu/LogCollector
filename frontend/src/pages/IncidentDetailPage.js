@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { LogCollectorApi } from '../api/logCollectorApi';
 import { formatKst } from '../utils/date';
-import { Container, Card, Badge, Button, Row, Col, Spinner, Alert, Form, InputGroup } from 'react-bootstrap';
+import { Container, Card, Badge, Button, Row, Col, Spinner, Alert, Form, Accordion } from 'react-bootstrap';
 
 const IncidentDetailPage = () => {
 const { logHash } = useParams();
@@ -23,23 +23,34 @@ const [loadingAi, setLoadingAi] = useState(false);
 const load = async () => {
 setLoading(true);
 try {
-// [수정] 사용자가 제공한 메서드명 getIncidentByLogHash 사용
 const res = await LogCollectorApi.getIncidentByLogHash(logHash);
 setIncident(res.data);
-setTitle(res.data?.incidentTitle ?? '');
-setCreatedBy(res.data?.createdBy ?? '');
-setStatus(''); // 상세 수정 폼의 status는 초기화 (변경시에만 값 주입)
+// 초기값 세팅 (변경시에만 payload에 포함됨)
+if (!title) setTitle(res.data?.incidentTitle ?? '');
+if (!createdBy) setCreatedBy(res.data?.createdBy ?? '');
+setStatus('');
 } catch (e) {
 console.error(e);
-// 에러 처리 필요 시 추가
+alert("데이터 로드 실패: " + e.message);
 } finally {
 setLoading(false);
 }
 };
 
-useEffect(() => {
-load();
-}, [logHash]);
+useEffect(() => { load(); }, [logHash]);
+
+// [수정] Draft 수동 생성 핸들러
+const createDraft = async () => {
+if (!window.confirm('이 Incident에 대한 KB 초안(Draft)을 생성하시겠습니까?')) return;
+try {
+// incident.id가 필요합니다. (Response DTO에 id 포함되어 있다고 가정)
+await LogCollectorApi.createDraft(incident.id);
+alert('초안이 생성되었습니다.');
+load(); // KB ID 갱신을 위해 재로딩
+} catch (e) {
+alert('초안 생성 실패: ' + e.message);
+}
+};
 
 const updateDetails = async () => {
 try {
@@ -62,20 +73,18 @@ try {
 const res = await LogCollectorApi.analyzeAi(logHash);
 setAiResult(res.data);
 } catch (err) {
-alert('AI 분석 실패: ' + (err?.response?.data?.message ?? err?.message ?? String(err)));
+alert('AI 분석 실패: ' + (err?.response?.data?.message ?? err?.message));
 } finally {
 setLoadingAi(false);
 }
 };
 
-// IGNORED 해제 = newStatus를 OPEN으로 되돌림(백엔드가 outbox로 LC 반영)
 const unignore = async () => {
 if (!window.confirm('IGNORED 해제(OPEN으로 변경) 하시겠습니까?')) return;
 await LogCollectorApi.updateIncidentStatus(logHash, 'OPEN');
 await load();
 };
 
-// REOPEN = OPEN으로 전이 + (recurAt은 서버가 OPEN 전이 시 set 해주는 전제)
 const reopen = async () => {
 if (!window.confirm('REOPEN 처리(OPEN 전이) 하시겠습니까?')) return;
 await LogCollectorApi.updateIncidentStatus(logHash, 'OPEN');
@@ -94,20 +103,10 @@ default: return <Badge bg="light" text="dark">{status}</Badge>;
 };
 
 if (loading && !incident) {
-return (
-<Container className="text-center py-5">
-    <Spinner animation="border" variant="primary" />
-    <p className="mt-2 text-muted">Loading incident details...</p>
-</Container>
-);
+return <Container className="text-center py-5"><Spinner animation="border" variant="primary" /></Container>;
 }
-
 if (!incident) {
-return (
-<Container className="py-4">
-    <Alert variant="danger">No incident found for hash: {logHash}</Alert>
-</Container>
-);
+return <Container className="py-4"><Alert variant="danger">Incident Not Found: {logHash}</Alert></Container>;
 }
 
 const canUnignore = incident.status === 'IGNORED';
@@ -115,7 +114,6 @@ const canReopen = incident.status === 'RESOLVED' || incident.status === 'CLOSED'
 
 return (
 <Container className="page py-3">
-    {/* 뒤로가기 및 헤더 */}
     <div className="mb-3">
         <Button variant="link" className="text-decoration-none p-0 mb-1 text-muted" onClick={() => navigate('/incidents')}>
         &larr; Back to Incidents
@@ -132,62 +130,60 @@ return (
         </Card.Header>
 
         <Card.Body>
-            {/* 기본 정보 Row 1 */}
             <Row className="mb-3">
-                <Col md={4}>
-                <strong>Service:</strong> <span className="text-primary">{incident.serviceName}</span>
-                </Col>
-                <Col md={4}>
-                <strong>Error Code:</strong> <code>{incident.errorCode ?? '-'}</code>
-                </Col>
-                <Col md={4}>
-                <strong>Repeat Count:</strong> <Badge bg="info" pill>{incident.repeatCount}</Badge>
-                </Col>
+                <Col md={4}><strong>Service:</strong> <span className="text-primary fw-bold">{incident.serviceName}</span></Col>
+                <Col md={4}><strong>Error Code:</strong> <code>{incident.errorCode ?? '-'}</code></Col>
+                <Col md={4}><strong>Repeat Count:</strong> <Badge bg="info" pill>{incident.repeatCount}</Badge></Col>
             </Row>
-
-            {/* 타임스탬프 정보 Row 2 */}
             <Row className="mb-3 small text-muted">
                 <Col md={3}><strong>First:</strong><br/> {formatKst(incident.firstOccurredAt)}</Col>
                 <Col md={3}><strong>Last:</strong><br/> {formatKst(incident.lastOccurredAt)}</Col>
                 <Col md={3}><strong>Resolved:</strong><br/> {formatKst(incident.resolvedAt)}</Col>
                 <Col md={3}><strong>Reopened:</strong><br/> {formatKst(incident.reopenedAt)}</Col>
             </Row>
-
             <div className="text-muted small mb-4">
-                <strong>Created By:</strong> {incident.createdBy ?? '-'}
+                <strong>Assigned To:</strong> {incident.createdBy || <span className="text-warning">(Unassigned)</span>}
             </div>
 
             <hr />
 
-            {/* 액션 버튼 영역 */}
+            {/* [추가] Stack Trace Viewer */}
+            <Accordion className="mb-4">
+                <Accordion.Item eventKey="0">
+                    <Accordion.Header>📜 Stack Trace / Log Summary</Accordion.Header>
+                    <Accordion.Body className="bg-light">
+                        <pre className="mb-0" style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>
+                        {incident.stackTrace || incident.summary || "(No Content Available)"}
+                        </pre>
+                    </Accordion.Body>
+                </Accordion.Item>
+            </Accordion>
+
             <div className="d-flex flex-wrap gap-2">
                 <Button variant="outline-primary" onClick={analyzeAi} disabled={loadingAi}>
-                    {loadingAi ? <><Spinner size="sm" animation="border"/> AI 분석 중...</> : '🤖 AI 분석'}
+                    {loadingAi ? <><Spinner size="sm" animation="border"/> Analyzing...</> : '🤖 AI Analysis'}
                 </Button>
 
+                {/* [수정] KB 연결 상태에 따른 버튼 분기 */}
                 {incident.kbArticleId ? (
                 <Link to={`/kb/${incident.kbArticleId}`}>
-                <Button variant="outline-info">🔗 KB 연결됨 (#{incident.kbArticleId})</Button>
+                <Button variant="outline-info">🔗 View KB (#{incident.kbArticleId})</Button>
                 </Link>
                 ) : (
-                <Button variant="secondary" disabled>KB 없음</Button>
+                <Button variant="success" onClick={createDraft}>
+                    ⚡ Create KB Draft
+                </Button>
                 )}
 
-                <Button variant="warning" onClick={unignore} disabled={!canUnignore}>
-                    UNIGNORE (To OPEN)
-                </Button>
-
-                <Button variant="dark" onClick={reopen} disabled={!canReopen}>
-                    REOPEN
-                </Button>
+                <Button variant="warning" onClick={unignore} disabled={!canUnignore}>UNIGNORE</Button>
+                <Button variant="dark" onClick={reopen} disabled={!canReopen}>REOPEN</Button>
             </div>
 
-            {/* AI 분석 결과 표시 */}
             {aiResult && (
             <Alert variant="info" className="mt-4 mb-0">
                 <div className="d-flex justify-content-between align-items-start">
-                    <h5 className="alert-heading">🤖 AI 분석 결과</h5>
-                    <Button variant="close" onClick={() => setAiResult(null)} aria-label="Close" />
+                    <h5 className="alert-heading">🤖 AI Insight</h5>
+                    <Button variant="close" onClick={() => setAiResult(null)} />
                 </div>
                 <hr />
                 <p><strong>Cause:</strong> {aiResult.cause ?? '-'}</p>
@@ -197,31 +193,23 @@ return (
         </Card.Body>
     </Card>
 
-    {/* updateDetails 검증용 패널 */}
+    {/* Admin / Validation Panel */}
     <Card border="warning" className="shadow-sm">
         <Card.Header className="bg-warning bg-opacity-10 text-dark">
-            <strong>🔧 updateDetails (검증용)</strong>
+            <strong>🔧 Update Status / Assignee</strong>
         </Card.Header>
         <Card.Body>
             <Row className="g-2 align-items-end">
                 <Col md={4}>
                 <Form.Label>Incident Title</Form.Label>
-                <Form.Control
-                        placeholder="title"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                />
+                <Form.Control value={title} onChange={(e) => setTitle(e.target.value)} />
                 </Col>
                 <Col md={3}>
-                <Form.Label>Created By</Form.Label>
-                <Form.Control
-                        placeholder="user/system"
-                        value={createdBy}
-                        onChange={(e) => setCreatedBy(e.target.value)}
-                />
+                <Form.Label>Assignee (CreatedBy)</Form.Label>
+                <Form.Control value={createdBy} onChange={(e) => setCreatedBy(e.target.value)} placeholder="user/system" />
                 </Col>
                 <Col md={3}>
-                <Form.Label>Status Change</Form.Label>
+                <Form.Label>Force Status</Form.Label>
                 <Form.Select value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="">(No Change)</option>
                 <option value="OPEN">OPEN</option>
@@ -235,9 +223,6 @@ return (
                 <Button variant="primary" className="w-100" onClick={updateDetails}>Update</Button>
                 </Col>
             </Row>
-            <div className="mt-2 d-flex justify-content-end">
-                <Button variant="link" size="sm" onClick={load}>🔄 Data Reload</Button>
-            </div>
         </Card.Body>
     </Card>
 </Container>

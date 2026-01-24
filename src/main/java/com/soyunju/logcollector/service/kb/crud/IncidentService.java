@@ -149,23 +149,28 @@ public class IncidentService {
         }
     }
 
-    public AiAnalysisResult analyze(String logHash) {
+    public AiAnalysisResult analyze(String logHash, boolean force) {
         Incident incident = incidentRepository.findByLogHash(logHash)
                 .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다. hash: " + logHash));
-        // log_hash로 KB 찾기
-        return kbArticleRepository.findTopByIncident_LogHashOrderByCreatedAtDesc(logHash)
-                .map(kb -> new AiAnalysisResult(
+
+        // 1. Force 모드가 아니고(false), KB가 있다면 -> KB 내용 반환
+        if (!force) {
+            var kbOpt = kbArticleRepository.findTopByIncident_LogHashOrderByCreatedAtDesc(logHash);
+            if (kbOpt.isPresent()) {
+                var kb = kbOpt.get();
+                return new AiAnalysisResult(
                         "[기존 지식 참조] " + kb.getIncidentTitle(),
                         kb.getContent()
-                ))
-                // KB에 없으면 AI 분석 호출
-                .orElseGet(() -> aiAnalysisService.AiAnalyze(incident.getId()));
+                );
+            }
+        }
+        // 2. Force 모드이거나(true), KB가 없으면 -> AI 분석 호출
+        return aiAnalysisService.AiAnalyze(incident.getId());
     }
 
     @Transactional(transactionManager = "kbTransactionManager")
     public void updateDetails(String logHash, String title, String createdBy, IncidentStatus status) {
 
-        // [변경] ifPresent -> orElseThrow (없으면 200이 아니라 에러로 터지게)
         Incident incident = incidentRepository.findByLogHash(logHash)
                 .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다. hash: " + logHash));
 
@@ -175,11 +180,14 @@ public class IncidentService {
             incident.setIncidentTitle(title);
             changed = true;
         }
+
         if (createdBy != null && !createdBy.isBlank() && !createdBy.equals(incident.getCreatedBy())) {
             incident.setCreatedBy(createdBy);
             changed = true;
+            if (incident.getStatus() == IncidentStatus.OPEN) {
+                incident.setStatus(IncidentStatus.UNDERWAY);
+            }
         }
-
         if (status != null) {
             IncidentStatus prev = incident.getStatus();
 

@@ -38,16 +38,16 @@ hostName: 'worker-node-05',
 const scenarios = {
 "DB_FAILOVER": [
 // [수정] INFO -> WARN으로 변경 (서버 Enum에 INFO 없음), 메시지 길이 10자 이상 확보
-{ ...presets.DB, logLevel: 'WARN', message: 'Health check: DB Latency 10ms (Normal)', count: 2, delay: 500 },
-{ ...presets.DB, logLevel: 'WARN', message: 'WARN: DB Latency spiked to 2000ms', count: 3, delay: 500 },
-{ ...presets.DB, logLevel: 'ERROR', message: 'ERROR: ConnectionRefused - Pool Exhausted', count: 10, delay: 100 },
-{ ...presets.DB, logLevel: 'WARN', message: 'System: Switchover to Secondary DB initiated.', count: 1, delay: 1000 },
-{ ...presets.DB, logLevel: 'WARN', message: 'System: DB Connected (Secondary).', count: 1, delay: 500 },
+{ ...presets.DB, logLevel: 'WARN', message: 'Health check: DB Latency 10ms (Normal)', count: 2, delay: 2000 },
+{ ...presets.DB, logLevel: 'WARN', message: 'WARN: DB Latency spiked to 2000ms', count: 3, delay: 2000 },
+{ ...presets.DB, logLevel: 'ERROR', message: 'ERROR: ConnectionRefused - Pool Exhausted', count: 10, delay: 2000 },
+{ ...presets.DB, logLevel: 'WARN', message: 'System: Switchover to Secondary DB initiated.', count: 1, delay: 20000 },
+{ ...presets.DB, logLevel: 'WARN', message: 'System: DB Connected (Secondary).', count: 1, delay: 2000 },
 ],
 "PAYMENT_TIMEOUT": [
-{ ...presets.PAYMENT, logLevel: 'WARN', message: 'Payment Request: Order #1234 initiated', count: 1, delay: 100 },
-{ ...presets.PAYMENT, logLevel: 'WARN', message: 'WARN: PG Provider response slow (5s)', count: 2, delay: 1000 },
-{ ...presets.PAYMENT, logLevel: 'FATAL', count: 5, delay: 200 },
+{ ...presets.PAYMENT, logLevel: 'WARN', message: 'Payment Request: Order #1234 initiated', count: 1, delay: 2000 },
+{ ...presets.PAYMENT, logLevel: 'WARN', message: 'WARN: PG Provider response slow (5s)', count: 2, delay: 20000 },
+{ ...presets.PAYMENT, logLevel: 'FATAL', count: 5, delay: 2000},
 ]
 };
 
@@ -110,20 +110,26 @@ const delay = step.delay || 100;
 const logData = {
 serviceName: step.serviceName,
 hostName: step.hostName,
-logLevel: step.logLevel, // WARN, ERROR 등 Enum에 있는 값 사용
+logLevel: step.logLevel,
 message: step.message,
 stackTrace: step.stackTrace || ''
 };
 
 for(let i=0; i<count; i++) {
+try {
 await LogCollectorApi.collectLog(logData);
+} catch(e) {
+console.error("Log send failed", e); // 에러나도 계속 진행
+}
 setProgress((prev) => ({ ...prev, sent: prev.sent + 1 }));
 await sleep(delay);
 }
 }
-alert(`🎬 Scenario '${scenarioName}' completed.`);
+// [수정] 모든 전송이 끝난 후에만 완료 메시지
+// alert(`Scenario '${scenarioName}' completed.`);
+console.log(`Scenario '${scenarioName}' completed.`);
 } catch (err) {
-alert('Scenario Failed: ' + (err.response?.data?.message || err.message));
+console.error(err);
 } finally {
 setIsSending(false);
 }
@@ -142,7 +148,7 @@ return (
     <Tab eventKey="basic" title="Basic Generator">
         <Row>
             <Col md={4} className="mb-3">
-            <Card className="h-100">
+            <Card className="h-2000">
                 <Card.Header>Quick Presets</Card.Header>
                 <ListGroup variant="flush">
                     {Object.keys(presets).map((k) => (
@@ -189,7 +195,7 @@ return (
                         </Form.Group>
                         <hr />
                         <div className="d-flex align-items-end gap-3 mb-3">
-                            <div style={{width: '100px'}}>
+                            <div style={{width: '2000px'}}>
                             <Form.Label>Repeat</Form.Label>
                             <Form.Control type="number" min="1" value={repeatCount} onChange={(e) => setRepeatCount(Number(e.target.value))} />
                         </div>
@@ -217,7 +223,7 @@ return (
                 <Row className="g-3">
                     {Object.keys(scenarios).map(k => (
                     <Col md={6} key={k}>
-                    <Card className="h-100 shadow-sm">
+                    <Card className="h-2000 shadow-sm">
                         <Card.Body>
                             <div className="d-flex justify-content-between align-items-start mb-2">
                                 <h5>{k}</h5>
@@ -233,7 +239,7 @@ return (
                                 </ListGroup.Item>
                                 ))}
                             </ListGroup>
-                            <Button variant="outline-danger" className="w-100" onClick={() => runScenario(k)} disabled={isSending}>
+                            <Button variant="outline-danger" className="w-2000" onClick={() => runScenario(k)} disabled={isSending}>
                             ▶ Run Simulation
                             </Button>
                         </Card.Body>
@@ -254,7 +260,7 @@ return (
                 <strong>Sending Logs...</strong>
                 <span>{progress.sent} / {progress.total}</span>
             </div>
-            <ProgressBar now={(progress.sent / progress.total) * 100} animated variant={key === 'scenario' ? 'danger' : 'primary'} />
+            <ProgressBar now={(progress.sent / progress.total) * 2000} animated variant={key === 'scenario' ? 'danger' : 'primary'} />
         </Container>
     </div>
     )}

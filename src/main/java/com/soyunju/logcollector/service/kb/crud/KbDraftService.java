@@ -152,7 +152,7 @@ public class KbDraftService {
 
         String errorCode = incident.getErrorCode();
         // 40자로 자르기. 필요시 50 등으로 늘리기 가능
-        String summaryShort = normalizeAndTruncate(incident.getSummary(), 40);
+        String summaryShort = normalizeAndTruncate(incident.getSummary(), 50);
 
         String title;
         if (errorCode != null && !errorCode.isBlank()) {

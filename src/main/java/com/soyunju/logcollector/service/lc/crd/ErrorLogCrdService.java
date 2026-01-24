@@ -1,6 +1,7 @@
 package com.soyunju.logcollector.service.lc.crd;
 
 import com.soyunju.logcollector.domain.kb.Incident;
+import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.domain.lc.ErrorLog;
 import com.soyunju.logcollector.domain.lc.ErrorStatus;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
@@ -191,6 +192,11 @@ public class ErrorLogCrdService {
 
         switch (status) {
             case ACKNOWLEDGED -> {
+                try {
+                    incidentService.updateStatus(errorLog.getLogHash(), IncidentStatus.UNDERWAY);
+                } catch (Exception e) {
+                    log.warn("Failed to auto-update incident status to UNDERWAY: {}", e.getMessage());
+                }
                 if (errorLog.getAcknowledgedAt() == null) {
                     errorLog.setAcknowledgedAt(LocalDateTime.now());
                 }

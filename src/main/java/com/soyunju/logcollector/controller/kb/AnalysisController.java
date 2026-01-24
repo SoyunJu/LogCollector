@@ -4,10 +4,7 @@ import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
 import com.soyunju.logcollector.service.kb.crud.IncidentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/logs/analyze")
@@ -23,7 +20,10 @@ public class AnalysisController {
     } */
 
     @PostMapping("/{logHash}")
-    public ResponseEntity<AiAnalysisResult> analyzeIncident(@PathVariable String logHash) {
-        return ResponseEntity.ok(incidentService.analyze(logHash));
+    public ResponseEntity<AiAnalysisResult> analyzeIncident(
+            @PathVariable String logHash,
+            @RequestParam(defaultValue = "false") boolean force
+    ) {
+        return ResponseEntity.ok(incidentService.analyze(logHash, force));
     }
 }
