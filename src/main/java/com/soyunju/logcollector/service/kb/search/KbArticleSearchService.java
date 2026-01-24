@@ -15,7 +15,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
+
 import static com.soyunju.logcollector.domain.kb.QKbAddendum.kbAddendum;
 import static com.soyunju.logcollector.domain.kb.QKbArticle.kbArticle;
 
@@ -82,7 +84,7 @@ public class KbArticleSearchService {
                 .map(kb -> KbArticleResponse.builder()
                         .id(kb.getId())
                         .title(kb.getIncidentTitle() != null ? kb.getIncidentTitle() : "시스템 생성 초안 (내용 확인 필요)")
-                        .status(kb.getStatus().name())
+                        .status(kb.getStatus() != null ? kb.getStatus().name() : null)
                         .createdAt(kb.getCreatedAt())
                         .createdBy(kb.getCreatedBy() != null ? kb.getCreatedBy().name() : null)
                         .build())
@@ -147,7 +149,7 @@ public class KbArticleSearchService {
                 .incidentId(kb.getIncident() != null ? kb.getIncident().getId() : null)
                 .incidentTitle(kb.getIncidentTitle())
                 .content(kb.getContent())
-                .status(kb.getStatus().name())
+                .status(kb.getStatus() != null ? kb.getStatus().name() : null)
                 .createdAt(kb.getCreatedAt())
                 .createdBy(kb.getCreatedBy() != null ? kb.getCreatedBy().name() : null)
 

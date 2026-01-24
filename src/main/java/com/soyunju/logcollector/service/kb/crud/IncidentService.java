@@ -164,79 +164,81 @@ public class IncidentService {
 
     @Transactional(transactionManager = "kbTransactionManager")
     public void updateDetails(String logHash, String title, String createdBy, IncidentStatus status) {
-        incidentRepository.findByLogHash(logHash).ifPresent(incident -> {
 
-            boolean changed = false;
+        // [변경] ifPresent -> orElseThrow (없으면 200이 아니라 에러로 터지게)
+        Incident incident = incidentRepository.findByLogHash(logHash)
+                .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다. hash: " + logHash));
 
-            if (title != null && !title.isBlank() && !title.equals(incident.getIncidentTitle())) {
-                incident.setIncidentTitle(title);
+        boolean changed = false;
+
+        if (title != null && !title.isBlank() && !title.equals(incident.getIncidentTitle())) {
+            incident.setIncidentTitle(title);
+            changed = true;
+        }
+        if (createdBy != null && !createdBy.isBlank() && !createdBy.equals(incident.getCreatedBy())) {
+            incident.setCreatedBy(createdBy);
+            changed = true;
+        }
+
+        if (status != null) {
+            IncidentStatus prev = incident.getStatus();
+
+            if (prev != status) {
+                incident.setStatus(status);
                 changed = true;
-            }
-            if (createdBy != null && !createdBy.isBlank() && !createdBy.equals(incident.getCreatedBy())) {
-                incident.setCreatedBy(createdBy);
-                changed = true;
-            }
 
-            if (status != null) {
-                IncidentStatus prev = incident.getStatus();
-
-                if (prev != status) {
-                    incident.setStatus(status);
-                    changed = true;
-
-                    if (status == IncidentStatus.RESOLVED) {
-                        if (incident.getResolvedAt() == null) {
-                            incident.setResolvedAt(LocalDateTime.now());
-                            changed = true;
-                        }
-                        kbDraftService.createSystemDraft(incident.getId());
+                if (status == IncidentStatus.RESOLVED) {
+                    if (incident.getResolvedAt() == null) {
+                        incident.setResolvedAt(LocalDateTime.now());
+                        changed = true;
                     }
+                    kbDraftService.createSystemDraft(incident.getId());
+                }
 
-                    // IGNORED outbox
-                    if (prev != IncidentStatus.IGNORED && status == IncidentStatus.IGNORED) {
-                        lcIgnoreOutboxRepository.save(
-                                LcIgnoreOutbox.builder()
-                                        .logHash(logHash)
-                                        .action(LcIgnoreOutboxAction.IGNORE)
-                                        .status(LcIgnoreOutboxStatus.PENDING)
-                                        .attemptCount(0)
-                                        .nextRetryAt(null)
-                                        .lastError(null)
-                                        .createdAt(LocalDateTime.now())
-                                        .updatedAt(LocalDateTime.now())
-                                        .build()
-                        );
-                    } else if (prev == IncidentStatus.IGNORED && status != IncidentStatus.IGNORED) {
-                        lcIgnoreOutboxRepository.save(
-                                LcIgnoreOutbox.builder()
-                                        .logHash(logHash)
-                                        .action(LcIgnoreOutboxAction.UNIGNORE)
-                                        .status(LcIgnoreOutboxStatus.PENDING)
-                                        .attemptCount(0)
-                                        .nextRetryAt(null)
-                                        .lastError(null)
-                                        .createdAt(LocalDateTime.now())
-                                        .updatedAt(LocalDateTime.now())
-                                        .build()
-                        );
-                    }
+                // IGNORED outbox
+                if (prev != IncidentStatus.IGNORED && status == IncidentStatus.IGNORED) {
+                    lcIgnoreOutboxRepository.save(
+                            LcIgnoreOutbox.builder()
+                                    .logHash(logHash)
+                                    .action(LcIgnoreOutboxAction.IGNORE)
+                                    .status(LcIgnoreOutboxStatus.PENDING)
+                                    .attemptCount(0)
+                                    .nextRetryAt(null)
+                                    .lastError(null)
+                                    .createdAt(LocalDateTime.now())
+                                    .updatedAt(LocalDateTime.now())
+                                    .build()
+                    );
+                } else if (prev == IncidentStatus.IGNORED && status != IncidentStatus.IGNORED) {
+                    lcIgnoreOutboxRepository.save(
+                            LcIgnoreOutbox.builder()
+                                    .logHash(logHash)
+                                    .action(LcIgnoreOutboxAction.UNIGNORE)
+                                    .status(LcIgnoreOutboxStatus.PENDING)
+                                    .attemptCount(0)
+                                    .nextRetryAt(null)
+                                    .lastError(null)
+                                    .createdAt(LocalDateTime.now())
+                                    .updatedAt(LocalDateTime.now())
+                                    .build()
+                    );
                 }
             }
+        }
 
-            // 변경 있을때만 저장
-            if (changed) {
-                incidentRepository.save(incident);
-            }
-            // KBArticle title 동기화
-            if (title != null && !title.isBlank()) {
-                kbArticleRepository.findByIncident_Id(incident.getId()).ifPresent(kb -> {
-                    if (!title.equals(kb.getIncidentTitle())) {
-                        kb.setIncidentTitle(title);
-                        kbArticleRepository.save(kb);
-                    }
-                });
-            }
-        });
+        if (changed) {
+            incidentRepository.save(incident);
+        }
+
+        // KBArticle title 동기화
+        if (title != null && !title.isBlank()) {
+            kbArticleRepository.findByIncident_Id(incident.getId()).ifPresent(kb -> {
+                if (!title.equals(kb.getIncidentTitle())) {
+                    kb.setIncidentTitle(title);
+                    kbArticleRepository.save(kb);
+                }
+            });
+        }
     }
 
 

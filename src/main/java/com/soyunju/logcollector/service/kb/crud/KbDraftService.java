@@ -115,7 +115,7 @@ public class KbDraftService {
         // createdBy
         if (createdBy != null && !createdBy.isBlank()) {
             try {
-                CreatedBy cb = CreatedBy.valueOf(createdBy.toLowerCase());
+                CreatedBy cb = CreatedBy.valueOf(createdBy.toUpperCase());
                 kb.setCreatedBy(cb);
             } catch (IllegalArgumentException ignore) {
             }
@@ -173,6 +173,9 @@ public class KbDraftService {
         }
         // title 동기화
         incident.setIncidentTitle(title);
+        if (incident.getCreatedBy() == null) {
+            incident.setCreatedBy(String.valueOf(CreatedBy.system));
+        }
 
         String body = String.format("""
                         ## 에러 코드: %s
@@ -236,7 +239,7 @@ public class KbDraftService {
                 .updatedAt(kb.getUpdatedAt())
                 .serviceName(inc != null ? inc.getServiceName() : null)
                 .errorCode(inc != null ? inc.getErrorCode() : null)
-                .title(null)
+                .title(kb.getIncidentTitle())
                 .build();
     }
 

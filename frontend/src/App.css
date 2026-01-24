@@ -1,0 +1,43 @@
+/* src/App.css */
+
+/* 전체 배경색을 약간 회색조로 주어 카드 컴포넌트가 돋보이게 함 */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+}
+
+/* 테이블 셀 내 텍스트 정렬 및 스타일 */
+.table th {
+    font-weight: 600;
+    color: #495057;
+    background-color: #f1f3f5;
+}
+
+.td.truncate {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 모노스페이스 폰트 (로그 스택트레이스 등) */
+.mono {
+    font-family: 'D2Coding', 'Consolas', monospace;
+    font-size: 0.9em;
+}
+
+/* 카드 컴포넌트 그림자 효과 */
+.card {
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+    border-radius: 8px;
+    padding: 1.5rem;
+    background-color: white;
+}
+
+/* 상태별 배지 색상 보정 (Bootstrap Badge와 별도로 커스텀 필요시) */
+.badge-status {
+    font-size: 0.85em;
+    padding: 0.5em 0.8em;
+}
