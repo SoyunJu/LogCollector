@@ -1,173 +1,122 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { LogCollectorApi } from '../api/logCollectorApi';
-import { Form, Button, Card, Spinner, Row, Col, Badge } from 'react-bootstrap';
+import { formatKst } from '../utils/date';
 
 const KbDetailPage = () => {
-const { id } = useParams();
-const navigate = useNavigate();
+const params = useParams();
+const kbArticleId = useMemo(() => params.kbArticleId, [params.kbArticleId]);
 
-const [data, setData] = useState({ title: '', content: '', createdBy: 'user' });
-const [timeInfo, setTimeInfo] = useState(''); // [추가] 시간 정보 상태
-const [status, setStatus] = useState('');
-const [loading, setLoading] = useState(true);
-const [contentPlaceholder, setContentPlaceholder] = useState('');
+const [kb, setKb] = useState(null);
+const [loading, setLoading] = useState(false);
 
-// Date 헬퍼 함수
-const formatKst = (v) => {
-if (!v) return '';
-if (v instanceof Date) return Number.isNaN(v.getTime()) ? '' : v.toLocaleString('ko-KR');
-const s = String(v).trim();
-const isoLike = s.includes(' ') && !s.includes('T') ? s.replace(' ', 'T') + '+09:00' : s;
-const d = new Date(isoLike);
-return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('ko-KR');
-};
+const [addendumPage, setAddendumPage] = useState(0);
+const [addendumSize, setAddendumSize] = useState(20);
 
-useEffect(() => {
-let mounted = true;
+const [title, setTitle] = useState('');
+const [content, setContent] = useState('');
+const [createdBy, setCreatedBy] = useState('user');
 
-const fetchDetail = async () => {
+const load = async () => {
+setLoading(true);
 try {
-const res = await LogCollectorApi.getKbDetail(id);
-if (!mounted) return;
-
-const serverTitle = res.data?.incidentTitle || res.data?.title || '';
-const serverContent = res.data?.content || '';
-const serverCreatedBy = res.data?.createdBy || 'user';
-const serverStatus = res.data?.status || '';
-
-// [추가] 시간 정보 추출 (Incident 발생시간 우선, 없으면 KB 생성시간)
-const serverTime = res.data?.incidentFirstOccurredAt || res.data?.firstOccurredAt || res.data?.createdAt || '';
-
-setStatus(serverStatus);
-setTimeInfo(serverTime);
-
-// system 템플릿이면 placeholder로만 보여주기
-if (
-serverCreatedBy === 'system' &&
-(serverStatus === 'OPEN' || serverStatus === 'UNDERWAY') &&
-serverContent
-) {
-setContentPlaceholder(serverContent);
-setData({ title: serverTitle, content: '', createdBy: serverCreatedBy });
-} else {
-setContentPlaceholder('');
-setData({ title: serverTitle, content: serverContent, createdBy: serverCreatedBy });
-}
-} catch (err) {
-alert('KB 상세 조회 실패: ' + (err.response?.data?.message || err.message));
+const res = await LogCollectorApi.getKbDetail(kbArticleId, { addendumPage, addendumSize });
+setKb(res.data);
+setTitle(res.data?.incidentTitle ?? '');
+setContent(res.data?.content ?? '');
 } finally {
-if (mounted) setLoading(false);
+setLoading(false);
 }
 };
 
-fetchDetail();
-return () => {
-mounted = false;
-};
-}, [id]);
+useEffect(() => { load(); }, [kbArticleId, addendumPage, addendumSize]); // eslint-disable-line
 
-const handleSaveDraft = async () => {
-try {
-const payload = { ...data };
-await LogCollectorApi.updateKbDraft(id, payload);
-alert('임시 저장 완료');
-navigate('/kb');
-} catch (err) {
-alert('오류 발생: ' + (err.response?.data?.message || err.message));
-}
+const saveAppend = async () => {
+await LogCollectorApi.postKbArticle(kbArticleId, { title, content, createdBy });
+await load();
 };
 
-const handleSaveResponded = async () => {
-if (!data.title?.trim() || !data.content?.trim()) {
-alert('RESPONDED로 전환하려면 Title과 Content가 모두 필요합니다.');
-return;
-}
-
-try {
-const payload = { ...data };
-await LogCollectorApi.updateKbDraft(id, payload);
-alert('저장 완료 (Title+Content 조건 충족 시 RESPONDED)');
-navigate('/kb');
-} catch (err) {
-alert('오류 발생: ' + (err.response?.data?.message || err.message));
-}
+const updateDraft = async () => {
+await LogCollectorApi.updateDraft(kbArticleId, { title, content, createdBy });
+await load();
 };
 
-if (loading) return <div className="text-center p-5"><Spinner animation="border" /></div>;
+if (!kb) return <div className="page">{loading ? 'Loading...' : 'No data'}</div>;
 
 return (
-<Card className="shadow-sm border-0">
-    <Card.Header className="bg-white d-flex justify-content-between align-items-center py-3">
-        <h5 className="mb-0 fw-bold">📝 KB 상세 / 수정 (ID: {id})</h5>
-        <Badge bg={(status === 'DEFINITE' || status === 'RESPONDED') ? 'success' : 'warning'}>
-        {status}
-        </Badge>
-    </Card.Header>
+<div className="page">
+    <div className="card">
+        <div className="spread">
+            <h3>KB Detail #{kb.id}</h3>
+            <div className="small">GET /api/kb/{'{id}'}</div>
+        </div>
 
-    <Card.Body>
-        <Form>
-            <Row className="mb-3">
-                <Col md={6}>
-                <Form.Group>
-                    <Form.Label className="fw-bold">Title (Incident)</Form.Label>
-                    <Form.Control
-                            value={data.title}
-                            onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="장애 현상 요약"
-                    />
-                </Form.Group>
-                </Col>
+        <div className="row small">
+            <div>Status: {kb.status}</div>
+            <div>Service: {kb.serviceName ?? '-'}</div>
+            <div>ErrorCode: {kb.errorCode ?? '-'}</div>
+        </div>
 
-                {/* [추가] 발생 시간 필드 */}
-                <Col md={3}>
-                <Form.Group>
-                    <Form.Label className="fw-bold">Time (Occurred)</Form.Label>
-                    <Form.Control
-                            value={formatKst(timeInfo)}
-                            readOnly
-                            disabled
-                            className="bg-light"
-                    />
-                </Form.Group>
-                </Col>
+        <div className="row small">
+            <div>CreatedAt: {formatKst(kb.createdAt)}</div>
+            <div>UpdatedAt: {formatKst(kb.updatedAt)}</div>
+            <div>LastActivity: {formatKst(kb.lastActivityAt)}</div>
+        </div>
+    </div>
 
-                <Col md={3}>
-                <Form.Group>
-                    <Form.Label className="fw-bold">Author</Form.Label>
-                    <Form.Select
-                            value={data.createdBy}
-                            onChange={e => setData(prev => ({ ...prev, createdBy: e.target.value }))}
-                    >
-                    <option value="user">user</option>
-                    <option value="system">system</option>
-                    <option value="admin">admin</option>
-                    </Form.Select>
-                </Form.Group>
-                </Col>
-            </Row>
+    <div className="card">
+        <div className="row">
+            <input className="input" value={title} placeholder="incidentTitle"
+                   onChange={(e) => setTitle(e.target.value)} />
+            <select className="select" value={createdBy} onChange={(e) => setCreatedBy(e.target.value)}>
+            <option value="user">user</option>
+            <option value="system">system</option>
+            <option value="admin">admin</option>
+            </select>
+        </div>
 
-            <Form.Group className="mb-4">
-                <Form.Label className="fw-bold">Content</Form.Label>
-                <Form.Control
-                        as="textarea"
-                        rows={12}
-                        value={data.content}
-                        placeholder={contentPlaceholder || '분석/조치 내용을 입력하세요'}
-                onChange={e => setData(prev => ({ ...prev, content: e.target.value }))}
-                className="font-monospace"
-                />
-            </Form.Group>
-
-            <div className="d-flex justify-content-end gap-2">
-                <Button variant="secondary" onClick={() => navigate('/kb')}>취소</Button>
-                <Button variant="outline-primary" onClick={handleSaveDraft}>임시 저장 (UNDERWAY)</Button>
-                <Button variant="primary" onClick={handleSaveResponded}>저장 후 RESPONDED</Button>
+        <div className="row">
+          <textarea className="textarea" value={content} placeholder="content (append + latest content)"
+                    onChange={(e) => setContent(e.target.value)} />
             </div>
-        </Form>
-    </Card.Body>
-</Card>
-);
-};
 
-export default KbDetailPage;
+            <div className="row">
+            <button className="btn primary" type="button" onClick={saveAppend} disabled={loading}>Save / Append</button>
+            <button className="btn" type="button" onClick={updateDraft} disabled={loading}>Update Draft</button>
+            </div>
+            </div>
+
+            <div className="card">
+            <div className="spread">
+            <h4>Addendums</h4>
+            <div className="small">
+            page={kb.addendumPage ?? addendumPage}, size={kb.addendumSize ?? addendumSize},
+            total={kb.addendumTotal ?? '-'}, hasNext={(kb.addendumHasNext ?? false) ? 'Y' : 'N'}
+            </div>
+            </div>
+
+            <div className="row">
+            <button className="btn" disabled={addendumPage === 0} onClick={() => setAddendumPage(Math.max(0, addendumPage - 1))}>Prev</button>
+            <button className="btn" disabled={!(kb.addendumHasNext ?? false)} onClick={() => setAddendumPage(addendumPage + 1)}>Next</button>
+            <select className="select" value={addendumSize} onChange={(e) => { setAddendumPage(0); setAddendumSize(Number(e.target.value)); }}>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            </select>
+            </div>
+
+            <ul>
+            {(kb.addendums ?? []).map((a) => (
+            <li key={a.id}>
+            <div className="small">#{a.id} / {a.createdBy} / {formatKst(a.createdAt)}</div>
+            <div className="mono">{a.content}</div>
+            </li>
+            ))}
+            </ul>
+            </div>
+            </div>
+            );
+            };
+
+            export default KbDetailPage;

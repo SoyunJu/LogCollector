@@ -1,102 +1,87 @@
 import React, { useEffect, useState } from 'react';
 import { LogCollectorApi } from '../api/logCollectorApi';
-import { Table, Badge, Button, Card, Form } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { formatKst } from '../utils/date';
 
 const KbDashboard = () => {
-const [articles, setArticles] = useState([]);
-// 검색 필터 상태
-const [search, setSearch] = useState({ status: '', keyword: '' });
-const navigate = useNavigate();
+const [q, setQ] = useState({ status: '', keyword: '', createdBy: '', page: 0, size: 20 });
+const [rows, setRows] = useState([]);
+const [loading, setLoading] = useState(false);
 
-// [추가] Date 헬퍼 함수
-const formatKst = (v) => {
-if (!v) return '-';
-if (v instanceof Date) {
-return Number.isNaN(v.getTime()) ? '-' : v.toLocaleString('ko-KR');
+const load = async () => {
+setLoading(true);
+try {
+const res = await LogCollectorApi.listKb(q);
+const data = res.data?.content ?? res.data ?? [];
+setRows(data);
+} finally {
+setLoading(false);
 }
-const s = String(v).trim();
-const isoLike = s.includes(' ') && !s.includes('T') ? s.replace(' ', 'T') + '+09:00' : s;
-const d = new Date(isoLike);
-return Number.isNaN(d.getTime()) ? '-' : d.toLocaleString('ko-KR');
 };
 
-// 목록 조회 함수
-const fetchArticles = () => {
-const params = {};
-if (search.status) params.status = search.status;
-if (search.keyword) params.keyword = search.keyword;
-
-LogCollectorApi.getKbArticles(params).then(res => setArticles(res.data.content));
-};
-
-useEffect(() => {
-fetchArticles();
-// eslint-disable-next-line
-}, []);
-
-const handleSearch = (e) => {
-e.preventDefault();
-fetchArticles();
-};
+useEffect(() => { load(); }, [q.page, q.size]); // eslint-disable-line
 
 return (
-<Card className="shadow-sm border-0">
-    <Card.Header className="bg-white py-3 d-flex justify-content-between align-items-center">
-        <h5 className="mb-0 fw-bold">📚 지식 베이스 (Knowledge Base)</h5>
+<div className="page">
+    <div className="card">
+        <div className="spread">
+            <h3>KB Articles</h3>
+            <div className="small">GET /api/kb</div>
+        </div>
 
-        <Form onSubmit={handleSearch} className="d-flex gap-2">
-            <Form.Select size="sm" value={search.status} onChange={e => setSearch(prev => ({ ...prev, status: e.target.value }))}>
-            <option value="">전체 상태</option>
-            <option value="OPEN">OPEN (초안)</option>
-            <option value="UNDERWAY">UNDERWAY (작성중)</option>
-            <option value="RESPONDED">RESPONDED (완료)</option>
-            </Form.Select>
-            <Form.Control
-                    size="sm"
-                    placeholder="제목 검색..."
-                    value={search.keyword}
-                    onChange={e => setSearch(prev => ({ ...prev, keyword: e.target.value }))}
-            />
-            <Button size="sm" variant="dark" type="submit">검색</Button>
-        </Form>
-    </Card.Header>
-    <Table hover responsive className="mb-0 align-middle">
-        <thead className="table-light">
+        <div className="row">
+            <select className="select" value={q.status} onChange={(e) => setQ({ ...q, status: e.target.value })}>
+            <option value="">(all)</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="IN_PROGRESS">IN_PROGRESS</option>
+            <option value="PUBLISHED">PUBLISHED</option>
+            <option value="ARCHIVED">ARCHIVED</option>
+            </select>
+
+            <input className="input" placeholder="keyword" value={q.keyword}
+                   onChange={(e) => setQ({ ...q, keyword: e.target.value })} />
+
+            <input className="input" placeholder="createdBy(system/user/admin)" value={q.createdBy}
+                   onChange={(e) => setQ({ ...q, createdBy: e.target.value })} />
+
+            <button className="btn" type="button" onClick={() => { setQ({ ...q, page: 0 }); load(); }} disabled={loading}>
+            Search
+            </button>
+        </div>
+    </div>
+
+    <table className="table">
+        <thead>
         <tr>
-            <th>ID</th>
-            <th>장애 현상 (제목)</th>
-            <th>상태</th>
-            <th>발생일</th> {/* [추가] 발생일 컬럼 */}
-            <th>신뢰도</th>
-            <th>작성자</th>
-            <th>작업</th>
+            <th className="th">id</th>
+            <th className="th">status</th>
+            <th className="th">title</th>
+            <th className="th">createdBy</th>
+            <th className="th">lastActivity</th>
+            <th className="th">actions</th>
         </tr>
         </thead>
         <tbody>
-        {articles.length === 0 ? (
-        <tr><td colSpan="7" className="text-center py-5 text-muted">등록된 기술 문서가 없습니다. 로그 상세에서 'KB 등록'을 진행해주세요.</td></tr>
-        ) : articles.map(a => (
-        <tr key={a.id}>
-            <td>{a.id}</td>
-            <td className="fw-bold"> {a.incidentTitle || a.title || <span className="text-muted">(제목 없음 - 초안)</span>}</td>
-            <td>
-                <Badge bg={a.status === 'DEFINITE' || a.status === 'RESPONDED' ? 'success' : 'info'}>{a.status}</Badge>
-            </td>
-            {/* [추가] 날짜 표시 (인시던트 발생일 우선, 없으면 생성일) */}
-            <td>{formatKst(a.firstOccurredAt || a.createdAt)}</td>
-            <td>⭐ {a.confidenceLevel}</td>
-            <td>{a.createdBy}</td>
-            <td>
-                <Button size="sm" variant="outline-primary" onClick={() => navigate(`/kb/${a.id}`)}>
-                상세 / 수정
-                </Button>
+        {rows.map((r) => (
+        <tr key={r.id}>
+            <td className="td">{r.id}</td>
+            <td className="td">{r.status}</td>
+            <td className="td truncate">{r.incidentTitle ?? '-'}</td>
+            <td className="td">{r.createdBy ?? '-'}</td>
+            <td className="td">{formatKst(r.lastActivityAt ?? r.updatedAt ?? r.createdAt)}</td>
+            <td className="td">
+                <a className="btn" href={`/kb/${r.id}`}>Detail</a>
             </td>
         </tr>
         ))}
         </tbody>
-    </Table>
-</Card>
+    </table>
+
+    <div className="row">
+        <button className="btn" disabled={q.page === 0} onClick={() => setQ({ ...q, page: Math.max(0, q.page - 1) })}>Prev</button>
+        <div className="small">page: {q.page}</div>
+        <button className="btn" onClick={() => setQ({ ...q, page: q.page + 1 })}>Next</button>
+    </div>
+</div>
 );
 };
 

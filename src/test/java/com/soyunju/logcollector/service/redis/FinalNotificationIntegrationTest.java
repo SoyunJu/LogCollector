@@ -18,7 +18,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@ActiveProfiles({"dev", "local"}) // 테스트에서 슬랙/시크릿 불필요. 필요하면 secret 추가
+@ActiveProfiles("test") // 테스트에서 슬랙/시크릿 불필요. 필요하면 secret 추가
 class FinalNotificationIntegrationTest {
 
     @Autowired private ErrorLogCrdService errorLogCrdService;
