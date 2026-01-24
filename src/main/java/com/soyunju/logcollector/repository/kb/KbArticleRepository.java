@@ -53,18 +53,19 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
 
     Optional<KbArticle> findByIncident_Id(Long incidentId);
 
-    // DEFINITE status
+    // 재발생시 마킹
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional(transactionManager = "kbTransactionManager")
     @Query("""
-            update KbArticle k
-            set k.status = :toStatus, k.confidenceLevel = :confidenceLevel
-            where k.status in :fromStatuses and k.lastActivityAt < :cutoff
+                UPDATE KbArticle k
+                SET k.recurAt = :now,
+                    k.updatedAt = :now
+                WHERE k.incident.id = :incidentId
             """)
-    int bulkPromoteDefiniteByLastActivity(@Param("toStatus") KbStatus toStatus,
-                                          @Param("confidenceLevel") int confidenceLevel,
-                                          @Param("fromStatuses") List<KbStatus> fromStatuses,
-                                          @Param("cutoff") LocalDateTime cutoff);
+    int markRecurByIncidentId(@Param("incidentId") Long incidentId,
+                              @Param("now") LocalDateTime now);
+
+
 }
 
 

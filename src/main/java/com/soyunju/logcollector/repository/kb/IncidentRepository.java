@@ -3,6 +3,8 @@ package com.soyunju.logcollector.repository.kb;
 import com.soyunju.logcollector.domain.kb.Incident;
 import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -47,9 +49,31 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, Incid
             WHEN summary IS NULL OR TRIM(summary) = '' THEN VALUES(summary)
             ELSE summary
         END,
-
-        status = CASE WHEN status = 'RESOLVED' THEN 'OPEN' ELSE status END,
-        resolved_at = CASE WHEN status = 'RESOLVED' THEN NULL ELSE resolved_at END
+            
+                status = CASE
+                WHEN status IN ('RESOLVED', 'CLOSED') THEN 'OPEN'
+                ELSE status
+                END,
+            
+                resolved_at = CASE
+                WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
+                ELSE resolved_at               
+                END,  
+            
+                close_eligible_at = CASE
+                WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
+                ELSE close_eligible_at
+                END,    
+            
+                closed_at = CASE
+                WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
+                ELSE closed_at
+                END,   
+            
+                reopened_at = CASE
+                WHEN status IN ('RESOLVED', 'CLOSED') THEN VALUES(last_occurred_at)
+                ELSE reopened_at
+                END
     """, nativeQuery = true)
     void upsertIncident(
             @Param("logHash") String logHash,
@@ -64,5 +88,23 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, Incid
     // Not RESOLVED incident
     @Query("SELECT i.logHash FROM Incident i WHERE i.status <> :status")
     List<String> findNotResolvedLogHash(@Param("status") IncidentStatus status);
+
+    Page<Incident> findByStatusNot(IncidentStatus status, Pageable pageable);
+
+    Page<Incident> findByStatus(IncidentStatus status, Pageable pageable);
+
+    // CLOSE 처리
+    @Query("""
+            SELECT i FROM Incident i
+            WHERE i.status = :status
+              AND i.closeEligibleAt IS NOT NULL
+              AND i.closeEligibleAt <= :threshold
+              AND (i.closedAt IS NULL)
+            """)
+    List<Incident> findCloseCandidates(
+            @Param("status") IncidentStatus status,
+            @Param("threshold") LocalDateTime threshold
+    );
+
 
 }

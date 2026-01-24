@@ -69,6 +69,15 @@ public class Incident {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "close_eligible_at")
+    private LocalDateTime closeEligibleAt;
+
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
+
+    @Column(name = "reopened_at")
+    private LocalDateTime reopenedAt;
+
     @PrePersist
     void prePersist() {
         LocalDateTime now = LocalDateTime.now();

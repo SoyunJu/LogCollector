@@ -55,6 +55,12 @@ public class KbArticle {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
+    @Column(name = "recur_at")
+    private LocalDateTime recurAt;
+
     public void touchActivity() {
         LocalDateTime now = LocalDateTime.now();
         this.lastActivityAt = now;
@@ -64,7 +70,7 @@ public class KbArticle {
     @PrePersist
     void prePersist() {
         LocalDateTime now = LocalDateTime.now();
-        if (status == null) status = KbStatus.OPEN;
+        if (status == null) status = KbStatus.DRAFT;
         if (createdAt == null) createdAt = now;
         if (updatedAt == null) updatedAt = now;
         if (lastActivityAt == null) lastActivityAt = now;

@@ -6,6 +6,7 @@ import com.soyunju.logcollector.domain.kb.SystemDraft;
 import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
 import com.soyunju.logcollector.domain.kb.enums.DraftReason;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
+import com.soyunju.logcollector.dto.kb.KbArticleResponse;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
 import com.soyunju.logcollector.repository.kb.SystemDraftRepository;
@@ -25,12 +26,12 @@ public class KbDraftService {
     private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;
     private final SystemDraftRepository systemDraftRepository;
-
-    // Draft (초안) 여부 확인을 위한 상태 리스트
     private static final List<KbStatus> ACTIVE_DRAFT_STATUSES =
-            List.of(KbStatus.OPEN, KbStatus.UNDERWAY);
+            List.of(KbStatus.DRAFT, KbStatus.IN_PROGRESS);
 
-    public KbDraftService(IncidentRepository incidentRepository, KbArticleRepository kbArticleRepository, SystemDraftRepository systemDraftRepository, KbCrudService kbCrudService) {
+    public KbDraftService(IncidentRepository incidentRepository,
+                          KbArticleRepository kbArticleRepository,
+                          SystemDraftRepository systemDraftRepository) {
         this.incidentRepository = incidentRepository;
         this.kbArticleRepository = kbArticleRepository;
         this.systemDraftRepository = systemDraftRepository;
@@ -42,17 +43,24 @@ public class KbDraftService {
         return createSystemDraft(incidentId, 0, 0, DraftReason.HIGH_RECUR);
     }
 
-    // System Draft 중복 방지 적용
+    // System Draft
     @Transactional(transactionManager = "kbTransactionManager")
     public Long createSystemDraft(Long incidentId,
-                                          int hostCount,
-                                          int repeatCount,
-                                          DraftReason reason) {
+                                  int hostCount,
+                                  int repeatCount,
+                                  DraftReason reason) {
+
+        // 중복 방지
+        Optional<KbArticle> existingKb = kbArticleRepository.findByIncident_Id(incidentId);
+        if (existingKb.isPresent()) {
+            return existingKb.get().getId();
+        }
         Incident incident = incidentRepository.findById(incidentId)
                 .orElseThrow(() -> new IllegalArgumentException("Incident를 찾을 수 없습니다. incidentId=" + incidentId));
 
+        SystemDraft savedDraft = null;
         try {
-            SystemDraft draft = systemDraftRepository.save(
+            savedDraft = systemDraftRepository.save(
                     SystemDraft.builder()
                             .incident(incident)
                             .hostCount(hostCount)
@@ -61,17 +69,19 @@ public class KbDraftService {
                             .createdAt(LocalDateTime.now())
                             .build()
             );
-            Long kbArticleId = createSystemKbArticle(incidentId);
-            // system_draft 테이블과 kb_article 테이블 연결
-            draft.setCreatedKbArticleId(kbArticleId);
-            systemDraftRepository.save(draft);
-
-            return kbArticleId;
-
         } catch (DataIntegrityViolationException e) {
-            log.info("[SYSTEM][SKIP] DRAFT가 이미 존재합니다. incidentId={}", incidentId);
-            return null;
+            log.info("[SYSTEM][SKIP] system_draft가 이미 존재합니다. incidentId={}", incidentId);
         }
+
+        // KBArticle draft 생성
+        Long kbArticleId = createSystemKbArticle(incident);
+
+        if (savedDraft != null) {
+            savedDraft.setCreatedKbArticleId(kbArticleId);
+            systemDraftRepository.save(savedDraft);
+        }
+
+        return kbArticleId;
     }
 
     // draft 유무 체크
@@ -84,106 +94,107 @@ public class KbDraftService {
                 .map(KbArticle::getId);
     }
 
-
     @Transactional(transactionManager = "kbTransactionManager")
     public void updateDraft(Long kbArticleId, String title, String content, String createdBy) {
         KbArticle kb = kbArticleRepository.findById(kbArticleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 Draft를 찾을 수 없습니다. ID: " + kbArticleId));
-        // incident title, content 동기화
+
+        if (kb.getStatus() == KbStatus.PUBLISHED || kb.getStatus() == KbStatus.ARCHIVED) {
+            throw new IllegalStateException("PUBLISHED/ARCHIVED 상태에서는 수정할 수 없습니다. kbArticleId=" + kbArticleId);
+        }
+        // title 동기화
         if (title != null && !title.isBlank()) {
             kb.setIncidentTitle(title);
             if (kb.getIncident() != null) {
                 kb.getIncident().setIncidentTitle(title);
             }
         }
-        kb.setContent(content != null ? content : kb.getContent());
-
-        // ===== createdBy(작성자) 갱신 =====
+        if (content != null) {
+            kb.setContent(content);
+        }
+        // createdBy
         if (createdBy != null && !createdBy.isBlank()) {
             try {
-                com.soyunju.logcollector.domain.kb.enums.CreatedBy cb =
-                        com.soyunju.logcollector.domain.kb.enums.CreatedBy.valueOf(createdBy.toUpperCase());
+                CreatedBy cb = CreatedBy.valueOf(createdBy.toLowerCase());
                 kb.setCreatedBy(cb);
-            } catch (IllegalArgumentException e) {
-                // 잘못된 createdBy 값은 무시 (system/user/admin 외 값 방어)
+            } catch (IllegalArgumentException ignore) {
             }
         }
 
-        // ===== KB Status 결정 =====
-        if (kb.getStatus() != KbStatus.DEFINITE) {
-            boolean hasTitle = kb.getIncidentTitle() != null && !kb.getIncidentTitle().isBlank();
-            boolean hasContent = kb.getContent() != null && !kb.getContent().isBlank();
+        boolean hasTitle = kb.getIncidentTitle() != null && !kb.getIncidentTitle().isBlank();
+        boolean hasContent = kb.getContent() != null && !kb.getContent().isBlank();
 
-            if (hasTitle && hasContent) {
-                kb.setStatus(KbStatus.RESPONDED);
-            } else {
-                kb.setStatus(KbStatus.UNDERWAY);
+        if (hasTitle && hasContent) {
+            kb.setStatus(KbStatus.PUBLISHED);
+            if (kb.getPublishedAt() == null) {
+                kb.setPublishedAt(LocalDateTime.now());
             }
-        }
-
-        // ===== Incident Status 동기화 =====
-        if (kb.getIncident() != null) {
-            var incident = kb.getIncident();
-
-            // RESPONDED -> Incident RESOLVED
-            if (kb.getStatus() == KbStatus.RESPONDED) {
-                if (incident.getStatus() != com.soyunju.logcollector.domain.kb.enums.IncidentStatus.RESOLVED) {
-                    incident.setStatus(com.soyunju.logcollector.domain.kb.enums.IncidentStatus.RESOLVED);
-                    incident.setResolvedAt(java.time.LocalDateTime.now());
-                }
+            if (kb.getIncident() != null && kb.getIncident().getCloseEligibleAt() == null) {
+                kb.getIncident().setCloseEligibleAt(LocalDateTime.now());
             }
-            // Draft 진행 중인데 Incident가 OPEN이면 UNDERWAY로만 끌어올림
-            else if (incident.getStatus() == com.soyunju.logcollector.domain.kb.enums.IncidentStatus.OPEN) {
-                incident.setStatus(com.soyunju.logcollector.domain.kb.enums.IncidentStatus.UNDERWAY);
-            }
-        }
-        kb.touchActivity();
-    }
-
-        /*
-        if (org.springframework.util.StringUtils.hasText(content)) {
-            kb.setStatus(KbStatus.RESPONDED);
         } else {
-            kb.setStatus(KbStatus.UNDERWAY);
+            kb.setStatus(KbStatus.IN_PROGRESS);
         }
         kb.touchActivity();
-    } */
+        kbArticleRepository.save(kb);
+    }
 
     // System create KbArticle
     @Transactional(transactionManager = "kbTransactionManager")
-    private Long createSystemKbArticle(Long incidentId) {
+    private Long createSystemKbArticle(Incident incident) {
 
-        Optional<KbArticle> existing = kbArticleRepository.findByIncident_Id(incidentId);
+        Optional<KbArticle> existing = kbArticleRepository.findByIncident_Id(incident.getId());
         if (existing.isPresent()) return existing.get().getId();
-
-        Incident incident = incidentRepository.findById(incidentId)
-                .orElseThrow(() -> new IllegalArgumentException("Incident를 찾을 수 없습니다. incidentId=" + incidentId));
 
         String serviceName = (incident.getServiceName() == null || incident.getServiceName().isBlank())
                 ? "unknown-service"
                 : incident.getServiceName();
 
-        String title = "[SYSTEM] 에러 현상을 입력하세요 [" + serviceName + "]";
-        incident.setIncidentTitle(title);
+        String errorCode = incident.getErrorCode();
+        // 40자로 자르기. 필요시 50 등으로 늘리기 가능
+        String summaryShort = normalizeAndTruncate(incident.getSummary(), 40);
 
-        if (title.length() > 255) title = title.substring(0, 255);
+        String title;
+        if (errorCode != null && !errorCode.isBlank()) {
+            title = "[SYSTEM][" + serviceName + "] " + errorCode;
+            if (summaryShort != null && !summaryShort.isBlank()) {
+                title += " - " + summaryShort;
+            }
+        } else {
+            String hashPrefix = incident.getLogHash() != null
+                    ? incident.getLogHash().substring(0, Math.min(8, incident.getLogHash().length()))
+                    : "unknown";
+            title = "[SYSTEM][" + serviceName + "] Incident #" + hashPrefix;
+        }
+
+        // DB 길이 보호
+        if (title.length() > 255) {
+            title = title.substring(0, 255);
+        }
+        // title 동기화
+        incident.setIncidentTitle(title);
 
         String body = String.format("""
                         ## 에러 코드: %s
                         ## 요약: %s
+                        ## 발생/최근 발생: %s / %s
+                        ## 반복 횟수: %s
                         ## 스택트레이스:
                         %s
                         """,
-                incident.getErrorCode(),
-                incident.getSummary(),
-                incident.getStackTrace()
+                nullToDash(incident.getErrorCode()),
+                nullToDash(incident.getSummary()),
+                incident.getFirstOccurredAt(),
+                incident.getLastOccurredAt(),
+                incident.getRepeatCount(),
+                nullToDash(incident.getStackTrace())
         );
 
         KbArticle kb = KbArticle.builder()
                 .incident(incident)
                 .incidentTitle(title)
                 .content(body)
-                .status(KbStatus.OPEN)
+                .status(KbStatus.DRAFT)
                 .createdBy(CreatedBy.system)
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -191,17 +202,57 @@ public class KbDraftService {
         return kbArticleRepository.save(kb).getId();
     }
 
+    private static String nullToDash(String v) {
+        return (v == null || v.isBlank()) ? "-" : v;
+    }
+
     // 7일간 초안 유지 -> DEL 조치
     @Transactional(transactionManager = "kbTransactionManager")
     public void cleanupExpiredDrafts() {
-        java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusDays(7);
+        LocalDateTime threshold = LocalDateTime.now().minusDays(7);
 
         kbArticleRepository.deleteExpiredSystemDrafts(
-                com.soyunju.logcollector.domain.kb.enums.CreatedBy.system,
-                com.soyunju.logcollector.domain.kb.enums.KbStatus.OPEN,
+                CreatedBy.system,
+                KbStatus.DRAFT,
                 threshold, // created_at
-                threshold // last_activity_at
+                threshold  // last_activity_at
         );
+    }
+
+    // response 채우기
+    public static KbArticleResponse from(KbArticle kb) {
+        Incident inc = kb.getIncident();
+
+        return KbArticleResponse.builder()
+                .id(kb.getId())
+                .incidentId(inc != null ? inc.getId() : null)
+                .incidentTitle(kb.getIncidentTitle())
+                .content(kb.getContent())
+                .status(kb.getStatus() != null ? kb.getStatus().name() : null)
+                .confidenceLevel(kb.getConfidenceLevel())
+                .createdBy(kb.getCreatedBy() != null ? kb.getCreatedBy().name() : null)
+                .lastActivityAt(kb.getLastActivityAt())
+                .createdAt(kb.getCreatedAt())
+                .updatedAt(kb.getUpdatedAt())
+                .serviceName(inc != null ? inc.getServiceName() : null)
+                .errorCode(inc != null ? inc.getErrorCode() : null)
+                .title(null)
+                .build();
+    }
+
+    // summary 자르기 헬퍼
+    private static String normalizeAndTruncate(String s, int maxLen) {
+        if (s == null) return null;
+
+        String cleaned = s
+                .replaceAll("[\\r\\n\\t]+", " ")
+                .replaceAll("\\s{2,}", " ")
+                .trim();
+
+        if (cleaned.length() <= maxLen) {
+            return cleaned;
+        }
+        return cleaned.substring(0, maxLen - 1) + "…";
     }
 
 }

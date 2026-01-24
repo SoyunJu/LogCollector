@@ -81,4 +81,12 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
             @Param("logHash") String logHash
     );
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE ErrorLog e SET e.status = com.soyunju.logcollector.domain.lc.ErrorStatus.IGNORED WHERE e.logHash = :logHash")
+    int markIgnoredByLogHash(@Param("logHash") String logHash);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE ErrorLog e SET e.status = com.soyunju.logcollector.domain.lc.ErrorStatus.NEW WHERE e.logHash = :logHash")
+    int unmarkIgnoredByLogHash(@Param("logHash") String logHash);
+
 }

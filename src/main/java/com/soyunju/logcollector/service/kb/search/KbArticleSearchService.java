@@ -15,17 +15,18 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
-
+import static com.soyunju.logcollector.domain.kb.QKbAddendum.kbAddendum;
 import static com.soyunju.logcollector.domain.kb.QKbArticle.kbArticle;
 
 @Slf4j
 @Service
+@Transactional(readOnly = true, transactionManager = "kbTransactionManager")
 public class KbArticleSearchService {
 
     private final KbArticleRepository kbArticleRepository;
     private final JPAQueryFactory queryFactory;
+
 
     public KbArticleSearchService(
             KbArticleRepository kbArticleRepository,
@@ -90,11 +91,56 @@ public class KbArticleSearchService {
         return new PageImpl<>(content, pageable, totalCount);
     }
 
-    // KB 상세 조회
+    // KBarticle 상세 조회 addendum 0 ~ 20size
     @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
     public KbArticleResponse getArticle(Long kbArticleId) {
+        return getArticle(kbArticleId, 0, 20);
+    }
+
+    // KBarticle addendum paging)
+    @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
+    public KbArticleResponse getArticle(Long kbArticleId, int addendumPage, int addendumSize) {
+        // 방어
+        if (addendumPage < 0) addendumPage = 0;
+        if (addendumSize <= 0) addendumSize = 20;
+        if (addendumSize > 200) addendumSize = 200;
+
         KbArticle kb = kbArticleRepository.findByIdWithIncident(kbArticleId)
                 .orElseThrow(() -> new IllegalArgumentException("Base를 찾을 수 없습니다."));
+
+        long offset = (long) addendumPage * addendumSize;
+
+        // total count
+        Long total = queryFactory
+                .select(kbAddendum.count())
+                .from(kbAddendum)
+                .where(kbAddendum.kbArticle.id.eq(kbArticleId))
+                .fetchOne();
+
+        long totalCount = (total == null) ? 0L : total;
+
+        // content fetch (limit+1로 hasNext 판단)
+        List<com.soyunju.logcollector.domain.kb.KbAddendum> rows = queryFactory
+                .selectFrom(kbAddendum)
+                .where(kbAddendum.kbArticle.id.eq(kbArticleId))
+                .orderBy(kbAddendum.createdAt.desc(), kbAddendum.id.desc())
+                .offset(offset)
+                .limit(addendumSize + 1L)
+                .fetch();
+
+        boolean hasNext = rows.size() > addendumSize;
+        if (hasNext) {
+            rows = rows.subList(0, addendumSize);
+        }
+
+        List<KbArticleResponse.AddendumDto> addendums = rows.stream()
+                .map(a -> KbArticleResponse.AddendumDto.builder()
+                        .id(a.getId())
+                        .content(a.getContent())
+                        .createdBy(a.getCreatedBy() != null ? a.getCreatedBy().name() : null)
+                        .createdAt(a.getCreatedAt())
+                        .build())
+                .toList();
 
         return KbArticleResponse.builder()
                 .id(kb.getId())
@@ -104,6 +150,16 @@ public class KbArticleSearchService {
                 .status(kb.getStatus().name())
                 .createdAt(kb.getCreatedAt())
                 .createdBy(kb.getCreatedBy() != null ? kb.getCreatedBy().name() : null)
+
+                .serviceName(kb.getIncident() != null ? kb.getIncident().getServiceName() : null)
+                .errorCode(kb.getIncident() != null ? kb.getIncident().getErrorCode() : null)
+
+                .addendums(addendums)
+                .addendumPage(addendumPage)
+                .addendumSize(addendumSize)
+                .addendumTotal(totalCount)
+                .addendumHasNext(hasNext)
+
                 .build();
     }
 }

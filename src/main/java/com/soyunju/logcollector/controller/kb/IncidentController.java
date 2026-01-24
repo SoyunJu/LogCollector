@@ -15,6 +15,12 @@ public class IncidentController {
     private final IncidentService incidentService;
     private final IncidentSearchService incidentSearchService;
 
+    @GetMapping("/closed")
+    public ResponseEntity<org.springframework.data.domain.Page<com.soyunju.logcollector.dto.kb.IncidentResponse>> getClosedIncidents(
+            @org.springframework.data.web.PageableDefault(size = 20) org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(incidentService.findClosed(pageable));
+    }
+
     // logHash로 단건 조회
     @GetMapping("/{logHash}")
     public ResponseEntity<IncidentResponse> getByLogHash(@PathVariable String logHash) {

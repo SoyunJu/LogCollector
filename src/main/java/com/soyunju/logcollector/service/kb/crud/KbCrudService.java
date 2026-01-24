@@ -1,11 +1,10 @@
 package com.soyunju.logcollector.service.kb.crud;
 
-import com.soyunju.logcollector.domain.kb.Incident;
+import com.soyunju.logcollector.domain.kb.KbAddendum;
 import com.soyunju.logcollector.domain.kb.KbArticle;
 import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
-import com.soyunju.logcollector.repository.kb.IncidentRepository;
+import com.soyunju.logcollector.repository.kb.KbAddendumRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,103 +20,69 @@ import java.time.LocalDateTime;
 @Transactional(transactionManager = "kbTransactionManager")
 public class KbCrudService {
 
-    private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;
+    private final KbAddendumRepository kbAddendumRepository;
 
     // 사용자 입력 단계 (title-현상 필수, content-해결안은 nullable)
     @Transactional
     public void postArticle(Long kbArticleId, String title, String content, String createdBy) {
-        // KB Article 조회
         KbArticle kb = kbArticleRepository.findById(kbArticleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 KB를 찾을 수 없습니다."));
 
-        // Incident 동기화
-        if (kb.getIncident() != null) {
-            Long incidentId = kb.getIncident().getId();
-            Incident incident = incidentRepository.findById(incidentId)
-                    .orElseThrow(() -> new IllegalArgumentException("해당 Incident를 찾을 수 없습니다."));
-
-            // Title 동기화
-            if (StringUtils.hasText(title)) {
-                incident.setIncidentTitle(title);
-            }
-
-            // CreatedBy 동기화
-            if (StringUtils.hasText(createdBy)) {
-                try {
-                    incident.setCreatedBy(String.valueOf(CreatedBy.valueOf(createdBy)));
-                } catch (IllegalArgumentException e) {
-                    // Enum 매핑 실패 시 무시 or 예외 처리
-                }
-            }
+        // ARCHIVED는 upsert 불가
+        if (kb.getStatus() == KbStatus.ARCHIVED) {
+            throw new IllegalStateException("ARCHIVED 상태에서는 추가 작성할 수 없습니다. kbArticleId=" + kbArticleId);
         }
 
-        if (StringUtils.hasText(title)) {
-            kb.setIncidentTitle(title);
-        }
-        if (content != null) {
-            kb.setContent(content);
-        }
-
+        // createdBy 파싱(기본 user) // TODO : USER 를 로그인 된 ID 로 가져오기
+        CreatedBy cb = CreatedBy.user;
         if (StringUtils.hasText(createdBy)) {
             try {
-                kb.setCreatedBy(CreatedBy.valueOf(createdBy));
-            } catch (IllegalArgumentException e) {
-
+                cb = CreatedBy.valueOf(createdBy.toLowerCase());
+            } catch (IllegalArgumentException ignore) {
             }
-
-            if (kb.getCreatedBy() != CreatedBy.system) {
-                if (StringUtils.hasText(title) && StringUtils.hasText(content)) {
-                    kb.setStatus(KbStatus.RESPONDED);
-                    kb.setUpdatedAt(LocalDateTime.now());
-                    kb.setLastActivityAt(LocalDateTime.now());
-                } else {
-                    kb.setStatus(KbStatus.UNDERWAY);
-                }
-            }
-            //  Incident 상태 역방향 동기화
-            if (kb.getIncident() != null) {
-                Incident incident = kb.getIncident();
-                if (kb.getStatus() == KbStatus.RESPONDED) {
-                    incident.setStatus(IncidentStatus.RESOLVED);
-                }
-                else if (kb.getStatus() == KbStatus.UNDERWAY) {
-                    incident.setStatus(IncidentStatus.UNDERWAY);
-                }
-                // *주의: 여기서 incidentRepository.save(incident)는 영속성 컨텍스트에 의해 자동 처리되지만 명시해도 됨
-            }
-            kb.touchActivity();
         }
 
-/*
-        }
-        if (kb.getCreatedBy() != CreatedBy.system && StringUtils.hasText(title) && StringUtils.hasText(content)) {
-            kb.setStatus(KbStatus.RESPONDED);
-            kb.setUpdatedAt(LocalDateTime.now());
-            kb.touchActivity();
-
+        // Title 동기화
+        if (StringUtils.hasText(title)) {
+            kb.setIncidentTitle(title);
             if (kb.getIncident() != null) {
-                kb.getIncident().setStatus(com.soyunju.logcollector.domain.kb.enums.IncidentStatus.RESOLVED);
+                kb.getIncident().setIncidentTitle(title);
+            }
+        }
+
+        if (StringUtils.hasText(content)) {
+            kb.setContent(content);
+
+            kbAddendumRepository.save(
+                    KbAddendum.builder()
+                            .kbArticle(kb)
+                            .content(content)
+                            .createdBy(cb)
+                            .createdAt(LocalDateTime.now())
+                            .build()
+            );
+        }
+
+        boolean hasTitle = kb.getIncidentTitle() != null && !kb.getIncidentTitle().isBlank();
+        boolean hasContent = kb.getContent() != null && !kb.getContent().isBlank();
+
+        if (hasTitle && hasContent) {
+            kb.setStatus(KbStatus.PUBLISHED);
+            if (kb.getPublishedAt() == null) {
+                kb.setPublishedAt(LocalDateTime.now());
+            }
+            if (kb.getIncident() != null && kb.getIncident().getCloseEligibleAt() == null) {
+                kb.getIncident().setCloseEligibleAt(LocalDateTime.now());
             }
         } else {
-            throw new IllegalArgumentException("게시(RESPONDED)에는 title 과 content가 모두 필요합니다.");
-        }
-
- */
-
-        /*
-        // Status Update
-        if (kb.getCreatedBy() != CreatedBy.system) {
-            if (StringUtils.hasText(title) && StringUtils.hasText(content)) {
-                kb.setStatus(KbStatus.RESPONDED); // 제목+내용 있으면 응답 완료
-                kb.setUpdatedAt(LocalDateTime.now());
-            } else {
-                kb.setStatus(KbStatus.UNDERWAY); // 하나라도 부족하면 진행 중
+            if (kb.getStatus() != KbStatus.PUBLISHED) {
+                kb.setStatus(KbStatus.IN_PROGRESS);
             }
-            kb.touchActivity();
         }
-
-         */
+        kb.setCreatedBy(cb);
+        kb.touchActivity();
+        kbArticleRepository.save(kb);
     }
 
     private String formatDateOnly(LocalDateTime firstOccurredAt, LocalDateTime lastOccurredAt) {
@@ -131,6 +96,5 @@ public class KbCrudService {
         if (logHash == null || logHash.isBlank()) return "nohash";
         return logHash.length() <= 8 ? logHash : logHash.substring(0, 8);
     }
-
 
 }

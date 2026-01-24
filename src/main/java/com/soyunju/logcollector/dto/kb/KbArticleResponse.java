@@ -20,9 +20,18 @@ public class KbArticleResponse {
     private LocalDateTime lastActivityAt;
     private LocalDateTime createdAt;
     private String title;
+    private String serviceName;
+    private String errorCode;
+    private LocalDateTime updatedAt;
+    private LocalDateTime publishedAt;
 
     private List<String> tags;      // 키워드 리스트
     private List<AddendumDto> addendums;
+    private Integer addendumPage;
+    private Integer addendumSize;
+    private Long addendumTotal;
+    private Boolean addendumHasNext;
+
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class AddendumDto {
@@ -31,4 +40,5 @@ public class KbArticleResponse {
         private String createdBy;
         private LocalDateTime createdAt;
     }
+
 }

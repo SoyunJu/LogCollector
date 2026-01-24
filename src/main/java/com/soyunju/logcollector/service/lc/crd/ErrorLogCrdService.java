@@ -99,6 +99,11 @@ public class ErrorLogCrdService {
         // 3. 해시 생성 및 중복 확인
         String logHash = logProcessor.generateIncidentHash(dto.getServiceName(), dto.getMessage(), dto.getStackTrace());
 
+        // 3-1. IGNORED면 수집 중단
+        if (isIgnored(logHash)) {
+            return null;
+        }
+
         // 4. Host 집계 Upsert
         String hostName = (dto.getHostName() == null || dto.getHostName().isBlank()) ? "UNKNOWN_HOST" : dto.getHostName();
         int hostUpsertResult = errorLogHostRepository.upsertHostCounter(logHash, dto.getServiceName(), hostName, null, occurredTime);
