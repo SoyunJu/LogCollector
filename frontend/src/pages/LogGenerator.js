@@ -1,169 +1,188 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LogCollectorApi } from '../api/logCollectorApi';
-import { Form, Button, Card, Row, Col, Badge, ButtonGroup, ProgressBar } from 'react-bootstrap';
+
+const inferLogLevelClient = (message) => {
+if (!message || !message.trim()) return 'UNKNOWN';
+const u = message.toUpperCase();
+if (u.includes('FATAL')) return 'FATAL';
+if (u.includes('CRITICAL')) return 'CRITICAL';
+if (u.includes('ERROR') || u.includes('EXCEPTION')) return 'ERROR';
+if (u.includes('WARN')) return 'WARN';
+return 'INFO';
+};
+
+const presets = {
+DB: {
+serviceName: 'Order-Service',
+logLevel: 'ERROR',
+message: 'ERROR: ConnectionRefused - Database connection pool exhaustion.',
+stackTrace: 'java.sql.SQLException: Connection refused at com.zaxxer.hikari.pool.HikariPool...',
+hostName: 'db-master-01',
+},
+PAYMENT: {
+serviceName: 'Payment-Gateway',
+logLevel: 'FATAL',
+message: 'FATAL: Payment Gateway Timeout (504) - Critical failure.',
+stackTrace: 'com.payment.gateway.TimeoutException: No response from provider...',
+hostName: 'payment-api-02',
+},
+OOM: {
+serviceName: 'Analytics-Service',
+logLevel: 'CRITICAL',
+message: 'CRITICAL: java.lang.OutOfMemoryError: Java heap space',
+stackTrace: 'java.lang.OutOfMemoryError: Java heap space at java.util.Arrays.copyOf...',
+hostName: 'worker-node-05',
+},
+};
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const LogGenerator = () => {
 const [formData, setFormData] = useState({
 serviceName: 'Payment-Service',
-logLevel: '',
+logLevel: '', // empty => server infer
 message: '',
 stackTrace: '',
-hostName: 'prod-db-01'
+hostName: 'prod-db-01',
 });
 
-// [추가] 반복 전송 및 진행률 상태
 const [repeatCount, setRepeatCount] = useState(1);
-const [progress, setProgress] = useState(0);
 const [isSending, setIsSending] = useState(false);
 const [logsSent, setLogsSent] = useState(0);
-
+const [progress, setProgress] = useState(0);
 const [previewLevel, setPreviewLevel] = useState('INFO');
-
-// 로그 레벨 추론 (Java 로직과 동일)
-const inferLogLevelClient = (message) => {
-if (!message || !message.trim()) return "UNKNOWN";
-const upperMsg = message.toUpperCase();
-if (upperMsg.includes("FATAL")) return "FATAL";
-if (upperMsg.includes("CRITICAL")) return "CRITICAL";
-if (upperMsg.includes("ERROR") || upperMsg.includes("EXCEPTION")) return "ERROR";
-if (upperMsg.includes("WARN")) return "WARN";
-return "INFO";
-};
+const [delayMs, setDelayMs] = useState(50);
 
 useEffect(() => {
 setPreviewLevel(inferLogLevelClient(formData.message));
 }, [formData.message]);
 
-// [추가] 시나리오 프리셋
-const applyPreset = (type) => {
-switch (type) {
-case 'DB':
-setFormData({
-serviceName: 'Order-Service',
-logLevel: 'ERROR',
-message: 'ERROR: ConnectionRefused - Database connection pool exhaustion.',
-stackTrace: 'java.sql.SQLException: Connection refused at com.zaxxer.hikari.pool.HikariPool...',
-hostName: 'db-master-01'
-});
-break;
-case 'PAYMENT':
-setFormData({
-serviceName: 'Payment-Gateway',
-logLevel: 'FATAL',
-message: 'FATAL: Payment Gateway Timeout (504) - Critical failure.',
-stackTrace: 'com.payment.gateway.TimeoutException: No response from provider...',
-hostName: 'payment-api-02'
-});
-break;
-case 'OOM':
-setFormData({
-serviceName: 'Analytics-Service',
-logLevel: 'CRITICAL',
-message: 'CRITICAL: java.lang.OutOfMemoryError: Java heap space',
-stackTrace: 'java.lang.OutOfMemoryError: Java heap space at java.util.Arrays.copyOf...',
-hostName: 'worker-node-05'
-});
-break;
-default: break;
-}
+const applyPreset = (key) => {
+setFormData({ ...presets[key] });
 };
 
 const handleSubmit = async (e) => {
 e.preventDefault();
 setIsSending(true);
-setProgress(0);
 setLogsSent(0);
+setProgress(0);
 
 try {
 for (let i = 0; i < repeatCount; i++) {
 await LogCollectorApi.collectLog(formData);
-setLogsSent(prev => prev + 1);
-setProgress(Math.round(((i + 1) / repeatCount) * 100));
-// 너무 빠른 전송 방지 (약간의 딜레이)
-await new Promise(r => setTimeout(r, 50));
+const sent = i + 1;
+setLogsSent(sent);
+setProgress(Math.round((sent / repeatCount) * 100));
+if (delayMs > 0) await sleep(delayMs);
 }
-alert(`총 ${repeatCount}건 전송 완료! 대시보드에서 집계를 확인하세요.`);
+alert(`총 ${repeatCount}건 전송 완료`);
 } catch (err) {
-alert('전송 중 오류 발생: ' + err.message);
+alert('전송 오류: ' + (err?.response?.data?.message ?? err?.message ?? String(err)));
 } finally {
 setIsSending(false);
 }
 };
 
 return (
-<Card className="shadow-sm border-0" style={{ maxWidth: '800px', margin: '0 auto' }}>
-<Card.Header className="bg-white py-3">
-    <h5 className="mb-0 fw-bold">🚀 로그 생성기 (Test Log Generator)</h5>
-</Card.Header>
-<Card.Body>
-    {/* 프리셋 버튼 */}
-    <div className="mb-4">
-        <small className="text-muted d-block mb-2">⚡ 빠른 테스트 시나리오 (Click to Autofill)</small>
-        <ButtonGroup>
-            <Button variant="outline-danger" size="sm" onClick={() => applyPreset('DB')}>🗄️ DB Connection Error</Button>
-            <Button variant="outline-dark" size="sm" onClick={() => applyPreset('PAYMENT')}>💳 Payment Timeout</Button>
-            <Button variant="outline-warning" size="sm" onClick={() => applyPreset('OOM')}>💥 Out Of Memory</Button>
-        </ButtonGroup>
-    </div>
+<div className="page">
+    <div className="card">
+        <div className="spread">
+            <h3>Log Generator</h3>
+            <div className="small">POST /api/logs</div>
+        </div>
 
-    <Form onSubmit={handleSubmit}>
-        <Row className="mb-3">
-            <Col md={6}>
-            <Form.Label className="fw-bold">Service Name</Form.Label>
-            <Form.Control type="text" value={formData.serviceName} onChange={e => setFormData({...formData, serviceName: e.target.value})} />
-            </Col>
-            <Col md={6}>
-            <Form.Label className="fw-bold">Log Level</Form.Label>
-            <div className="d-flex align-items-center gap-2">
-                <Form.Select value={formData.logLevel} onChange={e => setFormData({...formData, logLevel: e.target.value})}>
-                <option value="">✨ Auto Detect</option>
+        <div className="row">
+            <button className="btn" type="button" onClick={() => applyPreset('DB')}>DB</button>
+            <button className="btn" type="button" onClick={() => applyPreset('PAYMENT')}>PAYMENT</button>
+            <button className="btn" type="button" onClick={() => applyPreset('OOM')}>OOM</button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+            <div className="row">
+                <input
+                        className="input"
+                        value={formData.serviceName}
+                        placeholder="serviceName"
+                        onChange={(e) => setFormData({ ...formData, serviceName: e.target.value })}
+                />
+                <input
+                        className="input"
+                        value={formData.hostName}
+                        placeholder="hostName"
+                        onChange={(e) => setFormData({ ...formData, hostName: e.target.value })}
+                />
+            </div>
+
+            <div className="row">
+                <select
+                        className="select"
+                        value={formData.logLevel}
+                        onChange={(e) => setFormData({ ...formData, logLevel: e.target.value })}
+                >
+                <option value="">(Auto Detect)</option>
                 <option value="FATAL">FATAL</option>
                 <option value="CRITICAL">CRITICAL</option>
                 <option value="ERROR">ERROR</option>
                 <option value="WARN">WARN</option>
                 <option value="INFO">INFO</option>
-                </Form.Select>
-                {formData.logLevel === '' && <Badge bg="secondary">Predict: {previewLevel}</Badge>}
+                </select>
+
+                <div className="small">
+                    Predict: {formData.logLevel ? formData.logLevel : previewLevel}
+                </div>
+
+                <input
+                        className="input"
+                        type="number"
+                        min="1"
+                        max="200"
+                        value={repeatCount}
+                        onChange={(e) => setRepeatCount(Number(e.target.value || 1))}
+                />
+
+                <input
+                        className="input"
+                        type="number"
+                        min="0"
+                        max="2000"
+                        value={delayMs}
+                        onChange={(e) => setDelayMs(Number(e.target.value || 0))}
+                placeholder="delay(ms)"
+                />
             </div>
-            </Col>
-        </Row>
 
-        <Row className="mb-3">
-            <Col md={6}>
-            <Form.Label>Host Name</Form.Label>
-            <Form.Control type="text" value={formData.hostName} onChange={e => setFormData({...formData, hostName: e.target.value})} />
-            </Col>
-            <Col md={6}>
-            {/* [추가] 반복 횟수 입력 */}
-            <Form.Label className="fw-bold text-primary">Repeat Count (Load Test)</Form.Label>
-            <Form.Control type="number" min="1" max="100" value={repeatCount} onChange={e => setRepeatCount(parseInt(e.target.value))} />
-            </Col>
-        </Row>
+            <div className="row">
+            <textarea
+                    className="textarea"
+                    value={formData.message}
+                    placeholder="message"
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                />
+                </div>
 
-        <Form.Group className="mb-3">
-            <Form.Label className="fw-bold">Message</Form.Label>
-            <Form.Control as="textarea" rows={2} value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})} />
-        </Form.Group>
+                <div className="row">
+                <textarea
+                className="textarea mono"
+                value={formData.stackTrace}
+                placeholder="stackTrace"
+                onChange={(e) => setFormData({ ...formData, stackTrace: e.target.value })}
+                />
+                </div>
 
-        <Form.Group className="mb-3">
-            <Form.Label>Stack Trace</Form.Label>
-            <Form.Control as="textarea" rows={3} className="font-monospace small bg-light" value={formData.stackTrace} onChange={e => setFormData({...formData, stackTrace: e.target.value})} />
-        </Form.Group>
+                {isSending && (
+                <div className="card">
+                <div className="small">progress: {progress}%</div>
+                <div className="small">{logsSent} / {repeatCount} sent</div>
+                </div>
+                )}
 
-        {isSending && (
-        <div className="mb-3">
-            <ProgressBar now={progress} label={`${progress}%`} animated variant="success" />
-            <div className="text-center small mt-1">{logsSent} / {repeatCount} sent</div>
-        </div>
-        )}
+                <button className="btn primary" type="submit" disabled={isSending}>
+                {isSending ? 'Sending...' : `Send x${repeatCount}`}
+                </button>
+                </form>
+                </div>
+                </div>
+                );
+                };
 
-        <Button variant="dark" type="submit" className="w-100" disabled={isSending}>
-            {isSending ? 'Sending...' : `Send Log (x${repeatCount})`}
-        </Button>
-    </Form>
-</Card.Body>
-</Card>
-);
-};
-
-export default LogGenerator;
+                export default LogGenerator;
