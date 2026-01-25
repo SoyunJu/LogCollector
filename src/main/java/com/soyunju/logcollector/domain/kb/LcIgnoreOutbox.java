@@ -4,10 +4,14 @@ import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxAction;
 import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Entity
+@EntityListeners(AuditingEntityListener.class)
 @Table(name = "lc_ignore_outbox")
 @Getter @Setter
 @NoArgsConstructor
@@ -40,9 +44,11 @@ public class LcIgnoreOutbox {
     @Column(name = "last_error")
     private String lastError;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
@@ -52,7 +58,6 @@ public class LcIgnoreOutbox {
         o.setAction(LcIgnoreOutboxAction.IGNORE);
         o.setStatus(LcIgnoreOutboxStatus.PENDING);
         o.setAttemptCount(0);
-        o.setCreatedAt(LocalDateTime.now());
         return o;
     }
 
@@ -62,7 +67,6 @@ public class LcIgnoreOutbox {
         o.setAction(LcIgnoreOutboxAction.UNIGNORE);
         o.setStatus(LcIgnoreOutboxStatus.PENDING);
         o.setAttemptCount(0);
-        o.setCreatedAt(LocalDateTime.now());
         return o;
     }
 

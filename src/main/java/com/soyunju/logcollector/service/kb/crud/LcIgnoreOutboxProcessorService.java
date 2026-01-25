@@ -1,6 +1,6 @@
 package com.soyunju.logcollector.service.kb.crud;
 
-import com.soyunju.logcollector.repository.lc.LcIgnoreOutboxRepository;
+import com.soyunju.logcollector.repository.kb.LcIgnoreOutboxRepository;
 import com.soyunju.logcollector.service.lc.ignore.LcIgnoreApplyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

@@ -6,7 +6,7 @@ import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxAction;
 import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxStatus;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
-import com.soyunju.logcollector.repository.lc.LcIgnoreOutboxRepository;
+import com.soyunju.logcollector.repository.kb.LcIgnoreOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

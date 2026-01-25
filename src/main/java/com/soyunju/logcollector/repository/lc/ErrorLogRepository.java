@@ -66,7 +66,7 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
             occurred_time = VALUES(occurred_time),
             updated_at = NOW(),
             status = CASE WHEN status = 'RESOLVED' THEN 'NEW' ELSE status END,
-            resolved_at = CASE WHEN status = 'RESOLVED' THEN NULL ELSE resolved_at END,
+            resolved_at = CASE WHEN status = 'RESOLVED' THEN NULL ELSE resolved_at END
         """, nativeQuery = true)
     int upsertErrorLog(
             @Param("serviceName") String serviceName,

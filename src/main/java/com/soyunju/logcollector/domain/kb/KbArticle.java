@@ -5,6 +5,7 @@ import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDateTime;
 
@@ -52,6 +53,7 @@ public class KbArticle {
     @Column(nullable = false, updatable = false,name = "created_at")
     private LocalDateTime createdAt;
 
+    @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 

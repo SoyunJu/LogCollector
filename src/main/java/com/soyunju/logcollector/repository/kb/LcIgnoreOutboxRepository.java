@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.repository.lc;
+package com.soyunju.logcollector.repository.kb;
 
 import com.soyunju.logcollector.domain.kb.LcIgnoreOutbox;
 import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxStatus;
