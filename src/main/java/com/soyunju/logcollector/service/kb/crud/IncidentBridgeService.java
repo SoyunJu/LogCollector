@@ -7,12 +7,16 @@ import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxAction;
 import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxStatus;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.kb.LcIgnoreOutboxRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -24,6 +28,14 @@ public class IncidentBridgeService {
     private final IncidentRepository incidentRepository;
     private final IncidentService incidentService; // KB-only 서비스
     private final LcIgnoreOutboxRepository lcIgnoreOutboxRepository; // LC 동기화(outbox)는 여기서만
+
+    private final PlatformTransactionManager kbTransactionManager;
+    private TransactionTemplate kbTxTemplate;
+
+    @PostConstruct
+    void initTxTemplate() {
+        this.kbTxTemplate = new TransactionTemplate(kbTransactionManager);
+    }
 
     @Transactional(transactionManager = "kbTransactionManager", propagation = Propagation.REQUIRES_NEW)
     public Incident recordOccurrence(
@@ -51,16 +63,35 @@ public class IncidentBridgeService {
             throw new IllegalArgumentException("newStatus는 null일 수 없습니다.");
         }
 
-        var prev = incidentService.findByLogHash(logHash)
-                .map(i -> i.getStatus())
-                .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다. hash: " + logHash));
+        final int maxAttempts = 3;
+        final long backoffMs = 150L;
 
-        // KB DB 업데이트
-        incidentService.updateStatusKbOnly(logHash, newStatus);
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                kbTxTemplate.executeWithoutResult(tx -> {
+                    var prev = incidentService.findByLogHash(logHash)
+                            .map(Incident::getStatus)
+                            .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다. hash: " + logHash));
 
-        // LC 동기화가 필요한 전이만 outbox 적재 (IGNORED <-> others)
-        enqueueIgnoreOutboxIfNeeded(logHash, prev, newStatus);
+                    // KB DB 업데이트
+                    incidentService.updateStatusKbOnly(logHash, newStatus);
+
+                    // LC 동기화가 필요한 전이만 outbox 적재 (IGNORED <-> others)
+                    enqueueIgnoreOutboxIfNeeded(logHash, prev, newStatus);
+                });
+                return; // 성공 시 종료
+            } catch (RuntimeException ex) {
+                if (isRecordChangedSinceLastRead(ex) && attempt < maxAttempts) {
+                    log.warn("[KB][updateStatus] optimistic conflict (attempt {}/{}). retrying... logHash={}, newStatus={}",
+                            attempt, maxAttempts, logHash, newStatus);
+                    sleepQuietly(backoffMs);
+                    continue;
+                }
+                throw ex;
+            }
+        }
     }
+
 
     @Transactional(transactionManager = "kbTransactionManager")
     public void unignore(String logHash) {
@@ -131,6 +162,33 @@ public class IncidentBridgeService {
             );
         }
     }
+
+    private boolean isRecordChangedSinceLastRead(Throwable t) {
+        Throwable cur = t;
+        while (cur != null) {
+            if (cur instanceof SQLException sqlEx) {
+                String msg = sqlEx.getMessage();
+                if (msg != null && msg.contains("Record has changed since last read")) {
+                    return true;
+                }
+            }
+            String msg = cur.getMessage();
+            if (msg != null && msg.contains("Record has changed since last read")) {
+                return true;
+            }
+            cur = cur.getCause();
+        }
+        return false;
+    }
+
+    private void sleepQuietly(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
 
     /*
     public void unignore(String logHash) {

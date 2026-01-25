@@ -10,7 +10,6 @@ import com.soyunju.logcollector.service.kb.ai.AiAnalysisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -46,7 +45,7 @@ public class IncidentService {
                 .map(com.soyunju.logcollector.dto.kb.IncidentResponse::from);
     }
 
-    @Transactional(transactionManager = "kbTransactionManager", propagation = Propagation.REQUIRES_NEW)
+    @Transactional(transactionManager = "kbTransactionManager")
     public Incident recordOccurrenceKbOnly(
             String logHash,
             String serviceName,
@@ -59,12 +58,23 @@ public class IncidentService {
         LocalDateTime ts = (occurredAt != null) ? occurredAt : LocalDateTime.now();
         String level = mapErrorLevel(logLevel).name();
 
-        // 재발생 감지용
-        IncidentStatus prevStatus = incidentRepository.findByLogHash(logHash)
-                .map(Incident::getStatus)
-                .orElse(null);
+        Incident existing = incidentRepository.findByLogHash(logHash).orElse(null);
+        IncidentStatus prevStatus = (existing != null) ? existing.getStatus() : null;
 
-        incidentRepository.upsertIncident(logHash, serviceName, summary, stackTrace, errorCode, level, ts);
+        //  IGNORED: repeat_count 차단, last_occurred_at만 갱신
+        if (prevStatus == IncidentStatus.IGNORED) {
+            incidentRepository.touchLastOccurredIfIgnored(
+                    logHash,
+                    ts
+            );
+            return incidentRepository.findByLogHash(logHash)
+                    .orElseThrow(() -> new IllegalStateException("Incident not found after IGNORE touch: " + logHash));
+        }
+
+        //  그 외: 기존 로직 유지 (repeat_count 증가 포함)
+        incidentRepository.upsertIncident(
+                logHash, serviceName, summary, stackTrace, errorCode, level, ts
+        );
 
         Incident saved = incidentRepository.findByLogHash(logHash)
                 .orElseThrow(() -> new IllegalStateException("Incident Upsert 실패: " + logHash));
@@ -73,6 +83,7 @@ public class IncidentService {
         if (prevStatus == IncidentStatus.RESOLVED || prevStatus == IncidentStatus.CLOSED) {
             kbArticleRepository.markRecurByIncidentId(saved.getId(), LocalDateTime.now());
         }
+
         return saved;
     }
 

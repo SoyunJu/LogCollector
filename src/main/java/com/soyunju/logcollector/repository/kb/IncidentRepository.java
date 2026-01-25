@@ -49,31 +49,30 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, Incid
             WHEN summary IS NULL OR TRIM(summary) = '' THEN VALUES(summary)
             ELSE summary
         END,
+                                                            resolved_at = CASE
+                                                                      WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
+                                                                      ELSE resolved_at
+                                                                  END,
             
-                status = CASE
-                WHEN status IN ('RESOLVED', 'CLOSED') THEN 'OPEN'
-                ELSE status
-                END,
+                                                                  close_eligible_at = CASE
+                                                                      WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
+                                                                      ELSE close_eligible_at
+                                                                  END,
             
-                resolved_at = CASE
-                WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
-                ELSE resolved_at               
-                END,  
+                                                                  closed_at = CASE
+                                                                      WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
+                                                                      ELSE closed_at
+                                                                  END,
             
-                close_eligible_at = CASE
-                WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
-                ELSE close_eligible_at
-                END,    
+                                                                  reopened_at = CASE
+                                                                      WHEN status IN ('RESOLVED', 'CLOSED') THEN VALUES(last_occurred_at)
+                                                                      ELSE reopened_at
+                                                                  END,
             
-                closed_at = CASE
-                WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
-                ELSE closed_at
-                END,   
-            
-                reopened_at = CASE
-                WHEN status IN ('RESOLVED', 'CLOSED') THEN VALUES(last_occurred_at)
-                ELSE reopened_at
-                END
+                                                                  status = CASE
+                                                                      WHEN status IN ('RESOLVED', 'CLOSED') THEN 'OPEN'
+                                                                      ELSE status
+                                                                  END
     """, nativeQuery = true)
     void upsertIncident(
             @Param("logHash") String logHash,
@@ -118,6 +117,37 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, Incid
     @Modifying
     @Query("DELETE FROM Incident i WHERE i.logHash = :logHash")
     void deleteByLogHash(@Param("logHash") String logHash);
+
+    // IGNORE 여도 last_occurred_at 는 갱신 (repeat_count는 건드리지 않음)
+    // - JPQL enum 검증 이슈를 피하기 위해 native query 사용
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional(transactionManager = "kbTransactionManager")
+    @Query(value = """
+        UPDATE incident
+           SET last_occurred_at = :occurredTime,
+               updated_at = NOW()
+         WHERE log_hash = :logHash
+           AND status = 'IGNORED'
+        """, nativeQuery = true)
+    int touchLastOccurredIfIgnored(@Param("logHash") String logHash,
+                                   @Param("occurredTime") LocalDateTime occurredTime);
+
+    // IGNORED가 아니면 repeat_count 증가 + last_occurred_at 갱신
+    // - (현재 코드상 직접 호출처가 없어도) JPQL 검증 실패를 막기 위해 native로 통일
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional(transactionManager = "kbTransactionManager")
+    @Query(value = """
+            UPDATE incident
+               SET last_occurred_at = :occurredAt,
+                   repeat_count = repeat_count + 1,
+                   updated_at = NOW()
+             WHERE log_hash = :logHash
+               AND status <> 'IGNORED'
+            """, nativeQuery = true)
+    int incrementIfNotIgnored(@Param("logHash") String logHash,
+                              @Param("occurredAt") LocalDateTime occurredAt);
+
+
 
 
 }
