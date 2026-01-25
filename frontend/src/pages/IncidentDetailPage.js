@@ -2,13 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { LogCollectorApi } from '../api/logCollectorApi';
 import { Container, Card, Badge, Button, Row, Col, Spinner, Alert, Form } from 'react-bootstrap';
+import { formatKst } from '../utils/date';
 
-// 날짜 포맷 함수 (utils/date.js가 없다면 이 파일 내부에 정의해서 사용)
-// 만약 utils/date.js가 있다면 import { formatKst } from '../utils/date'; 로 대체하세요.
-const formatKst = (dateStr) => {
-if (!dateStr) return '-';
-return new Date(dateStr).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-};
 
 const IncidentDetailPage = () => {
 const { logHash } = useParams();
@@ -68,13 +63,18 @@ alert("Draft 생성 실패: " + (e.response?.data?.message || e.message));
 const updateDetails = async () => {
 if (!window.confirm("입력한 정보로 Incident를 업데이트하시겠습니까?")) return;
 try {
-await LogCollectorApi.updateIncidentDetails(logHash, title, createdBy, status || null);
+await LogCollectorApi.updateIncidentDetails(logHash, {
+title: title || null,
+createdBy: createdBy || null,
+status: status || null,
+});
 alert("업데이트 되었습니다.");
 load();
 } catch (e) {
 alert("업데이트 실패: " + (e.response?.data?.message || e.message));
 }
 };
+
 
 // [수정] AI 분석 핸들러 (force 옵션 지원)
 const handleAiAnalyze = async (force = false) => {

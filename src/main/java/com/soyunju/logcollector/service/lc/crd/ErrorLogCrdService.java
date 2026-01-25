@@ -1,6 +1,7 @@
 package com.soyunju.logcollector.service.lc.crd;
 
 import com.soyunju.logcollector.domain.kb.Incident;
+import com.soyunju.logcollector.domain.kb.enums.DraftReason;
 import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.domain.lc.ErrorLog;
 import com.soyunju.logcollector.domain.lc.ErrorStatus;
@@ -88,8 +89,6 @@ public class ErrorLogCrdService {
             }
         }
 
-        // String ms = logProcessor.generateErrorCode(dto.getMessage());
-
         // 2. 수집 대상 여부
         if (!logProcessor.isTargetLevel(effectiveLevel)) {
             if (StringUtils.hasText(dto.getLogLevel())) {
@@ -128,28 +127,30 @@ public class ErrorLogCrdService {
         int impactedHostCount = errorLogHostRepository.countHostsByLogHash(logHash);
 
         // 6. Incident 연동
-        Incident incident = incidentService.recordOccurrence(
-                logHash,
-                dto.getServiceName(),
-                targetLog.getSummary(),
-                dto.getStackTrace(),
-                errorCode,
-                effectiveLevel,
-                occurredTime
-        );
-        // KB Draft 생성
-        int repeatCount = (targetLog.getRepeatCount() == null) ? 1 : targetLog.getRepeatCount();
+        Incident incident = null;
+        try {
+            incident = incidentService.recordOccurrence(
+                    logHash,
+                    dto.getServiceName(),
+                    targetLog.getSummary(),
+                    dto.getStackTrace(),
+                    errorCode,
+                    effectiveLevel,
+                    occurredTime
+            );
+        } catch (RuntimeException e) {
+            log.warn("[INCIDENT][SKIP] recordOccurrence failed. logHash={}, err={}", logHash, e.toString());
+        }
 
+        // KB Draft 생성 (정책 매칭 + Incident 생성 성공 시에만)
+        int repeatCount = (targetLog.getRepeatCount() == null) ? 1 : targetLog.getRepeatCount();
         boolean matched = (impactedHostCount >= hostSpreadThreshold) || (repeatCount >= highRecurThreshold);
-        if (matched) {
-            com.soyunju.logcollector.domain.kb.enums.DraftReason reason =
-                    (impactedHostCount >= hostSpreadThreshold)
-                            ? com.soyunju.logcollector.domain.kb.enums.DraftReason.HOST_SPREAD
-                            : com.soyunju.logcollector.domain.kb.enums.DraftReason.HIGH_RECUR;
+        if (matched && incident != null) {
+            DraftReason reason =
+                    (impactedHostCount >= hostSpreadThreshold) ? DraftReason.HOST_SPREAD : DraftReason.HIGH_RECUR;
             try {
                 kbDraftService.createSystemDraft(incident.getId(), impactedHostCount, repeatCount, reason);
             } catch (RuntimeException e) {
-                // LC 저장(카운트) 롤백 방지: Draft 생성 실패는 로깅만 하고 계속 진행
                 log.warn("[DRAFT][SKIP] createSystemDraft failed. incidentId={}, logHash={}, hostCount={}, repeatCount={}, reason={}, err={}",
                         incident.getId(), logHash, impactedHostCount, repeatCount, reason, e.toString());
             }
@@ -174,7 +175,6 @@ public class ErrorLogCrdService {
         updateStatus(logId, status, null);
     }
 
-    @Transactional(transactionManager = "lcTransactionManager")
     public void updateStatus(Long logId, ErrorStatus status, String actor) {
         ErrorLog errorLog = errorLogRepository.findById(logId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 로그 ID: " + logId));

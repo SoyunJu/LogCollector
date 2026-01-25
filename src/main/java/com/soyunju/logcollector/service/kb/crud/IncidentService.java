@@ -168,7 +168,6 @@ public class IncidentService {
         return aiAnalysisService.AiAnalyze(incident.getId());
     }
 
-    @Transactional(transactionManager = "kbTransactionManager")
     public void updateDetails(String logHash, String title, String createdBy, IncidentStatus status) {
 
         Incident incident = incidentRepository.findByLogHash(logHash)

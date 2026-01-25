@@ -30,6 +30,13 @@ public class IncidentResponse {
     private String errorCode;
     private String createdBy;
 
+    private String incidentTitle;
+    private String stackTrace;
+
+    private LocalDateTime closeEligibleAt;
+    private LocalDateTime closedAt;
+    private LocalDateTime reopenedAt;
+
     public static IncidentResponse from(Incident incident) {
         return IncidentResponse.builder()
                 .id(incident.getId())
@@ -39,6 +46,12 @@ public class IncidentResponse {
                 .errorLevel(incident.getErrorLevel())
                 .repeatCount(incident.getRepeatCount())
                 .hostCount(null)
+                .incidentTitle(incident.getIncidentTitle())
+                .createdBy(incident.getCreatedBy())
+                .stackTrace(incident.getStackTrace())
+                .closeEligibleAt(incident.getCloseEligibleAt())
+                .closedAt(incident.getClosedAt())
+                .reopenedAt(incident.getReopenedAt())
                 .firstOccurredAt(incident.getFirstOccurredAt())
                 .lastOccurredAt(incident.getLastOccurredAt())
                 .resolvedAt(incident.getResolvedAt())
@@ -55,6 +68,12 @@ public class IncidentResponse {
                 .status(incident.getStatus())
                 .errorLevel(incident.getErrorLevel())
                 .repeatCount(incident.getRepeatCount())
+                .incidentTitle(incident.getIncidentTitle())
+                .createdBy(incident.getCreatedBy())
+                .stackTrace(incident.getStackTrace())
+                .closeEligibleAt(incident.getCloseEligibleAt())
+                .closedAt(incident.getClosedAt())
+                .reopenedAt(incident.getReopenedAt())
                 .hostCount(hostCount)
                 .firstOccurredAt(incident.getFirstOccurredAt())
                 .lastOccurredAt(incident.getLastOccurredAt())
