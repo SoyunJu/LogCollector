@@ -34,12 +34,16 @@ public class KbScheduler {
     }
 
     // Incident Close
-    @Scheduled(cron = "0 */1 * * * *") // 매 1분
+    @Scheduled(cron = "0 */1 * * * *")
     @Transactional(transactionManager = "kbTransactionManager")
     public void autoCloseResolvedIncidents() {
-        int closed = incidentService.autoCloseIncidents(LocalDateTime.now());
-        if (closed > 0) {
-            log.info("[SCHED][AUTO_CLOSE] closed={}", closed);
+        try {
+            log.info("[SCHED][AUTO_CLOSE][ENTER]");
+            int closed = incidentService.autoCloseIncidents(LocalDateTime.now());
+            log.info("[SCHED][AUTO_CLOSE][DONE] closed={}", closed);
+        } catch (Exception e) {
+            log.error("[SCHED][AUTO_CLOSE][FAIL]", e);
+            throw e;
         }
     }
 

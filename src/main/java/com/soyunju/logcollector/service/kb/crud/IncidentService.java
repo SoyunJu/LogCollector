@@ -202,6 +202,8 @@ public class IncidentService {
 
         var candidates = incidentRepository.findCloseCandidates(IncidentStatus.RESOLVED, now);
 
+        log.info("[AUTO_CLOSE] now={} candidates={}", now, (candidates == null ? 0 : candidates.size()));
+
         if (candidates == null || candidates.isEmpty()) {
             return 0;
         }
@@ -215,6 +217,7 @@ public class IncidentService {
         incidentRepository.saveAll(candidates);
         return candidates.size();
     }
+
 
 
 }
