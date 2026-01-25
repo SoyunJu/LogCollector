@@ -113,5 +113,11 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, Incid
             "AND k.incident.lastOccurredAt <= :threshold")
     java.util.List<Incident> findAutoCloseCandidates(@org.springframework.data.repository.query.Param("threshold") LocalDateTime threshold);
 
+    // 테스트 데이터 삭제용
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM Incident i WHERE i.logHash = :logHash")
+    void deleteByLogHash(@Param("logHash") String logHash);
+
 
 }

@@ -2,7 +2,6 @@ package com.soyunju.logcollector.service.lc.crd;
 
 import com.soyunju.logcollector.domain.kb.Incident;
 import com.soyunju.logcollector.domain.kb.enums.DraftReason;
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.domain.lc.ErrorLog;
 import com.soyunju.logcollector.domain.lc.ErrorStatus;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
@@ -13,10 +12,11 @@ import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
 import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
 import com.soyunju.logcollector.service.audit.AuditLogService;
-import com.soyunju.logcollector.service.kb.crud.IncidentService;
+import com.soyunju.logcollector.service.kb.crud.IncidentBridgeService;
 import com.soyunju.logcollector.service.kb.crud.KbDraftService;
 import com.soyunju.logcollector.service.lc.processor.LogNormalization;
 import com.soyunju.logcollector.service.lc.processor.LogProcessor;
+import com.soyunju.logcollector.service.lc.redis.IgnoredLogHashStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.ConcurrencyFailureException;
@@ -45,25 +45,24 @@ public class ErrorLogCrdService {
     private final ErrorLogRepository errorLogRepository;
     private final ErrorLogHostRepository errorLogHostRepository;
     private final LogProcessor logProcessor;
+    private final IgnoredLogHashStore ignoredLogHashStore;
 
     // KB 연동을 위한 서비스 및 레파지토리 주입
     private final KbDraftService kbDraftService;
-    private final IncidentService incidentService;
+    private final IncidentBridgeService incidentBridgeService;
     private final IncidentRepository incidentRepository;
 
     private final AuditLogService auditLogService;
     private final LcMetrics lcMetrics;
 
     @Transactional(readOnly = true)
-    public boolean isIgnored(String logHash) {
-        return errorLogRepository.findByLogHash(logHash)
-                .map(log -> log.getStatus() == ErrorStatus.IGNORED)
-                .orElse(false);
-    }
-
-    @Transactional(readOnly = true)
     public Optional<ErrorLog> findByLogHash(String logHash) {
         return errorLogRepository.findByLogHash(logHash);
+    }
+
+    @Transactional(readOnly = true, transactionManager = "lcTransactionManager")
+    public boolean isIgnored(String logHash) {
+        return ignoredLogHashStore.isIgnored(logHash);
     }
 
     @Retryable(
@@ -100,7 +99,7 @@ public class ErrorLogCrdService {
         String logHash = logProcessor.generateIncidentHash(dto.getServiceName(), dto.getMessage(), dto.getStackTrace());
 
         // 3-1. IGNORED면 수집 중단
-        if (isIgnored(logHash)) {
+        if (ignoredLogHashStore.isIgnored(logHash)) {
             return null;
         }
 
@@ -129,7 +128,7 @@ public class ErrorLogCrdService {
         // 6. Incident 연동
         Incident incident = null;
         try {
-            incident = incidentService.recordOccurrence(
+            incident = incidentBridgeService.recordOccurrence(
                     logHash,
                     dto.getServiceName(),
                     targetLog.getSummary(),
@@ -191,29 +190,11 @@ public class ErrorLogCrdService {
         errorLog.setStatus(status);
 
         switch (status) {
-            case ACKNOWLEDGED -> {
-                try {
-                    incidentService.updateStatus(errorLog.getLogHash(), IncidentStatus.UNDERWAY);
-                } catch (Exception e) {
-                    log.warn("Failed to auto-update incident status to UNDERWAY: {}", e.getMessage());
-                }
-                if (errorLog.getAcknowledgedAt() == null) {
-                    errorLog.setAcknowledgedAt(LocalDateTime.now());
-                }
-                if (errorLog.getAcknowledgedBy() == null || errorLog.getAcknowledgedBy().isBlank()) {
-                    if (actor != null && !actor.isBlank()) {
-                        errorLog.setAcknowledgedBy(actor);
-                    } else {
-                        errorLog.setAcknowledgedBy("Operations Manager"); // TODO : 하드코딩에서 계정으로 변경
-                    }
-                }
-                errorLog.setResolvedAt(null);
-            }
             case RESOLVED -> {
                 LocalDateTime now = LocalDateTime.now();
                 errorLog.setResolvedAt(now);
 
-                incidentService.markResolved(errorLog.getLogHash(), now);
+                incidentBridgeService.markResolved(errorLog.getLogHash(), now);
 
                 incidentRepository.findByLogHash(errorLog.getLogHash())
                         .ifPresentOrElse(
@@ -228,13 +209,11 @@ public class ErrorLogCrdService {
                                 () -> log.warn("로그 해시({})에 해당하는 인시던트를 찾을 수 없어 KB 초안을 생성하지 못했습니다.", errorLog.getLogHash())
                         );
 
-                incidentService.updateStatus(errorLog.getLogHash(), com.soyunju.logcollector.domain.kb.enums.IncidentStatus.RESOLVED);
+                incidentBridgeService.updateStatus(errorLog.getLogHash(), com.soyunju.logcollector.domain.kb.enums.IncidentStatus.RESOLVED);
             }
             case NEW -> {
                 errorLog.setResolvedAt(null);
-                errorLog.setAcknowledgedAt(null);
-                errorLog.setAcknowledgedBy(null);
-                incidentService.updateStatus(errorLog.getLogHash(), com.soyunju.logcollector.domain.kb.enums.IncidentStatus.OPEN);
+                incidentBridgeService.updateStatus(errorLog.getLogHash(), com.soyunju.logcollector.domain.kb.enums.IncidentStatus.OPEN);
             }
             case IGNORED -> { }
         }
@@ -257,13 +236,14 @@ public class ErrorLogCrdService {
     }
 
     private boolean isAllowedTransition(ErrorStatus from, ErrorStatus to) {
+        if (from == null || to == null) return false;
+        if (from == to) return true;
+
         return switch (from) {
-            case NEW -> to == ErrorStatus.ACKNOWLEDGED || to == ErrorStatus.RESOLVED || to == ErrorStatus.IGNORED;
-            case ACKNOWLEDGED -> to == ErrorStatus.RESOLVED || to == ErrorStatus.NEW || to == ErrorStatus.IGNORED;
-            case RESOLVED -> to == ErrorStatus.NEW || to == ErrorStatus.IGNORED;
-            case IGNORED -> to == ErrorStatus.NEW || to == ErrorStatus.ACKNOWLEDGED;
+            case NEW -> (to == ErrorStatus.RESOLVED || to == ErrorStatus.IGNORED);
+            case RESOLVED -> (to == ErrorStatus.NEW || to == ErrorStatus.IGNORED);
+            case IGNORED -> (to == ErrorStatus.NEW || to == ErrorStatus.RESOLVED);
         };
     }
-
 
 }

@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -66,8 +67,6 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
             updated_at = NOW(),
             status = CASE WHEN status = 'RESOLVED' THEN 'NEW' ELSE status END,
             resolved_at = CASE WHEN status = 'RESOLVED' THEN NULL ELSE resolved_at END,
-            acknowledged_at = CASE WHEN status = 'RESOLVED' THEN NULL ELSE acknowledged_at END,
-            acknowledged_by = CASE WHEN status = 'RESOLVED' THEN NULL ELSE acknowledged_by END
         """, nativeQuery = true)
     int upsertErrorLog(
             @Param("serviceName") String serviceName,
@@ -88,5 +87,12 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE ErrorLog e SET e.status = com.soyunju.logcollector.domain.lc.ErrorStatus.NEW WHERE e.logHash = :logHash")
     int unmarkIgnoredByLogHash(@Param("logHash") String logHash);
+
+    // 테스트 데이터 삭제용
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM ErrorLog e WHERE e.logHash = :logHash")
+    void deleteByLogHash(@Param("logHash") String logHash);
+
 
 }

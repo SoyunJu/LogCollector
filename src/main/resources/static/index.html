@@ -64,7 +64,6 @@
                 <select id="filterStatus" class="border p-2 rounded text-sm w-40">
                     <option value="">전체</option>
                     <option value="NEW">NEW</option>
-                    <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
                     <option value="RESOLVED">RESOLVED</option>
                     <option value="IGNORED">IGNORED</option>
                 </select>
@@ -489,7 +488,6 @@
                 <select onchange="updateStatus(${log.logId}, this.value)"
                         class="border rounded p-1 text-xs">
                   <option value="NEW" ${log.status === 'NEW' ? 'selected' : ''}>NEW</option>
-                  <option value="ACKNOWLEDGED" ${log.status === 'ACKNOWLEDGED' ? 'selected' : ''}>ACKNOWLEDGED</option>
                   <option value="RESOLVED" ${log.status === 'RESOLVED' ? 'selected' : ''}>RESOLVED</option>
                   <option value="IGNORED" ${log.status === 'IGNORED' ? 'selected' : ''}>IGNORED</option>
                 </select>

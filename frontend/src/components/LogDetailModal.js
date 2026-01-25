@@ -98,7 +98,6 @@ return (
     <Modal.Footer className="justify-content-between">
         <ButtonGroup>
             <Button variant="outline-danger" size="sm" onClick={() => handleStatusChange('NEW')} disabled={log.status === 'NEW'}>NEW</Button>
-            <Button variant="outline-warning" size="sm" onClick={() => handleStatusChange('ACKNOWLEDGED')} disabled={log.status === 'ACKNOWLEDGED'}>ACK</Button>
             <Button variant="outline-success" size="sm" onClick={() => handleStatusChange('RESOLVED')} disabled={log.status === 'RESOLVED'}>FIX</Button>
         </ButtonGroup>
 

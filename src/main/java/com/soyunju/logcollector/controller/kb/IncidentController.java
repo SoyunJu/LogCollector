@@ -1,6 +1,7 @@
 package com.soyunju.logcollector.controller.kb;
 
 import com.soyunju.logcollector.dto.kb.IncidentResponse;
+import com.soyunju.logcollector.service.kb.crud.IncidentBridgeService;
 import com.soyunju.logcollector.service.kb.crud.IncidentService;
 import com.soyunju.logcollector.service.kb.search.IncidentSearchService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 public class IncidentController {
 
     private final IncidentService incidentService;
+    private final IncidentBridgeService incidentBridgeService;
     private final IncidentSearchService incidentSearchService;
 
     @GetMapping("/closed")
@@ -63,7 +65,7 @@ public class IncidentController {
     public ResponseEntity<Void> updateStatus(
             @PathVariable String logHash,
             @RequestParam com.soyunju.logcollector.domain.kb.enums.IncidentStatus newStatus) {
-        incidentService.updateStatus(logHash, newStatus);
+        incidentBridgeService.updateStatus(logHash, newStatus);
         return ResponseEntity.ok().build();
     }
 
@@ -73,8 +75,15 @@ public class IncidentController {
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String createdBy,
             @RequestParam(required = false) com.soyunju.logcollector.domain.kb.enums.IncidentStatus status) {
-        incidentService.updateDetails(logHash, title, createdBy, status);
+        incidentBridgeService.updateDetails(logHash, title, createdBy, status);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/{logHash}/unignore")
+    public ResponseEntity<Void> unignore(@PathVariable String logHash) {
+        incidentBridgeService.unignore(logHash);
+        return ResponseEntity.ok().build();
+    }
+
 
 }

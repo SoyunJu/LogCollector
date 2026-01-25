@@ -70,9 +70,4 @@ public class ErrorLog {
     @Column(name = "last_occurred_time")
     private LocalDateTime lastOccurredTime;
 
-    @Column(name = "acknowledged_at")
-    private LocalDateTime acknowledgedAt;
-
-    @Column(name = "acknowledged_by", length = 100)
-    private String acknowledgedBy;
 }

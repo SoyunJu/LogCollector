@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -97,5 +98,12 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
 
     @Query(value = "SELECT COUNT(*) FROM error_log_hosts WHERE log_hash = :logHash", nativeQuery = true)
     int countHostsByLogHash(@Param("logHash") String logHash);
+
+    // 테스트 데이터 삭제용
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM ErrorLogHost h WHERE h.logHash = :logHash")
+    void deleteByLogHash(@Param("logHash") String logHash);
+
 
 }

@@ -5,9 +5,7 @@ import com.soyunju.logcollector.domain.kb.enums.DraftReason;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.service.kb.autopolicy.DraftPolicyService.DraftCandidate;
 import com.soyunju.logcollector.service.kb.autopolicy.DraftPolicyService.DraftRunResult;
-import com.soyunju.logcollector.service.kb.crud.KbCrudService;
 import com.soyunju.logcollector.service.kb.crud.KbDraftService;
-import com.soyunju.logcollector.service.kb.search.KbArticleSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,8 +23,6 @@ import java.util.stream.Collectors;
 public class DraftPolicyKbWriter {
 
     private final IncidentRepository incidentRepository; // KB
-    private final KbCrudService kbCrudService;      // KB
-    private final KbArticleSearchService kbArticleSearchService;
     private final KbDraftService kbDraftService;
 
     @Transactional(transactionManager = "kbTransactionManager", propagation = Propagation.REQUIRES_NEW)

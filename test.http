@@ -1,0 +1,280 @@
+@base = http://localhost:8080/api
+@svc = TESTE-API
+@host = pod-2
+@msg = [TEST_HTTP] RedisCommandTimeoutException: Command timed out after 500ms.
+@stack =
+
+### 0) logHash 계산 (옵션: 참고용)
+POST {{base}}/test/hash
+Content-Type: application/json
+
+{
+  "serviceName": "{{svc}}",
+  "message": "{{msg}}",
+  "stackTrace": "{{stack}}"
+}
+
+> {%
+  const b = (typeof response.body === "string") ? JSON.parse(response.body) : response.body;
+  if (b.logHash) client.global.set("logHash", String(b.logHash));
+%}
+
+### 1) BEFORE CLEANUP
+DELETE {{base}}/test/data/by-log-hash/{{logHash}}
+
+### 2) 로그 enqueue (202)
+POST {{base}}/logs
+Content-Type: application/json
+
+{
+  "serviceName": "{{svc}}",
+  "hostName": "{{host}}",
+  "logLevel": "ERROR",
+  "message": "{{msg}}",
+  "stackTrace": "{{stack}}"
+}
+
+### 3) (옵션) 큐 강제 처리 엔드포인트가 있으면 호출
+POST {{base}}/test/queue/drain
+
+### 4) logs 조회 + logId 확보 (대괄호 인코딩 + 폴링)
+@keyword = %5BTEST_HTTP%5D
+GET {{base}}/logs?serviceName={{svc}}&keyword={{keyword}}&size=20
+
+# keyword는 반드시 URL 인코딩: %5BTEST_HTTP%5D
+# GET {{base}}/logs?serviceName={{svc}}&keyword=%5BTEST_HTTP%5D&size=20
+
+> {%
+  function parseBody(resp) {
+    try { return (typeof resp.body === "string") ? JSON.parse(resp.body) : (resp.body ?? null); }
+    catch (e) { return resp.body; }
+  }
+
+  function dump(label, extra) {
+    const b = parseBody(response);
+    client.log(`\n===== ${label} =====`);
+    client.log(`REQ: GET {{base}}/logs?serviceName={{svc}}&keyword=%5BTEST_HTTP%5D&size=20`);
+    client.log(`HTTP ${response.status} ${response.statusText ?? ""}`.trim());
+    if (extra) client.log(`EXTRA: ${JSON.stringify(extra)}`);
+    client.log(`BODY: ${JSON.stringify(b, null, 2)}`);
+    client.log(`====================\n`);
+    return b;
+  }
+
+  function fail(label, expected, actual, hint) {
+    dump(label, { expected, actual, hint });
+    throw new Error(`❌ FAIL: ${label}\nexpected=${JSON.stringify(expected)}\nactual=${JSON.stringify(actual)}${hint ? `\nhint=${hint}` : ""}`);
+  }
+
+  function assert(label, condition, expected, actual, hint) {
+    if (!condition) fail(label, expected, actual, hint);
+  }
+
+  const body = dump("STEP4 logs search response", {
+    expected: "HTTP 200 + body.content has at least 1 item containing [TEST_HTTP]",
+  });
+
+  assert("logs search must be 200", response.status === 200, 200, response.status);
+
+  const content = body?.content;
+  assert("body.content must be an array", Array.isArray(content), "Array(content)", typeof content,
+    "검색 응답 DTO 구조가 다르면 /logs 응답 스키마를 확인하세요.");
+
+  if (content.length === 0) {
+    fail(
+      "logs content empty (not persisted yet)",
+      "content.length > 0",
+      0,
+      "Redis→DB 소비 지연 가능. Step 3 drain 호출/대기 후 Step 4 재실행."
+    );
+  }
+
+  const hit = content.find(x => x?.message && String(x.message).includes("[TEST_HTTP]"));
+  assert("must find a log containing [TEST_HTTP]", !!hit, "a log item including [TEST_HTTP]", null,
+    "serviceName/keyword 인코딩/저장 타이밍을 확인하세요.");
+
+  assert("hit.logId must exist", !!hit?.logId, "hit.logId", hit?.logId);
+  assert("hit.logHash must exist", !!hit?.logHash, "hit.logHash", hit?.logHash);
+
+  client.global.set("logId", String(hit.logId));
+  client.global.set("logHash", String(hit.logHash));
+  client.global.set("baseRepeat", String(hit.repeatCount ?? 1));
+
+  client.log(`OK: FOUND logId=${hit.logId}, logHash=${hit.logHash}, repeat=${hit.repeatCount ?? 1}`);
+%}
+
+
+### 5) Incident 확인 (upsert 연동 확인)
+GET {{base}}/incidents/{{logHash}}
+
+### 6) (선택) RESOLVED 처리 - LC status 기반 흐름을 계속 쓰는 경우
+PATCH {{base}}/logs/{{logId}}/status?newStatus=RESOLVED
+
+### 7) Incident 다시 확인
+GET {{base}}/incidents/{{logHash}}
+
+### 8) IGNORE 처리: Incident에서 수행 (SoT)
+PATCH {{base}}/incidents/{{logHash}}/status?newStatus=IGNORED
+
+### 9) Outbox가 LC에 반영될 시간/트리거가 필요 (가시화용)
+# 스케줄러를 기다리거나, test용 강제 트리거 엔드포인트가 있으면 여기서 호출
+# 없으면 404/405 등이 나와서 "왜 실패했는지"가 콘솔에 찍힙니다.
+
+POST {{base}}/test/outbox/ignore/process
+
+> {%
+  function parseBody(resp) {
+    try { return (typeof resp.body === "string") ? JSON.parse(resp.body) : (resp.body ?? null); }
+    catch (e) { return resp.body; }
+  }
+
+  function dump(label, extra) {
+    const b = parseBody(response);
+    client.log(`\n===== ${label} =====`);
+    client.log(`REQ: POST {{base}}/test/outbox/ignore/process`);
+    client.log(`HTTP ${response.status} ${response.statusText ?? ""}`.trim());
+    if (extra) client.log(`EXTRA: ${JSON.stringify(extra)}`);
+    client.log(`BODY: ${JSON.stringify(b, null, 2)}`);
+    client.log(`====================\n`);
+    client.log("NOTE: open saved response file in .idea/httpRequests to see raw payload.");
+    return b;
+  }
+
+  function fail(label, expected, actual, hint) {
+    dump(label, { expected, actual, hint });
+    throw new Error(`❌ FAIL: ${label}\nexpected=${JSON.stringify(expected)}\nactual=${JSON.stringify(actual)}${hint ? `\nhint=${hint}` : ""}`);
+  }
+
+  // 성공코드는 프로젝트마다 다를 수 있어서 넓게 허용(200/202/204)
+  const ok = (response.status === 200 || response.status === 202 || response.status === 204);
+
+  dump("STEP9 outbox ignore process trigger response", {
+    expected: "HTTP 200/202/204 (if trigger endpoint exists)",
+  });
+
+  if (!ok) {
+    fail(
+      "outbox ignore process trigger endpoint failed or not implemented",
+      "HTTP 200/202/204",
+      response.status,
+      "엔드포인트 미구현이면 404가 정상적으로 원인입니다. 스케줄러 대기 방식이면 Step 9는 호출하지 말고 일정 시간 후 Step 10으로 진행하세요."
+    );
+  }
+
+  client.log("OK: outbox ignore trigger executed (or accepted).");
+%}
+
+
+### 10) IGNORE 검증: 같은 로그 재전송 → repeatCount가 증가하면 안 됨
+POST {{base}}/logs
+Content-Type: application/json
+
+{
+  "serviceName": "{{svc}}",
+  "hostName": "{{host}}",
+  "logLevel": "ERROR",
+  "message": "{{msg}}",
+  "stackTrace": "{{stack}}"
+}
+
+POST {{base}}/test/queue/drain
+
+GET {{base}}/logs?serviceName={{svc}}&keyword=%5BTEST_HTTP%5D&size=20
+
+> {%
+  const body = (typeof response.body === "string") ? JSON.parse(response.body) : response.body;
+  if (!body.content || body.content.length === 0) throw new Error("❌ FAIL: Log disappeared completely.");
+
+  const hit = body.content.find(x => x.logHash === client.global.get("logHash"));
+  if (!hit) throw new Error("❌ FAIL: Log hash not found in search result.");
+
+  const before = Number(client.global.get("baseRepeat"));
+  const after = Number(hit.repeatCount ?? 1);
+
+  if (after !== before) {
+    throw new Error(`❌ FAIL: repeatCount changed after IGNORE. before=${before} after=${after}`);
+  }
+
+  client.log(`OK: IGNORE prevented upsert. repeatCount stays ${after}`);
+%}
+
+### 11) UNIGNORE (요청하신 엔드포인트)
+POST {{base}}/incidents/{{logHash}}/unignore
+
+### 12) Outbox 반영 트리거/대기 필요 (UNIGNORE 반영 가시화용)
+
+POST {{base}}/test/outbox/unignore/process
+
+> {%
+  function parseBody(resp) {
+    try { return (typeof resp.body === "string") ? JSON.parse(resp.body) : (resp.body ?? null); }
+    catch (e) { return resp.body; }
+  }
+
+  function dump(label, extra) {
+    const b = parseBody(response);
+    client.log(`\n===== ${label} =====`);
+    client.log(`REQ: POST {{base}}/test/outbox/unignore/process`);
+    client.log(`HTTP ${response.status} ${response.statusText ?? ""}`.trim());
+    if (extra) client.log(`EXTRA: ${JSON.stringify(extra)}`);
+    client.log(`BODY: ${JSON.stringify(b, null, 2)}`);
+    client.log(`====================\n`);
+    return b;
+  }
+
+  function fail(label, expected, actual, hint) {
+    dump(label, { expected, actual, hint });
+    throw new Error(`❌ FAIL: ${label}\nexpected=${JSON.stringify(expected)}\nactual=${JSON.stringify(actual)}${hint ? `\nhint=${hint}` : ""}`);
+  }
+
+  const ok = (response.status === 200 || response.status === 202 || response.status === 204);
+
+  dump("STEP12 outbox unignore process trigger response", {
+    expected: "HTTP 200/202/204 (if trigger endpoint exists)",
+  });
+
+  if (!ok) {
+    fail(
+      "outbox unignore process trigger endpoint failed or not implemented",
+      "HTTP 200/202/204",
+      response.status,
+      "엔드포인트 미구현이면 404가 정상적으로 원인입니다. 스케줄러 대기 방식이면 Step 12는 호출하지 말고 일정 시간 후 Step 13으로 진행하세요."
+    );
+  }
+
+  client.log("OK: outbox unignore trigger executed (or accepted).");
+%}
+
+
+### 13) UNIGNORE 검증: 재전송 → repeatCount가 증가해야 함
+POST {{base}}/logs
+Content-Type: application/json
+
+{
+  "serviceName": "{{svc}}",
+  "hostName": "{{host}}",
+  "logLevel": "ERROR",
+  "message": "{{msg}}",
+  "stackTrace": "{{stack}}"
+}
+
+POST {{base}}/test/queue/drain
+
+GET {{base}}/logs?serviceName={{svc}}&keyword=%5BTEST_HTTP%5D&size=20
+
+> {%
+  const body = (typeof response.body === "string") ? JSON.parse(response.body) : response.body;
+  if (!body.content || body.content.length === 0) throw new Error("❌ FAIL: Logs content empty after UNIGNORE.");
+
+  const hit = body.content.find(x => x.logHash === client.global.get("logHash"));
+  if (!hit) throw new Error("❌ FAIL: Log hash not found after UNIGNORE.");
+
+  const before = Number(client.global.get("baseRepeat"));
+  const after = Number(hit.repeatCount ?? 1);
+
+  if (after <= before) {
+    throw new Error(`❌ FAIL: repeatCount did not increase after UNIGNORE. before=${before} after=${after}`);
+  }
+
+  client.log(`OK: UNIGNORE allows upsert. repeatCount increased to ${after}`);
+%}

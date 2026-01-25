@@ -1,7 +1,6 @@
 package com.soyunju.logcollector.service.lc.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.soyunju.logcollector.domain.lc.ErrorStatus;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
 import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
 import com.soyunju.logcollector.monitornig.LcMetrics;
@@ -115,11 +114,11 @@ public class RedisToDB {
                     request.getServiceName(), request.getMessage(), request.getStackTrace()
             );
 
-            if (errorLogCrdService.isIgnored(logHash)) {
+        /*    if (errorLogCrdService.isIgnored(logHash)) {
                 lcMetrics.incIgnored();
                 lcMetrics.recordPersistLagSeconds(lagSample, "ignored");
                 return;
-            }
+            } */
 
             ErrorLogResponse response = errorLogCrdService.saveLog(request);
             if (response == null) {
@@ -131,11 +130,11 @@ public class RedisToDB {
             lcMetrics.recordPersistLagSeconds(lagSample, "success");
 
             // ACKNOWLEDGED면 알람 스킵
-            boolean isAcknowledged = response.getStatus() == ErrorStatus.ACKNOWLEDGED;
+           /* boolean isAcknowledged = response.getStatus() == ErrorStatus.ACKNOWLEDGED;
             if (isAcknowledged) {
                 lcMetrics.incSlackNotify("skipped_ack");
                 return;
-            }
+            } */
 
             boolean shouldNotify =
                     response.isNew() ||

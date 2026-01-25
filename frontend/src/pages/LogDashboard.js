@@ -58,7 +58,6 @@ return (
         >
         <option value="">(All Status)</option>
         <option value="NEW">NEW</option>
-        <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
         <option value="RESOLVED">RESOLVED</option>
         <option value="IGNORED">IGNORED</option>
         </Form.Select>
@@ -107,7 +106,16 @@ return (
           <td>{log.serviceName}</td>
           <td className="text-truncate" style={{maxWidth: '360px'}}>{log.summary || log.message || '(No summary)'}</td>
           <td>
-            <Badge bg={log.status === 'RESOLVED' ? 'success' : log.status === 'ACKNOWLEDGED' ? 'warning' : 'secondary'}>
+            <Badge
+                    bg={
+                    log.status===
+            'RESOLVED'
+            ? 'success'
+            : log.status === 'IGNORED'
+            ? 'secondary'
+            : 'warning' // NEW
+            }
+            >
             {log.status}
             </Badge>
           </td>

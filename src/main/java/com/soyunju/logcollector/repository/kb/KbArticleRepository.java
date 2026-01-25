@@ -66,6 +66,14 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
                               @Param("now") LocalDateTime now);
 
 
+    // 테스트 데이터 삭제용
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM KbArticle k WHERE k.incident.logHash = :logHash")
+    void deleteByIncident_LogHash(@Param("logHash") String logHash);
+
+
+
 }
 
 

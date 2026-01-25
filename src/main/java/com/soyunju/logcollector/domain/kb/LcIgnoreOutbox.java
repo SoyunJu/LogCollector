@@ -45,4 +45,25 @@ public class LcIgnoreOutbox {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public static LcIgnoreOutbox requestIgnore(String logHash) {
+        LcIgnoreOutbox o = new LcIgnoreOutbox();
+        o.setLogHash(logHash);
+        o.setAction(LcIgnoreOutboxAction.IGNORE);
+        o.setStatus(LcIgnoreOutboxStatus.PENDING);
+        o.setAttemptCount(0);
+        o.setCreatedAt(LocalDateTime.now());
+        return o;
+    }
+
+    public static LcIgnoreOutbox requestUnignore(String logHash) {
+        LcIgnoreOutbox o = new LcIgnoreOutbox();
+        o.setLogHash(logHash);
+        o.setAction(LcIgnoreOutboxAction.UNIGNORE);
+        o.setStatus(LcIgnoreOutboxStatus.PENDING);
+        o.setAttemptCount(0);
+        o.setCreatedAt(LocalDateTime.now());
+        return o;
+    }
+
 }

@@ -1,15 +1,11 @@
 package com.soyunju.logcollector.service.kb.crud;
 
 import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.domain.kb.LcIgnoreOutbox;
 import com.soyunju.logcollector.domain.kb.enums.ErrorLevel;
 import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
-import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxAction;
-import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxStatus;
 import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
-import com.soyunju.logcollector.repository.kb.LcIgnoreOutboxRepository;
 import com.soyunju.logcollector.service.kb.ai.AiAnalysisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,8 +26,6 @@ public class IncidentService {
     private final AiAnalysisService aiAnalysisService;
     private final KbArticleRepository kbArticleRepository;
     private final KbDraftService kbDraftService;
-    private final LcIgnoreOutboxRepository lcIgnoreOutboxRepository;
-
 
     @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
     public Optional<Incident> findByLogHash(String logHash) {
@@ -53,7 +47,15 @@ public class IncidentService {
     }
 
     @Transactional(transactionManager = "kbTransactionManager", propagation = Propagation.REQUIRES_NEW)
-    public Incident recordOccurrence(String logHash, String serviceName, String summary, String stackTrace, String errorCode, String logLevel, LocalDateTime occurredAt) {
+    public Incident recordOccurrenceKbOnly(
+            String logHash,
+            String serviceName,
+            String summary,
+            String stackTrace,
+            String errorCode,
+            String logLevel,
+            LocalDateTime occurredAt
+    ) {
         LocalDateTime ts = (occurredAt != null) ? occurredAt : LocalDateTime.now();
         String level = mapErrorLevel(logLevel).name();
 
@@ -67,16 +69,15 @@ public class IncidentService {
         Incident saved = incidentRepository.findByLogHash(logHash)
                 .orElseThrow(() -> new IllegalStateException("Incident Upsert 실패: " + logHash));
 
-        // 재발생시 status 변경(OPEN)
+        // 재발생시 KBArticle에 recurrence 기록 (KB DB only)
         if (prevStatus == IncidentStatus.RESOLVED || prevStatus == IncidentStatus.CLOSED) {
             kbArticleRepository.markRecurByIncidentId(saved.getId(), LocalDateTime.now());
         }
         return saved;
     }
 
-    // IGNORED 처리 로직 추가
     @Transactional(transactionManager = "kbTransactionManager")
-    public void updateStatus(String logHash, IncidentStatus status) {
+    public void updateStatusKbOnly(String logHash, IncidentStatus status) {
         if (status == null) {
             throw new IllegalArgumentException("status는 null일 수 없습니다.");
         }
@@ -85,58 +86,30 @@ public class IncidentService {
                 .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다. hash: " + logHash));
 
         IncidentStatus prev = incident.getStatus();
-
-        // 동일 상태면 아무것도 하지 않음
         if (prev == status) {
             return;
         }
 
         incident.setStatus(status);
 
-        //  RESOLVED => resolvedAt + Draft 생성
+        // RESOLVED => resolvedAt + closeEligibleAt + Draft 생성 (KB DB only)
         if (status == IncidentStatus.RESOLVED) {
             if (incident.getResolvedAt() == null) {
                 incident.setResolvedAt(LocalDateTime.now());
             }
+            if (incident.getCloseEligibleAt() == null) {
+                incident.setCloseEligibleAt(incident.getResolvedAt().plusHours(2));
+            }
             kbDraftService.createSystemDraft(incident.getId());
-        }
-
-        // IGNORED
-        if (prev != IncidentStatus.IGNORED && status == IncidentStatus.IGNORED) {
-            lcIgnoreOutboxRepository.save(
-                    LcIgnoreOutbox.builder()
-                            .logHash(logHash)
-                            .action(LcIgnoreOutboxAction.IGNORE)
-                            .status(LcIgnoreOutboxStatus.PENDING)
-                            .attemptCount(0)
-                            .nextRetryAt(null)
-                            .lastError(null)
-                            .createdAt(LocalDateTime.now())
-                            .updatedAt(LocalDateTime.now())
-                            .build()
-            );
-        } else if (prev == IncidentStatus.IGNORED && status != IncidentStatus.IGNORED) {
-            lcIgnoreOutboxRepository.save(
-                    LcIgnoreOutbox.builder()
-                            .logHash(logHash)
-                            .action(LcIgnoreOutboxAction.UNIGNORE)
-                            .status(LcIgnoreOutboxStatus.PENDING)
-                            .attemptCount(0)
-                            .nextRetryAt(null)
-                            .lastError(null)
-                            .createdAt(LocalDateTime.now())
-                            .updatedAt(LocalDateTime.now())
-                            .build()
-            );
         }
 
         incidentRepository.save(incident);
     }
 
-
     @Transactional(transactionManager = "kbTransactionManager")
-    public void markResolved(String logHash, LocalDateTime resolvedAt) {
-        updateStatus(logHash, IncidentStatus.RESOLVED);
+    public void markResolvedKbOnly(String logHash, LocalDateTime resolvedAt) {
+        // resolvedAt은 현재 구현에서는 now 기반 처리(필요 시 확장)
+        updateStatusKbOnly(logHash, IncidentStatus.RESOLVED);
     }
 
     private ErrorLevel mapErrorLevel(String logLevel) {
@@ -168,7 +141,7 @@ public class IncidentService {
         return aiAnalysisService.AiAnalyze(incident.getId());
     }
 
-    public void updateDetails(String logHash, String title, String createdBy, IncidentStatus status) {
+    public void updateDetailsKbOnly(String logHash, String title, String createdBy, IncidentStatus status) {
 
         Incident incident = incidentRepository.findByLogHash(logHash)
                 .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다. hash: " + logHash));
@@ -184,9 +157,10 @@ public class IncidentService {
             incident.setCreatedBy(createdBy);
             changed = true;
             if (incident.getStatus() == IncidentStatus.OPEN) {
-                incident.setStatus(IncidentStatus.UNDERWAY);
+                incident.setStatus(IncidentStatus.IN_PROGRESS);
             }
         }
+
         if (status != null) {
             IncidentStatus prev = incident.getStatus();
 
@@ -199,36 +173,11 @@ public class IncidentService {
                         incident.setResolvedAt(LocalDateTime.now());
                         changed = true;
                     }
+                    if (incident.getCloseEligibleAt() == null) {
+                        incident.setCloseEligibleAt(incident.getResolvedAt().plusHours(2));
+                        changed = true;
+                    }
                     kbDraftService.createSystemDraft(incident.getId());
-                }
-
-                // IGNORED outbox
-                if (prev != IncidentStatus.IGNORED && status == IncidentStatus.IGNORED) {
-                    lcIgnoreOutboxRepository.save(
-                            LcIgnoreOutbox.builder()
-                                    .logHash(logHash)
-                                    .action(LcIgnoreOutboxAction.IGNORE)
-                                    .status(LcIgnoreOutboxStatus.PENDING)
-                                    .attemptCount(0)
-                                    .nextRetryAt(null)
-                                    .lastError(null)
-                                    .createdAt(LocalDateTime.now())
-                                    .updatedAt(LocalDateTime.now())
-                                    .build()
-                    );
-                } else if (prev == IncidentStatus.IGNORED && status != IncidentStatus.IGNORED) {
-                    lcIgnoreOutboxRepository.save(
-                            LcIgnoreOutbox.builder()
-                                    .logHash(logHash)
-                                    .action(LcIgnoreOutboxAction.UNIGNORE)
-                                    .status(LcIgnoreOutboxStatus.PENDING)
-                                    .attemptCount(0)
-                                    .nextRetryAt(null)
-                                    .lastError(null)
-                                    .createdAt(LocalDateTime.now())
-                                    .updatedAt(LocalDateTime.now())
-                                    .build()
-                    );
                 }
             }
         }
@@ -246,6 +195,25 @@ public class IncidentService {
                 }
             });
         }
+    }
+
+    @Transactional(transactionManager = "kbTransactionManager")
+    public int autoCloseIncidents(LocalDateTime now) {
+
+        var candidates = incidentRepository.findCloseCandidates(IncidentStatus.RESOLVED, now);
+
+        if (candidates == null || candidates.isEmpty()) {
+            return 0;
+        }
+
+        for (Incident i : candidates) {
+            i.setStatus(IncidentStatus.CLOSED);
+            i.setClosedAt(now);
+            i.setCloseEligibleAt(null);
+        }
+
+        incidentRepository.saveAll(candidates);
+        return candidates.size();
     }
 
 

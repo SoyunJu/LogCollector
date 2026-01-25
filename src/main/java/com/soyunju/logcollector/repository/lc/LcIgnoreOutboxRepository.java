@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.repository.kb;
+package com.soyunju.logcollector.repository.lc;
 
 import com.soyunju.logcollector.domain.kb.LcIgnoreOutbox;
 import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxStatus;
@@ -37,4 +37,5 @@ public interface LcIgnoreOutboxRepository extends JpaRepository<LcIgnoreOutbox, 
             @Param("nextRetryAt") LocalDateTime nextRetryAt,
             @Param("lastError") String lastError
     );
+
 }

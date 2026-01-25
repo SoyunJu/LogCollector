@@ -16,9 +16,9 @@ public class SchedulerTestController {
 
     @PostMapping("/run")
     public ResponseEntity<String> runSchedulerManually() {
-        // 제공해주신 스케줄러 메서드 호출
-        kbScheduler.processLcIgnoreOutbox();
-        // 필요하다면 kbScheduler.scheduleDraftCleanup(); 도 호출 가능
-        return ResponseEntity.ok("Scheduler (processLcIgnoreOutbox) triggered manually.");
+        // kbScheduler.processLcIgnoreOutbox();
+        kbScheduler.autoCloseResolvedIncidents();
+        return ResponseEntity.ok("Scheduler triggered manually.");
     }
+
 }
