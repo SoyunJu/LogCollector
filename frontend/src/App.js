@@ -11,6 +11,7 @@ import IncidentDetailPage from './pages/IncidentDetailPage';
 import KbDashboard from './pages/KbDashboard';
 import KbDetailPage from './pages/KbDetailPage';
 import RankDashboard from './pages/RankDashboard';
+import SystemCheckPage from './pages/SystemCheckPage';
 
 const App = () => {
 return (
@@ -26,7 +27,9 @@ return (
                     <Nav.Link as={Link} to="/logs">Logs</Nav.Link>
                     <Nav.Link as={Link} to="/incidents">Incidents</Nav.Link>
                     <Nav.Link as={Link} to="/rank">🏆 Rank</Nav.Link>
+                    {/* 수정됨: 여기에 있던 <Route> 제거함 */}
                     <Nav.Link as={Link} to="/kb">KB</Nav.Link>
+                    <Nav.Link as={Link} to="/diagnostics">Diagnostics</Nav.Link>
                 </Nav>
             </Navbar.Collapse>
         </Container>
@@ -46,6 +49,9 @@ return (
             <Route path="/kb/:kbArticleId" element={<KbDetailPage />} />
 
             <Route path="/rank" element={<RankDashboard />} />
+
+            {/* 수정됨: SystemCheckPage 라우트 추가 */}
+            <Route path="/diagnostics" element={<SystemCheckPage />} />
 
             {/* 기본 경로(/)나 없는 경로 접근 시 Incidents 페이지로 이동 */}
             <Route path="*" element={<IncidentDashboard />} />

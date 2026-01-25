@@ -28,8 +28,9 @@ useEffect(() => { load(); }, [q.page, q.size]);
 const runScheduler = async () => {
 if(!window.confirm("스케줄러(Outbox 처리 등)를 즉시 실행하시겠습니까?")) return;
 try {
+// [연결] LogCollectorApi.runScheduler()가 위 1번 단계에서 추가되어야 정상 동작함
 await LogCollectorApi.runScheduler();
-alert("스케줄러 실행 요청이 전송되었습니다.");
+alert("스케줄러 실행 요청이 전송되었습니다.\n(서버 로그를 확인하세요)");
 } catch(e) {
 alert("실패: " + (e.response?.data?.message || e.message));
 }
