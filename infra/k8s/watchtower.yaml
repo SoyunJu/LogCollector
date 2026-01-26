@@ -17,13 +17,29 @@ spec:
         - name: watchtower
           image: containrrr/watchtower
           args:
-            - --interval  # 주기 확인
-            - "30"        # 30초마다
-            - --cleanup   # 업데이트 후 옛날 이미지 삭제
+            - --interval
+            - "30"
+            - --cleanup
+            - --debug
+
+          # 권한 상승 (Windows)
+          securityContext:
+            privileged: true
+            runAsUser: 0  # Root 권한으로 실행
+
           volumeMounts:
-            - name: dockersock
+            - name: docker-socket
               mountPath: /var/run/docker.sock
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
       volumes:
-        - name: dockersock
+        - name: docker-socket
           hostPath:
-            path: /var/run/docker.sock # 소켓 공유
+            path: /var/run/docker.sock
