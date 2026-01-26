@@ -23,6 +23,19 @@ setMiniLogs(res.data?.content ?? []);
 } catch(e) {}
 };
 
+// [추가] Unignore 핸들러
+const handleUnignore = async (logHash) => {
+if (!window.confirm("이 Incident의 차단을 해제(Unignore) 하시겠습니까?\n상태가 OPEN으로 변경됩니다.")) return;
+try {
+await LogCollectorApi.unignore(logHash);
+alert("차단이 해제되었습니다.");
+loadIncidents();
+} catch (e) {
+console.error("Unignore failed:", e);
+alert("오류가 발생했습니다.");
+}
+};
+
 useEffect(() => { loadIncidents(); }, [q]);
 useEffect(() => { loadMiniLogs(); }, []);
 
@@ -84,7 +97,7 @@ return (
                     <th>Title</th>
                     <th>Status</th>
                     <th>Last Occurred</th>
-                    <th style={{width: '100px'}}>Action</th>
+                    <th style={{width: '120px'}}>Action</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -99,15 +112,31 @@ return (
                         </Link>
                     </td>
                     <td>
-                        <Badge bg={r.status === 'RESOLVED' ? 'success' : r.status === 'CLOSED' ? 'secondary' : 'danger'}>
+                        <Badge bg={
+                               r.status === 'RESOLVED' ? 'success' :
+                        r.status === 'CLOSED' ? 'secondary' :
+                        r.status === 'IGNORED' ? 'dark' : 'danger'
+                        }>
                         {r.status}
                         </Badge>
                     </td>
                     <td>{formatKst(r.lastOccurredAt)}</td>
                     <td>
-                        <Link to={`/incidents/${r.logHash}`}>
-                        <Button variant="outline-primary" size="sm">View</Button>
-                        </Link>
+                        <div className="d-flex gap-1">
+                            <Link to={`/incidents/${r.logHash}`}>
+                            <Button variant="outline-primary" size="sm">View</Button>
+                            </Link>
+                            {/* [추가] IGNORED 상태일 때 Unignore 버튼 노출 */}
+                            {r.status === 'IGNORED' && (
+                            <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    onClick={() => handleUnignore(r.logHash)}
+                            >
+                            Unignore
+                            </Button>
+                            )}
+                        </div>
                     </td>
                 </tr>
                 ))}

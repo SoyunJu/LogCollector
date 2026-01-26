@@ -157,6 +157,7 @@ public class ErrorLogCrdService {
             );
         } catch (RuntimeException e) {
             log.warn("[INCIDENT][SKIP] recordOccurrence failed. logHash={}, err={}", logHash, e.toString());
+            throw e;
         }
 
         // KB Draft 생성 (Incident가 정상적으로 존재할 때만)

@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: log-app-deploy
 spec:
-  replicas: 2  # 2개의 복제본
+  replicas: 2
   selector:
     matchLabels:
       app: log-app
@@ -14,24 +14,55 @@ spec:
     spec:
       containers:
         - name: log-app
-          image: logcollector-log-app:latest # 빌드한 도커 이미지명
-          imagePullPolicy: Never # 로컬 도커 이미지를 사용할 때 필수
+          image: soyunju/logcollector-app:latest
+          # Always / IfNotPresent / Never
+          imagePullPolicy: Never
           ports:
             - containerPort: 8081
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
           env:
-            - name: SPRING_DATASOURCE_URL
-              value: jdbc:mariadb://logcollector-db:3306/logcollector
-            - name: SPRING_DATASOURCE_USERNAME
+            # 1. 프로파일 설정 (application-docker.properties 활성화)
+            - name: SPRING_PROFILES_ACTIVE
+              value: docker
+
+            # 2. LC DB 연결 (logcollector / root)
+            - name: SPRING_LC_DATASOURCE_URL
+              value: jdbc:mariadb://lc-db-mariadb:3306/logcollector
+            - name: SPRING_LC_DATASOURCE_USERNAME
               value: root
-            - name: SPRING_DATASOURCE_PASSWORD
+            - name: SPRING_LC_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: logcollector-secrets
                   key: db-root-password
+
+            # 3. KB DB 연결 (knowledge_base / kb_root)
+            - name: SPRING_KB_DATASOURCE_URL
+              value: jdbc:mariadb://lc-db-mariadb:3306/knowledge_base
+            - name: SPRING_KB_DATASOURCE_USERNAME
+              value: kb_root
+            # 편의상 root 패스워드와 동일하게 설정 (Helm 초기화 스크립트 기준)
+            - name: SPRING_KB_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: logcollector-secrets
+                  key: db-root-password
+
+            # 4. Redis 연결 (Helm Release: lc-redis)
+            - name: SPRING_REDIS_HOST
+              value: lc-redis-master
+            - name: SPRING_REDIS_PORT
+              value: "6379"
+
+            # 5. OpenAI API Key (Secret 참조 복구)
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: logcollector-secrets
                   key: openai-api-key
-            - name: SPRING_PROFILES_ACTIVE
-              value: secret

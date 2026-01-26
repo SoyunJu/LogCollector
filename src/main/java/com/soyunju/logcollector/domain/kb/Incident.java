@@ -4,6 +4,9 @@ import com.soyunju.logcollector.domain.kb.enums.ErrorLevel;
 import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -13,6 +16,7 @@ import java.time.LocalDateTime;
 @Builder
 @Entity
 @Table(name = "incident")
+@EntityListeners(AuditingEntityListener.class)
 public class Incident {
 
     @Id
@@ -63,9 +67,11 @@ public class Incident {
     @Builder.Default
     private Integer repeatCount = 1;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 

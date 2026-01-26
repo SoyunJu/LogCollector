@@ -3,6 +3,7 @@ package com.soyunju.logcollector.domain.kb;
 import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
 
@@ -31,6 +32,7 @@ public class KbAddendum {
     @Column(name = "created_by", nullable = false)
     private CreatedBy createdBy;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

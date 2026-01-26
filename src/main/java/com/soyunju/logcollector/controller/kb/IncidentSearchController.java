@@ -6,6 +6,7 @@ import com.soyunju.logcollector.dto.kb.IncidentResponse;
 import com.soyunju.logcollector.service.kb.search.IncidentSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,8 +35,8 @@ public class IncidentSearchController {
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(required = false) String serviceName,
             @RequestParam(required = false) IncidentStatus status,
-            @RequestParam(required = false) LocalDateTime from,
-            @RequestParam(required = false) LocalDateTime to
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
     ) {
         return ResponseEntity.ok(
                 incidentSearchService.top(metric, limit, serviceName, status, from, to)

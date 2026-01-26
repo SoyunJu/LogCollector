@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { LogCollectorApi } from '../api/logCollectorApi';
 import { Container, Card, Row, Col, ProgressBar, Spinner, Alert, Badge, Form } from 'react-bootstrap';
-// [수정] date.js 유틸 활용 import (경로 확인 필요)
-import { toIsoKst } from '../utils/date';
 
 const RankDashboard = () => {
 const [loading, setLoading] = useState(false);
@@ -14,26 +12,27 @@ const [totalTop, setTotalTop] = useState([]);
 
 const [serviceName, setServiceName] = useState('');
 
-// [수정] date.js의 toIsoKst를 활용한 Date 객체 포맷팅
-const formatDateForApi = (date) => {
+// [수정] 외부 유틸 의존성 제거 및 직접 구현 (yyyy-MM-ddTHH:mm:ss)
+const toIsoStringLocal = (date) => {
 if (!date) return null;
-// date.js의 toIsoKst(y, mo, d, h, mi, s, ms) 활용
-// 주의: getMonth()는 0부터 시작하므로 +1 필요
-return toIsoKst(
-date.getFullYear(),
-date.getMonth() + 1,
-date.getDate(),
-date.getHours(),
-date.getMinutes(),
-date.getSeconds(),
-0 // ms는 0 처리
-);
+const pad = (n) => n.toString().padStart(2, '0');
+const yyyy = date.getFullYear();
+const MM = pad(date.getMonth() + 1);
+const dd = pad(date.getDate());
+const hh = pad(date.getHours());
+const mm = pad(date.getMinutes());
+const ss = pad(date.getSeconds());
+return `${yyyy}-${MM}-${dd}T${hh}:${mm}:${ss}`;
 };
 
 const loadAll = async () => {
 setLoading(true);
+
+// [수정] 하나가 실패해도 나머지는 로딩되도록 개별 try-catch 또는 Promise.allSettled 사용
+// 여기서는 가독성을 위해 개별 호출하되, 에러를 로그만 남기고 무시하여 다음 호출 진행
 try {
 // 1. Critical Issues (Status=OPEN)
+try {
 const resOpen = await LogCollectorApi.getIncidentTop({
 metric: 'repeatCount',
 limit: 5,
@@ -41,30 +40,41 @@ status: 'OPEN',
 serviceName: serviceName || null
 });
 setOpenTop(resOpen.data || []);
+} catch (e) {
+console.error("Failed to load Critical Issues:", e);
+setOpenTop([]);
+}
 
 // 2. Recent Trends (최근 7일)
+try {
 const sevenDaysAgo = new Date();
 sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-// [수정] 날짜 포맷팅 적용
 const resRecent = await LogCollectorApi.getIncidentTop({
-metric: 'repeatCount',
+metric: 'repeatCount', // 또는 'lastOccurredAt' 등 의도에 맞게
 limit: 5,
-from: formatDateForApi(sevenDaysAgo),
+from: toIsoStringLocal(sevenDaysAgo),
 serviceName: serviceName || null
 });
 setRecentTop(resRecent.data || []);
+} catch (e) {
+console.error("Failed to load Recent Trends:", e);
+setRecentTop([]);
+}
 
 // 3. All Time High (전체)
+try {
 const resTotal = await LogCollectorApi.getIncidentTop({
 metric: 'repeatCount',
 limit: 5,
 serviceName: serviceName || null
 });
 setTotalTop(resTotal.data || []);
-
 } catch (e) {
-console.error("Rank Load Error:", e);
+console.error("Failed to load All-Time High:", e);
+setTotalTop([]);
+}
+
 } finally {
 setLoading(false);
 }
@@ -72,7 +82,7 @@ setLoading(false);
 
 useEffect(() => { loadAll(); }, [serviceName]);
 
-// 카드 렌더링 헬퍼 (기존 디자인 유지)
+// 카드 렌더링 헬퍼
 const renderRankCard = (title, data, variant, icon) => {
 const maxCount = data.length > 0 ? Math.max(...data.map(i => i.repeatCount || i.count || 0)) : 1;
 

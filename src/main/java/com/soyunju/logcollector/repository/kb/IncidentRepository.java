@@ -21,6 +21,7 @@ import java.util.Optional;
 public interface IncidentRepository extends JpaRepository<Incident, Long>, IncidentRepositoryCustom {
 
     Optional<Incident> findById(Long id);
+
     Optional<Incident> findByLogHash(String logHash);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -34,55 +35,56 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, Incid
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional(transactionManager = "kbTransactionManager")
     @Query(value = """
-    INSERT INTO incident (
-        log_hash, service_name, summary, stack_trace, error_code,
-        error_level, status, first_occurred_at, last_occurred_at, repeat_count
-    ) VALUES (
-        :logHash, :serviceName, :summary, :stackTrace, :errorCode,
-        :errorLevel, 'OPEN', :ts, :ts, 1
-    ) ON DUPLICATE KEY UPDATE
-        repeat_count = repeat_count + 1,
-        last_occurred_at = VALUES(last_occurred_at),
-
-        -- summary는 DB값이 NULL/blank일 때만 채움
-        summary = CASE
-            WHEN summary IS NULL OR TRIM(summary) = '' THEN VALUES(summary)
-            ELSE summary
-        END,
-                                                            resolved_at = CASE
-                                                                      WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
-                                                                      ELSE resolved_at
-                                                                  END,
+                            INSERT INTO incident (
+                                log_hash, service_name, incident_title, summary, stack_trace, error_code, -- [수정] incident_title 추가
+                                error_level, status, first_occurred_at, last_occurred_at, repeat_count,
+                                created_at, updated_at
+                            ) VALUES (
+                                :logHash, :serviceName, :incidentTitle, :summary, :stackTrace, :errorCode, -- [확인] 여기 순서에 맞춰 위에도 추가해야 함
+                                :errorLevel, 'OPEN', :ts, :ts, 1,
+                                :ts, :ts
+                            ) ON DUPLICATE KEY UPDATE
+                                repeat_count = repeat_count + 1,
+                                last_occurred_at = VALUES(last_occurred_at),
+                                updated_at = VALUES(updated_at), -- 업데이트 시 시간 갱신
             
-                                                                  close_eligible_at = CASE
-                                                                      WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
-                                                                      ELSE close_eligible_at
-                                                                  END,
+                                incident_title = CASE
+                                                    WHEN incident_title IS NULL OR TRIM(incident_title) = '' THEN VALUES(incident_title)
+                                                    ELSE incident_title
+                                                END,
             
-                                                                  closed_at = CASE
-                                                                      WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
-                                                                      ELSE closed_at
-                                                                  END,
+                -- summary는 DB값이 NULL/blank일 때만 채움
+                summary = CASE
+                    WHEN summary IS NULL OR TRIM(summary) = '' THEN VALUES(summary)
+                    ELSE summary
+                END,
             
-                                                                  reopened_at = CASE
-                                                                      WHEN status IN ('RESOLVED', 'CLOSED') THEN VALUES(last_occurred_at)
-                                                                      ELSE reopened_at
-                                                                  END,
+                                resolved_at = CASE
+                                          WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
+                                          ELSE resolved_at
+                                      END,
             
-                                                                  status = CASE
-                                                                      WHEN status IN ('RESOLVED', 'CLOSED') THEN 'OPEN'
-                                                                      ELSE status
-                                                                  END
-    """, nativeQuery = true)
-    void upsertIncident(
-            @Param("logHash") String logHash,
-            @Param("serviceName") String serviceName,
-            @Param("summary") String summary,
-            @Param("stackTrace") String stackTrace,
-            @Param("errorCode") String errorCode,
-            @Param("errorLevel") String errorLevel,
-            @Param("ts") LocalDateTime ts
-    );
+                                      close_eligible_at = CASE
+                                          WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
+                                          ELSE close_eligible_at
+                                      END,
+            
+                                      closed_at = CASE
+                                          WHEN status IN ('RESOLVED', 'CLOSED') THEN NULL
+                                          ELSE closed_at
+                                      END,
+            
+                                      reopened_at = CASE
+                                          WHEN status IN ('RESOLVED', 'CLOSED') THEN VALUES(last_occurred_at)
+                                          ELSE reopened_at
+                                      END,
+            
+                                      status = CASE
+                                          WHEN status IN ('RESOLVED', 'CLOSED') THEN 'OPEN'
+                                          ELSE status
+                                      END
+            """, nativeQuery = true)
+    void upsertIncident(@Param("logHash") String logHash, @Param("serviceName") String serviceName, @Param("incidentTitle") String incidentTitle, @Param("summary") String summary, @Param("stackTrace") String stackTrace, @Param("errorCode") String errorCode, @Param("errorLevel") String errorLevel, @Param("ts") LocalDateTime ts);
 
     // Not RESOLVED incident
     @Query("SELECT i.logHash FROM Incident i WHERE i.status <> :status")
@@ -100,16 +102,10 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, Incid
               AND i.closeEligibleAt <= :threshold
               AND (i.closedAt IS NULL)
             """)
-    List<Incident> findCloseCandidates(
-            @Param("status") IncidentStatus status,
-            @Param("threshold") LocalDateTime threshold
-    );
+    List<Incident> findCloseCandidates(@Param("status") IncidentStatus status, @Param("threshold") LocalDateTime threshold);
 
     // 자동 close 후보 조회
-    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT k.incident FROM KbArticle k " +
-            "WHERE k.incident.status = 'RESOLVED' " +
-            "AND k.status = 'PUBLISHED' " +
-            "AND k.incident.lastOccurredAt <= :threshold")
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT k.incident FROM KbArticle k " + "WHERE k.incident.status = 'RESOLVED' " + "AND k.status = 'PUBLISHED' " + "AND k.incident.lastOccurredAt <= :threshold")
     java.util.List<Incident> findAutoCloseCandidates(@org.springframework.data.repository.query.Param("threshold") LocalDateTime threshold);
 
     // 테스트 데이터 삭제용
@@ -119,21 +115,18 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, Incid
     void deleteByLogHash(@Param("logHash") String logHash);
 
     // IGNORE 여도 last_occurred_at 는 갱신 (repeat_count는 건드리지 않음)
-    // - JPQL enum 검증 이슈를 피하기 위해 native query 사용
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional(transactionManager = "kbTransactionManager")
     @Query(value = """
-        UPDATE incident
-           SET last_occurred_at = :occurredTime,
-               updated_at = NOW()
-         WHERE log_hash = :logHash
-           AND status = 'IGNORED'
-        """, nativeQuery = true)
-    int touchLastOccurredIfIgnored(@Param("logHash") String logHash,
-                                   @Param("occurredTime") LocalDateTime occurredTime);
+            UPDATE incident
+               SET last_occurred_at = :occurredTime,
+                   updated_at = NOW()
+             WHERE log_hash = :logHash
+               AND status = 'IGNORED'
+            """, nativeQuery = true)
+    int touchLastOccurredIfIgnored(@Param("logHash") String logHash, @Param("occurredTime") LocalDateTime occurredTime);
 
     // IGNORED가 아니면 repeat_count 증가 + last_occurred_at 갱신
-    // - (현재 코드상 직접 호출처가 없어도) JPQL 검증 실패를 막기 위해 native로 통일
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional(transactionManager = "kbTransactionManager")
     @Query(value = """
@@ -144,10 +137,6 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, Incid
              WHERE log_hash = :logHash
                AND status <> 'IGNORED'
             """, nativeQuery = true)
-    int incrementIfNotIgnored(@Param("logHash") String logHash,
-                              @Param("occurredAt") LocalDateTime occurredAt);
-
-
-
+    int incrementIfNotIgnored(@Param("logHash") String logHash, @Param("occurredAt") LocalDateTime occurredAt);
 
 }

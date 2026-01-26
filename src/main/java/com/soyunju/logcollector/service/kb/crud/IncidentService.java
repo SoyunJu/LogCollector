@@ -1,18 +1,23 @@
 package com.soyunju.logcollector.service.kb.crud;
 
 import com.soyunju.logcollector.domain.kb.Incident;
+import com.soyunju.logcollector.domain.kb.KbAddendum;
+import com.soyunju.logcollector.domain.kb.KbArticle;
 import com.soyunju.logcollector.domain.kb.enums.ErrorLevel;
 import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
+import com.soyunju.logcollector.repository.kb.KbAddendumRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
 import com.soyunju.logcollector.service.kb.ai.AiAnalysisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -25,6 +30,7 @@ public class IncidentService {
     private final AiAnalysisService aiAnalysisService;
     private final KbArticleRepository kbArticleRepository;
     private final KbDraftService kbDraftService;
+    private final KbAddendumRepository kbAddendumRepository;
 
     @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
     public Optional<Incident> findByLogHash(String logHash) {
@@ -45,7 +51,7 @@ public class IncidentService {
                 .map(com.soyunju.logcollector.dto.kb.IncidentResponse::from);
     }
 
-    @Transactional(transactionManager = "kbTransactionManager")
+    @Transactional(transactionManager = "kbTransactionManager", propagation = Propagation.REQUIRES_NEW)
     public Incident recordOccurrenceKbOnly(
             String logHash,
             String serviceName,
@@ -61,29 +67,27 @@ public class IncidentService {
         Incident existing = incidentRepository.findByLogHash(logHash).orElse(null);
         IncidentStatus prevStatus = (existing != null) ? existing.getStatus() : null;
 
-        //  IGNORED: repeat_count 차단, last_occurred_at만 갱신
+        // IGNORED 처리: last_occurred_at만 갱신
         if (prevStatus == IncidentStatus.IGNORED) {
-            incidentRepository.touchLastOccurredIfIgnored(
-                    logHash,
-                    ts
-            );
+            incidentRepository.touchLastOccurredIfIgnored(logHash, ts);
             return incidentRepository.findByLogHash(logHash)
                     .orElseThrow(() -> new IllegalStateException("Incident not found after IGNORE touch: " + logHash));
         }
 
-        //  그 외: 기존 로직 유지 (repeat_count 증가 포함)
+        //  타이틀 생성
+        String incidentTitle = generateIncidentTitle(serviceName, errorCode, logHash, summary);
+
         incidentRepository.upsertIncident(
-                logHash, serviceName, summary, stackTrace, errorCode, level, ts
+                logHash, serviceName, incidentTitle, summary, stackTrace, errorCode, level, ts
         );
 
         Incident saved = incidentRepository.findByLogHash(logHash)
                 .orElseThrow(() -> new IllegalStateException("Incident Upsert 실패: " + logHash));
 
-        // 재발생시 KBArticle에 recurrence 기록 (KB DB only)
+        // 재발생시 status 변경(OPEN) 및 KB recurrence 기록
         if (prevStatus == IncidentStatus.RESOLVED || prevStatus == IncidentStatus.CLOSED) {
             kbArticleRepository.markRecurByIncidentId(saved.getId(), LocalDateTime.now());
         }
-
         return saved;
     }
 
@@ -133,23 +137,42 @@ public class IncidentService {
         }
     }
 
+    @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
     public AiAnalysisResult analyze(String logHash, boolean force) {
         Incident incident = incidentRepository.findByLogHash(logHash)
                 .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다. hash: " + logHash));
 
-        // 1. Force 모드가 아니고(false), KB가 있다면 -> KB 내용 반환
-        if (!force) {
-            var kbOpt = kbArticleRepository.findTopByIncident_LogHashOrderByCreatedAtDesc(logHash);
-            if (kbOpt.isPresent()) {
-                var kb = kbOpt.get();
+        // KB 존재 여부 확인
+        Optional<KbArticle> kbOpt = kbArticleRepository.findTopByIncident_LogHashOrderByCreatedAtDesc(logHash);
+        Long kbId = kbOpt.map(KbArticle::getId).orElse(null);
+
+        // 1. Force 모드가 아니고(false), KB가 있다면 -> Addendum 확인
+        if (!force && kbOpt.isPresent()) {
+            KbArticle kb = kbOpt.get();
+
+            // 최신 Addendum 3개 조회
+            List<KbAddendum> recentAddendums = kbAddendumRepository.findTop3ByKbArticle_IdOrderByCreatedAtDesc(kb.getId());
+
+            if (!recentAddendums.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("=== [기존 지식 참조] ===\n");
+
+                for (KbAddendum addendum : recentAddendums) {
+                    sb.append(String.format("\n[Date: %s | By: %s]\n%s\n",
+                            addendum.getCreatedAt(),
+                            addendum.getCreatedBy(),
+                            addendum.getContent()));
+                }
+
                 return new AiAnalysisResult(
-                        "[기존 지식 참조] " + kb.getIncidentTitle(),
-                        kb.getContent()
+                        "[AI분석 결과] " + kb.getIncidentTitle(),
+                        sb.toString(),
+                        kbId
                 );
             }
         }
-        // 2. Force 모드이거나(true), KB가 없으면 -> AI 분석 호출
-        return aiAnalysisService.AiAnalyze(incident.getId());
+        AiAnalysisResult aiResult = aiAnalysisService.AiAnalyze(incident.getId());
+        return new AiAnalysisResult(aiResult.getCause(), aiResult.getSuggestion(), kbId);
     }
 
     public void updateDetailsKbOnly(String logHash, String title, String createdBy, IncidentStatus status) {
@@ -227,6 +250,39 @@ public class IncidentService {
 
         incidentRepository.saveAll(candidates);
         return candidates.size();
+    }
+
+    private String generateIncidentTitle(String serviceName, String errorCode, String logHash, String summary) {
+        String safeService = (serviceName == null || serviceName.isBlank()) ? "unknown-service" : serviceName;
+
+        String summaryShort = normalizeAndTruncate(summary, 50);
+
+        String title;
+
+        if (errorCode != null && !errorCode.isBlank()) {
+            title = "[" + safeService + "] [" + errorCode + "]";
+            if (summaryShort != null && !summaryShort.isBlank()) {
+                title += summaryShort;
+            }
+        } else {
+            String hashPrefix = (logHash != null)
+                    ? logHash.substring(0, Math.min(8, logHash.length()))
+                    : "unknown";
+            title = "[" + safeService + "] Incident #" + hashPrefix;
+        }
+
+        if (title.length() > 255) {
+            title = title.substring(0, 255);
+        }
+        return title;
+    }
+
+    private String normalizeAndTruncate(String str, int length) {
+        if (str == null) return null;
+        // 공백/개행 정리
+        String normalized = str.replaceAll("\\s+", " ").trim();
+        if (normalized.isBlank()) return null;
+        return (normalized.length() > length) ? normalized.substring(0, length) : normalized;
     }
 
 

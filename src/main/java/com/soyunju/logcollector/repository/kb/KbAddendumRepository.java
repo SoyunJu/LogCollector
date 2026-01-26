@@ -14,4 +14,6 @@ public interface KbAddendumRepository extends JpaRepository<KbAddendum, Long> {
 
     boolean existsByKbArticle_Id(Long kbArticleId);
 
+    List<KbAddendum> findTop3ByKbArticle_IdOrderByCreatedAtDesc(Long kbArticleId);
+
 }

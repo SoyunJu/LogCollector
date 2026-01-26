@@ -4,6 +4,8 @@ import com.soyunju.logcollector.domain.kb.enums.AnalysisStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -11,6 +13,7 @@ import java.time.LocalDateTime;
 @Table(name = "error_logs")
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class ErrorLog {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -60,7 +63,7 @@ public class ErrorLog {
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
 
-    @Column(name = "log_hash", length = 64)
+    @Column(name = "log_hash", length = 64, unique = true)
     private String logHash;
 
     @Column(name = "repeat_count")
@@ -69,5 +72,9 @@ public class ErrorLog {
 
     @Column(name = "last_occurred_time")
     private LocalDateTime lastOccurredTime;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
 }

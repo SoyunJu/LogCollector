@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-web-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-web
+  template:
+    metadata:
+      labels:
+        app: log-web
+    spec:
+      containers:
+        - name: log-web
+          image: soyunju/logcollector-web:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-web-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: log-web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

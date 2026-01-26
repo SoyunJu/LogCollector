@@ -26,7 +26,7 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional(transactionManager = "kbTransactionManager")
-    @Query("update KbArticle k set k.status = :toStatus where k.status in :fromStatuses and k.lastActivityAt < :cutoff")
+    @Query("update KbArticle k set k.status = :toStatus, k.updatedAt = CURRENT_TIMESTAMP where k.status in :fromStatuses and k.lastActivityAt < :cutoff")
     int bulkSetStatusByLastActivity(@Param("toStatus") KbStatus toStatus,
                                     @Param("fromStatuses") List<KbStatus> fromStatuses,
                                     @Param("cutoff") LocalDateTime cutoff);

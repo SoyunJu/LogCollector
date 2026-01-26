@@ -1,0 +1,14 @@
+# infra/helm/redis-values.yaml
+
+# 1. 아키텍처 (단일 노드)
+architecture: standalone
+
+auth:
+  enabled: false
+  # password: "redis_password"
+
+# 2. 볼륨 설정
+master:
+  persistence:
+    enabled: true
+    size: 1Gi
