@@ -2,11 +2,13 @@ apiVersion: v1
 kind: Service
 metadata:
   name: log-app-service
+  labels:
+    app: log-app
 spec:
-  type: LoadBalancer # Docker Desktop - localhost:8081
+  type: ClusterIP
   selector:
     app: log-app
   ports:
-    - protocol: TCP
-      port: 8081
-      targetPort: 8081
+    - name: http-web
+      port: 80
+      targetPort: 8080

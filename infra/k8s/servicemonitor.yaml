@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: logcollector-monitor
+  namespace: monitoring # 설치 위치
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: log-app # app 라벨
+  namespaceSelector:
+    matchNames:
+      - default # 배포된 네임스페이스
+  endpoints:
+    - port: http-web # Service에 정의된 포트 이름
+      path: /actuator/prometheus
+      interval: 15s
