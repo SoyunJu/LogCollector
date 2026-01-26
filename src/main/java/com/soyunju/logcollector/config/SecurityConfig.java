@@ -20,12 +20,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())      // CSRF 끄기 (POST, PUT, DELETE 등 CRUD 필수)
+                .cors(Customizer.withDefaults())   // CORS 설정 (프론트엔드 연동 시 필요)
                 .authorizeHttpRequests(auth -> auth
+                        // 모니터링 허용
+                        .requestMatchers("/actuator/**").permitAll()
+
+                        // Preflight 요청 허용 (CORS)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/**").permitAll()
-                        .anyRequest().authenticated()
+
+                        // 개발 중에는 일단 다 허용!
+                        //  배포 직전에 .authenticated()
+                        .anyRequest().permitAll()
                 );
 
         return http.build();
