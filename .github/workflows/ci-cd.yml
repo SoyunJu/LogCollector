@@ -57,7 +57,7 @@ jobs:
       - name: Build and Push Frontend Image
         uses: docker/build-push-action@v4
         with:
-          context: ./frontend/Dockerfile
+          context: ./frontend
           file: ./frontend/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/logcollector-web:latest
