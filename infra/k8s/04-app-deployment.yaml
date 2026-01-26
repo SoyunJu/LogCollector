@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+apiVersion: apps/v1  # [수정] v1.1 -> v1
 kind: Deployment
 metadata:
   name: log-app-deploy
@@ -16,22 +16,15 @@ spec:
         - name: log-app
           image: soyunju/logcollector-app:latest
           # Always / IfNotPresent / Never
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8081
-          resources:
-            requests:
-              cpu: "250m"
-              memory: "512Mi"
-            limits:
-              cpu: "500m"
-              memory: "1Gi"
-          env:
-            # 1. 프로파일 설정 (application-docker.properties 활성화)
-            - name: SPRING_PROFILES_ACTIVE
-              value: docker
+            - containerPort: 8080
 
-            # 2. LC DB 연결 (logcollector / root)
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "docker"
+
+            # 2. LC DB
             - name: SPRING_LC_DATASOURCE_URL
               value: jdbc:mariadb://lc-db-mariadb:3306/logcollector
             - name: SPRING_LC_DATASOURCE_USERNAME
@@ -42,27 +35,48 @@ spec:
                   name: logcollector-secrets
                   key: db-root-password
 
-            # 3. KB DB 연결 (knowledge_base / kb_root)
+            # 3. KB DB
             - name: SPRING_KB_DATASOURCE_URL
               value: jdbc:mariadb://lc-db-mariadb:3306/knowledge_base
             - name: SPRING_KB_DATASOURCE_USERNAME
               value: kb_root
-            # 편의상 root 패스워드와 동일하게 설정 (Helm 초기화 스크립트 기준)
             - name: SPRING_KB_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: logcollector-secrets
                   key: db-root-password
 
-            # 4. Redis 연결 (Helm Release: lc-redis)
+            # 4. Redis
             - name: SPRING_REDIS_HOST
               value: lc-redis-master
             - name: SPRING_REDIS_PORT
               value: "6379"
 
-            # 5. OpenAI API Key (Secret 참조 복구)
+            # 5. OpenAI API Key
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: logcollector-secrets
                   key: openai-api-key
+
+          resources:
+            requests:
+              memory: "512Mi"   # 최소
+              cpu: "250m"       # CPU 0.25
+            limits:
+              memory: "1Gi"     # 최대값 강제 종료
+              cpu: "500m"       # CPU 0.5
+
+          # Liveness: 생존 확인, Readiness: 준비 확인
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 45
+            periodSeconds: 10       # 10초마다 검사
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 5
