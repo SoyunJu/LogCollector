@@ -2,13 +2,11 @@ apiVersion: v1
 kind: Service
 metadata:
   name: log-app-service
-  labels:
-    app: log-app
 spec:
-  type: LoadBalancer
+  type: LoadBalancer      # localhost에서 접속
   selector:
     app: log-app
   ports:
     - protocol: TCP
-      port: 8081          # 외부 접속 포트
+      port: 8081          # 브라우저 포트
       targetPort: 8081    # 컨테이너 내부 포트

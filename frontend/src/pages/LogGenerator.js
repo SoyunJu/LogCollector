@@ -49,16 +49,16 @@ hostName: 'worker-node-05',
 
 const scenarios = {
 DB_FAILOVER: [
-{ ...presets.DB, logLevel: 'WARN', message: 'Health check: DB Latency 10ms (Normal)', count: 2, delay: 2000 },
-{ ...presets.DB, logLevel: 'WARN', message: 'WARN: DB Latency spiked to 2000ms', count: 3, delay: 2000 },
-{ ...presets.DB, logLevel: 'ERROR', message: 'ERROR: ConnectionRefused - Pool Exhausted', count: 10, delay: 2000 },
-{ ...presets.DB, logLevel: 'WARN', message: 'System: Switchover to Secondary DB initiated.', count: 1, delay: 20000 },
-{ ...presets.DB, logLevel: 'WARN', message: 'System: DB Connected (Secondary).', count: 1, delay: 2000 },
+{ ...presets.DB, logLevel: 'WARN', message: 'Health check: DB Latency 10ms (Normal)', count: 2, delay: 500 },
+{ ...presets.DB, logLevel: 'WARN', message: 'WARN: DB Latency spiked to 500', count: 3, delay: 500 },
+{ ...presets.DB, logLevel: 'ERROR', message: 'ERROR: ConnectionRefused - Pool Exhausted', count: 10, delay: 500 },
+{ ...presets.DB, logLevel: 'WARN', message: 'System: Switchover to Secondary DB initiated.', count: 1, delay: 5000 },
+{ ...presets.DB, logLevel: 'WARN', message: 'System: DB Connected (Secondary).', count: 1, delay: 500 },
 ],
 PAYMENT_TIMEOUT: [
-{ ...presets.PAYMENT, logLevel: 'WARN', message: 'Payment Request: Order #1234 initiated', count: 1, delay: 2000 },
-{ ...presets.PAYMENT, logLevel: 'WARN', message: 'WARN: PG Provider response slow (5s)', count: 2, delay: 20000 },
-{ ...presets.PAYMENT, logLevel: 'FATAL', count: 5, delay: 2000 },
+{ ...presets.PAYMENT, logLevel: 'WARN', message: 'Payment Request: Order #1234 initiated', count: 1, delay: 500 },
+{ ...presets.PAYMENT, logLevel: 'WARN', message: 'WARN: PG Provider response slow (5s)', count: 2, delay: 5000 },
+{ ...presets.PAYMENT, logLevel: 'FATAL', count: 5, delay: 500 },
 ],
 };
 

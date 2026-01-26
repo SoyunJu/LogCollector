@@ -9,7 +9,7 @@ resource "kubernetes_secret_v1" "logcollector_secrets" {
 
   data = {
     "db-root-password" = base64encode(var.db_password)
-    "openai-api-key" = base64encode(var.openai_api_key)
+    "openai-api-key"   = base64encode(var.openai_api_key)
   }
 
   type = "Opaque"
@@ -33,10 +33,10 @@ resource "helm_release" "mariadb" {
   values = [
     yamlencode({
       image = {
-        registry    = "docker.io"
-        repository  = "bitnami/mariadb"
-        tag         = "latest"
-        pullPolicy  = "IfNotPresent"
+        registry   = "docker.io"
+        repository = "bitnami/mariadb"
+        tag        = "latest"
+        pullPolicy = "IfNotPresent"
       }
 
       auth = {
@@ -45,6 +45,14 @@ resource "helm_release" "mariadb" {
 
       primary = {
         persistence = { enabled = false }
+
+        # [추가] DB 시간대 설정 (Asia/Seoul)
+        extraEnvVars = [
+          {
+            name  = "TZ"
+            value = "Asia/Seoul"
+          }
+        ]
       }
 
       initdbScripts = {
@@ -78,10 +86,10 @@ resource "helm_release" "redis" {
   values = [
     yamlencode({
       image = {
-        registry    = "docker.io"
-        repository  = "bitnami/redis"
-        tag         = "latest"
-        pullPolicy  = "IfNotPresent"
+        registry   = "docker.io"
+        repository = "bitnami/redis"
+        tag        = "latest"
+        pullPolicy = "IfNotPresent"
       }
 
       auth = {
@@ -92,6 +100,14 @@ resource "helm_release" "redis" {
 
       master = {
         persistence = { enabled = false }
+
+        # [추가] Redis 시간대 설정 (Asia/Seoul)
+        extraEnvVars = [
+          {
+            name  = "TZ"
+            value = "Asia/Seoul"
+          }
+        ]
       }
     })
   ]

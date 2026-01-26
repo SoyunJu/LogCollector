@@ -15,6 +15,10 @@ spec:
         - name: mariadb
           image: mariadb:latest
           env:
+            # [추가] 한국 시간대 설정
+            - name: TZ
+              value: Asia/Seoul
+
             - name: MARIADB_DATABASE
               value: logcollector
             - name: MARIADB_ROOT_PASSWORD

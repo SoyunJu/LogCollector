@@ -14,71 +14,47 @@ spec:
     spec:
       containers:
         - name: log-app
-          image: soyunju/logcollector-app:latest
-          imagePullPolicy: Always
+          image: logcollector-log-app:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8081
-
           env:
+            # [추가] 한국 시간대 설정
+            - name: TZ
+              value: Asia/Seoul
+
             - name: SPRING_PROFILES_ACTIVE
-              value: "docker"
+              value: docker
+
+            # [핵심] LC DB 연결 설정 (root 계정 사용)
             - name: SPRING_LC_DATASOURCE_URL
-              value: jdbc:mariadb://lc-db-mariadb:3306/logcollector
+              value: jdbc:mariadb://lc-db-mariadb:3306/logcollector?createDatabaseIfNotExist=true
             - name: SPRING_LC_DATASOURCE_USERNAME
               value: root
             - name: SPRING_LC_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: logcollector-secrets
-                  key: db-root-password
+                  name: lc-db-mariadb
+                  key: mariadb-root-password
+
+            # [핵심] KB DB 연결 설정 (kb_root 대신 root 계정 사용 강제)
             - name: SPRING_KB_DATASOURCE_URL
-              value: jdbc:mariadb://lc-db-mariadb:3306/knowledge_base
+              value: jdbc:mariadb://lc-db-mariadb:3306/knowledge_base?createDatabaseIfNotExist=true
             - name: SPRING_KB_DATASOURCE_USERNAME
-              value: kb_root
+              value: root
             - name: SPRING_KB_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: logcollector-secrets
-                  key: db-root-password
+                  name: lc-db-mariadb
+                  key: mariadb-root-password
+
+            # Redis 설정
             - name: SPRING_REDIS_HOST
               value: lc-redis-master
-            - name: SPRING_REDIS_PORT
-              value: "6379"
+
+            # OpenAI API Key
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: logcollector-secrets
                   key: openai-api-key
-
-          resources:
-            requests:
-              memory: "512Mi"
-              cpu: "250m"
-            limits:
-              memory: "1Gi"
-              cpu: "500m"
-
-          # Start (최대 300초)
-          startupProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8081
-            failureThreshold: 30
-            periodSeconds: 10
-
-          # 생존 확인
-          livenessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8081
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            failureThreshold: 3
-
-          # 트래픽
-          readinessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8081
-            initialDelaySeconds: 10
-            periodSeconds: 5

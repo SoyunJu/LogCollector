@@ -19,6 +19,11 @@ spec:
           ports:
             - containerPort: 80
 
+          # [추가] 한국 시간대 설정
+          env:
+            - name: TZ
+              value: Asia/Seoul
+
           resources:
             requests:
               cpu: "100m"
@@ -31,8 +36,8 @@ spec:
             httpGet:
               path: /
               port: 80
-            initialDelaySeconds: 10   # 10초 뒤부터 검사
-            periodSeconds: 10         # 10초마다
+            initialDelaySeconds: 10
+            periodSeconds: 10
             timeoutSeconds: 3
           readinessProbe:
             httpGet:
