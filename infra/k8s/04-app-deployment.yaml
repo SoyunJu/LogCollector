@@ -1,4 +1,4 @@
-apiVersion: apps/v1  # [수정] v1.1 -> v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: log-app-deploy
@@ -15,16 +15,13 @@ spec:
       containers:
         - name: log-app
           image: soyunju/logcollector-app:latest
-          # Always / IfNotPresent / Never
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8080
+            - containerPort: 8081
 
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "docker"
-
-            # 2. LC DB
             - name: SPRING_LC_DATASOURCE_URL
               value: jdbc:mariadb://lc-db-mariadb:3306/logcollector
             - name: SPRING_LC_DATASOURCE_USERNAME
@@ -34,8 +31,6 @@ spec:
                 secretKeyRef:
                   name: logcollector-secrets
                   key: db-root-password
-
-            # 3. KB DB
             - name: SPRING_KB_DATASOURCE_URL
               value: jdbc:mariadb://lc-db-mariadb:3306/knowledge_base
             - name: SPRING_KB_DATASOURCE_USERNAME
@@ -45,14 +40,10 @@ spec:
                 secretKeyRef:
                   name: logcollector-secrets
                   key: db-root-password
-
-            # 4. Redis
             - name: SPRING_REDIS_HOST
               value: lc-redis-master
             - name: SPRING_REDIS_PORT
               value: "6379"
-
-            # 5. OpenAI API Key
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -61,22 +52,33 @@ spec:
 
           resources:
             requests:
-              memory: "512Mi"   # 최소
-              cpu: "250m"       # CPU 0.25
+              memory: "512Mi"
+              cpu: "250m"
             limits:
-              memory: "1Gi"     # 최대값 강제 종료
-              cpu: "500m"       # CPU 0.5
+              memory: "1Gi"
+              cpu: "500m"
 
-          # Liveness: 생존 확인, Readiness: 준비 확인
+          # Start (최대 300초)
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            failureThreshold: 30
+            periodSeconds: 10
+
+          # 생존 확인
           livenessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 45
-            periodSeconds: 10       # 10초마다 검사
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+
+          # 트래픽
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 40
+              port: 8081
+            initialDelaySeconds: 10
             periodSeconds: 5
