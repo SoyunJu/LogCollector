@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: watchtower
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: watchtower
+  template:
+    metadata:
+      labels:
+        app: watchtower
+    spec:
+      containers:
+        - name: watchtower
+          image: containrrr/watchtower
+          args:
+            - --interval  # 주기 확인
+            - "30"        # 30초마다
+            - --cleanup   # 업데이트 후 옛날 이미지 삭제
+          volumeMounts:
+            - name: dockersock
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: dockersock
+          hostPath:
+            path: /var/run/docker.sock # 소켓 공유

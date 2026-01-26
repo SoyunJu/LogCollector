@@ -49,7 +49,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile
+          file: ./infra/compose/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/logcollector-app:latest
 
@@ -57,7 +57,7 @@ jobs:
       - name: Build and Push Frontend Image
         uses: docker/build-push-action@v4
         with:
-          context: ./frontend
+          context: ./frontend/Dockerfile
           file: ./frontend/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/logcollector-web:latest
