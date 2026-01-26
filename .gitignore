@@ -45,3 +45,7 @@ infra/k8s/00-secret.yaml
 # react
 frontend/node_modules/
 frontend/build/
+# terraform
+*.tfvars
+.terraform/
+infra/terraform/terraform.tfvars
