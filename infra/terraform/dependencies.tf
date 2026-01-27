@@ -114,7 +114,7 @@ resource "helm_release" "redis" {
 }
 
 ############################
-# 4) 모니터링
+# 4) 모니터링 (Prometheus + Grafana)
 ############################
 resource "helm_release" "monitoring" {
   name             = "monitoring"
@@ -127,4 +127,39 @@ resource "helm_release" "monitoring" {
   timeout         = 900
   atomic          = true
   cleanup_on_fail = true
+
+  values = [
+    yamlencode({
+      grafana = {
+        adminPassword = "admin"
+
+        sidecar = {
+          dashboards = {
+            enabled = true
+            label   = "grafana_dashboard"
+            searchNamespace = "ALL"       # 모든 네임스페이스에서 검색
+          }
+        }
+      }
+
+      prometheus = {
+        prometheusSpec = {
+          # 타겟 지정
+          additionalScrapeConfigs = [
+            {
+              job_name        = "logcollector-app"
+              metrics_path    = "/actuator/prometheus"
+              scrape_interval = "5s"
+              static_configs = [
+                {
+                  # K8s DNS (서비스명.네임스페이스.svc:포트)
+                  targets = ["log-app-service.default.svc.cluster.local:8081"]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    })
+  ]
 }

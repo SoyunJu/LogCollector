@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: verify-job
+spec:
+  template:
+    spec:
+      containers:
+        - name: test-runner
+          image: alpine:3.18
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              echo ">>> Install dependencies..."
+              apk add --no-cache bash curl mysql-client coreutils
+
+              echo ">>> Setup environment..."
+              # ConfigMap은 ReadOnly이므로 실행을 위해 /tmp로 복사
+              cp /scripts/* /tmp/
+              chmod +x /tmp/*.sh
+              
+              # 스크립트 순차 실행
+              echo ">>> [1/3] Running Scenario 1..."
+              /tmp/1_verify_scenario.docker.sh
+              
+              echo ">>> [2/3] Running Scenario 2..."
+              /tmp/2_verify_scenario.docker.sh
+              
+              echo ">>> [3/3] Running Scenario 3 (Ignore Logic)..."
+              /tmp/3_verify_ignore.sh
+              
+              echo "------------------------------------------------"
+              echo ">>>  ALL TESTS PASSED!"
+              echo "------------------------------------------------"
+
+          env:
+            - name: BASE_URL
+              value: "http://log-app-service:8081"
+            - name: MYSQL_HOST
+              value: "lc-db-mariadb"
+            - name: MYSQL_PORT
+              value: "3306"
+            - name: MYSQL_USER
+              value: "root"
+            - name: MYSQL_PASS
+              value: "root"
+            - name: MYSQL_DB
+              value: "knowledge_base"
+            - name: WAIT_POLL_SEC
+              value: "2"
+
+          volumeMounts:
+            - name: script-volume
+              mountPath: /scripts
+
+      restartPolicy: Never
+
+      volumes:
+        - name: script-volume
+          configMap:
+            name: verify-scripts
+            defaultMode: 0777
+  backoffLimit: 0

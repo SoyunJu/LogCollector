@@ -1,24 +1,46 @@
 # LogCollector & KnowledgeBase
-### 로그에서 지식으로 (v1)
+### 로그에서 지식으로 (v1.0)
 
-단순히 로그를 수집하는 시스템은 이미 많습니다.  
+단순히 로그를 수집하는 시스템은 이미 많습니다.
 LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 식별하고, 대응 과정을 지식(KnowledgeBase)으로 축적·재활용**하는 것을 목표로 한 백엔드 중심 프로젝트입니다.
 
-이 프로젝트는 단순 로깅이 아니라,  
+이 프로젝트는 단순 로깅이 아니라,
 **“에러 발생 → 사건 관리 → 재발 대응 → 지식화”** 로 이어지는 전체 운영 흐름을 **아키텍처 관점에서 구현**하는 데 초점을 두었습니다.
+
+---
+
+##  Quick Demo (Visual)
+복잡한 설정 없이 시스템 동작을 눈으로 확인할 수 있습니다.
+
+1. **대시보드 접속**: [http://localhost](http://localhost) 접속
+2. **시나리오 실행**: `Scenario Mode` 탭 클릭 -> `DB_FAILOVER` 시나리오의 `▶ Run Simulation` 버튼 클릭
+3. **결과 확인**:
+- **Frontend**: `Logs` 탭에서 실시간 로그 유입 확인
+- **Grafana**: [http://localhost:3000](http://localhost:3000) 접속 (admin/admin) -> `LogCollector` 대시보드에서 트래픽 및 에러 그래프 변화 확인
+
+---
+
+##  CLI Verification (Automated)
+쿠버네티스 클러스터 내부에서 통합 테스트(Integration Test)를 수행합니다.
+
+```bash
+# 통합 테스트 실행 (스크립트 로드 -> Job 실행 -> 결과 출력)
+make test
+```
+> **성공 기준**: 터미널 마지막에 `>>> ✅ ALL TESTS PASSED!` 메시지가 출력되면 정상입니다.
 
 ---
 
 ## 1. Project Goal — 왜 만들었는가
 
-운영 환경의 로그는 파편화되어 있고, 대부분 일회성으로 소비된 뒤 사라집니다.  
+운영 환경의 로그는 파편화되어 있고, 대부분 일회성으로 소비된 뒤 사라집니다.
 그 결과 동일한 장애가 반복되어도 대응 경험은 개인의 기억에만 의존하게 됩니다.
 
 이 프로젝트는 다음 두 가지 문제를 해결하는 것을 목표로 합니다.
 
-- **Noise Reduction**  
+- **Noise Reduction**
   반복적으로 발생하는 에러 로그를 하나의 *사건(Incident)* 으로 묶어 관리
-- **Knowledge Assetization**  
+- **Knowledge Assetization**
   장애 대응 경험을 코드와 데이터 구조를 통해 **시스템의 지식 자산**으로 축적
 
 ---
@@ -48,19 +70,19 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 각 컴포넌트는 단일 책임 원칙을 기준으로 명확히 분리되어 있습니다.
 
 - **LogCollector (LC)**
-    - 대량 로그 수집
-    - 로그 정규화(Normalize)
-    - 해싱 및 중복 제거  
-      → *전처리 전용 모듈*
+  - 대량 로그 수집
+  - 로그 정규화(Normalize)
+  - 해싱 및 중복 제거
+    → *전처리 전용 모듈*
 
 - **Incident (Operations View)**
-    - 운영자가 인지하는 “현재 사건”
-    - LC와 KB를 연결하는 Projection 계층
-    - 장애 상태 및 재발 관리
+  - 운영자가 인지하는 “현재 사건”
+  - LC와 KB를 연결하는 Projection 계층
+  - 장애 상태 및 재발 관리
 
 - **KbArticle (Knowledge View)**
-    - 실제 지식이 저장되는 도메인
-    - 대응 이력과 결론이 누적되는 **Writer of Truth**
+  - 실제 지식이 저장되는 도메인
+  - 대응 이력과 결론이 누적되는 **Writer of Truth**
 
 ---
 
@@ -89,7 +111,7 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 
 ## 4. Data Flow & Consistency Model
 
-LC DB / KB DB로 분리된 멀티 DB 환경에서  
+LC DB / KB DB로 분리된 멀티 DB 환경에서
 본 프로젝트는 **Eventual Consistency(최종 일관성)** 모델을 채택합니다.
 
 ### 핵심 전략
@@ -105,38 +127,40 @@ LC DB / KB DB로 분리된 멀티 DB 환경에서
 ## 5. Status Model
 
 ### Incident (운영 관점)
-- `OPEN` → `UNDERWAY` → `RESOLVED`
+- `OPEN` → `IN_PROGRESS` → `RESOLVED`
+- (+ `CLOSED`, `IGNORED`)
 
 ### KbArticle (지식 관점)
-- `OPEN` → `UNDERWAY` → `RESPONSED` → `DEFINITY`
+- `DRAFT` → `IN_PROGRESS` → `PUBLISHED` 
+- (+ `ARCHIVED`)
 
 ---
 
-## 6. Why v1 Scope Is Limited (의도적 범위 제한)
+## 6. Why v1.0 Scope Is Limited (의도적 범위 제한)
 
-v1의 목적은 **기능 나열이 아니라, 운영 흐름과 데이터 책임 구조의 검증**입니다.  
-따라서 아래 항목들은 기술적으로 가능하더라도 **의도적으로 제외**했습니다.
+v1.0의 목적은 **기능 나열이 아니라, 운영 흐름과 데이터 책임 구조의 검증**입니다.
+따라서 아래 항목들은 기술적으로 가능하더라도 **의도적으로 후순위로 제외**했습니다.
 
 ### 제외한 이유
-- **Elasticsearch / Full-text Search**  
+- **Elasticsearch / Full-text Search**
   → 검색은 “지식이 쌓인 이후”의 문제이며, 핵심 흐름 검증과 무관
-- **AI 자동 요약/추천**  
+- **AI 자동 요약/추천**
   → 데이터 구조와 일관성이 먼저 증명되어야 의미 있음
-- **분산 트랜잭션(2PC)**  
-  → 운영 환경에서의 현실적 비용 대비 효과가 낮음  
+- **분산 트랜잭션(2PC)**
+  → 운영 환경에서의 현실적 비용 대비 효과가 낮음
   → Eventual Consistency + 멱등성으로 충분히 대체 가능함을 검증
 
-v1은 **“이 구조가 운영에서 성립하는가?”** 에 대한 답을 얻는 단계입니다.
+v1.0은 **“이 구조가 운영에서 성립하는가?”** 에 대한 답을 얻는 단계입니다.
 
 ---
 
 ## 7. Tech Stack
 
-- **Language / Framework**  
-  Java 17, Spring Boot
-- **Data**  
+- **Language / Framework**
+  Java 17, Spring Boot 3.4.1
+- **Data**
   JPA, Querydsl, MariaDB (LC / KB 분리), Redis
-- **Infrastructure**  
+- **Infrastructure**
   Docker, Docker Compose
 
 ---
@@ -150,6 +174,6 @@ v1은 **“이 구조가 운영에서 성립하는가?”** 에 대한 답을 �
 
 ## Summary
 
-LogCollector & KnowledgeBase는 단순한 에러 로깅 툴이 아닙니다.  
-**운영 중 발생하는 파편화된 경험을 어떻게 시스템의 자산으로 남길 것인가**에 대해,  
+LogCollector & KnowledgeBase는 단순한 에러 로깅 툴이 아닙니다.
+**운영 중 발생하는 파편화된 경험을 어떻게 시스템의 자산으로 남길 것인가**에 대해,
 아키텍처 설계와 코드로 답한 프로젝트입니다.

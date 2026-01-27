@@ -1,0 +1,26 @@
+### 1. 로그 생성 (Log Ingestion)
+POST http://localhost:8082/api/logs
+Content-Type: application/json
+
+{
+  "serviceName": "payment-service",
+  "logLevel": "ERROR",
+  "message": "Connection timeout while connecting to PG gateway",
+  "hostName": "prod-api-01"
+}
+
+### 2. 인시던트 목록 조회 (Incidents List)
+# 로그가 처리(Redis -> DB)될 때까지 잠시 기다린 후 실행하세요.
+GET http://localhost:8082/api/incidents
+Accept: application/json
+
+### 3. 특정 인시던트 조회 (Hash 필요)
+# 위 목록 조회에서 얻은 logHash를 입력하세요.
+@logHash = paste-your-hash-here
+GET http://localhost:8082/api/incidents/{{logHash}}
+
+### 4. 인시던트 상태 변경
+PATCH http://localhost:8082/api/incidents/{{logHash}}/status?newStatus=IN_PROGRESS
+
+### 5. AI 분석 요청
+POST http://localhost:8082/api/logs/analyze/{{logHash}}
