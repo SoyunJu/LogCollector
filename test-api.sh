@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# local Port 8082 / Docker Port 8081
+
 BASE_URL="http://localhost:8082/api"
 
 echo "1. Sending Error Log..."

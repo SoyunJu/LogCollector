@@ -1,4 +1,6 @@
 # LogCollector API Test Script (PowerShell)
+# local Port 8082 / Docker Port 8081
+
 $BaseUrl = "http://localhost:8082/api"
 
 Write-Host "1. Sending Error Log..." -ForegroundColor Cyan
