@@ -169,6 +169,7 @@ v1.0은 **“이 구조가 운영에서 성립하는가?”** 에 대한 답을 
 
 - 로컬 실행 가이드: [`docs/run-local.md`](docs/run-local.md)
 - Docker 실행 가이드: [`docs/run-docker.md`](docs/run-docker.md)
+- k8s/terraform 실행 가이드 : [`docs/run-k8s.md`](/docs/run-k8s.md)
 
 ---
 
