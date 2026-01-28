@@ -1,0 +1,6 @@
+CREATE DATABASE IF NOT EXISTS knowledge_base;
+
+CREATE USER IF NOT EXISTS 'kb_root'@'%' IDENTIFIED BY 'root';
+GRANT ALL PRIVILEGES ON knowledge_base.* TO 'kb_root'@'%';
+
+FLUSH PRIVILEGES;
