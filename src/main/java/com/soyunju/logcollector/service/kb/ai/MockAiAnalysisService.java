@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 //@Profile("dev") // 개발 환경에서 활성화
-@Profile({"docker", "dev", "test"})
+@Profile({"local", "docker", "dev", "test"})
 public class MockAiAnalysisService implements AiAnalysisService {
 
     @Override
