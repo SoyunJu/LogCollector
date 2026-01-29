@@ -48,7 +48,7 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 - **Incident = Source of Truth (SoT)**: 운영 상태/재발/종료 정책의 기준
 - **KbArticle = Writer of Truth (WoT)**: 지식 쓰기의 단일 진실 지점
 
-아래 다이어그램은 로그 유입부터 지식 확정까지의 핵심 흐름을 단순화한 그림입니다.
+아래 다이어그램은 로그 유입부터 지식화까지의 핵심 흐름을 단순화한 그림입니다.
 
 ![Architecture Diagram](docs/images/architecture-v2.png)
 
