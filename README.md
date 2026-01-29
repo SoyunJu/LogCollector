@@ -48,7 +48,6 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 아래 다이어그램은 **로그가 유입되어 지식으로 변환되는 Data Flow와 책임의 분리(LC vs KB)** 를 표현합니다.
 
 ```mermaid
-```mermaid
 graph TD
     %% 스타일 정의
     classDef external fill:#f9f9f9,stroke:#333,stroke-dasharray: 5 5;
@@ -191,37 +190,19 @@ make test
 특히 Incident는 **재발(Reoccurrence)**시 자동으로 상태가 회귀되는 생명주기를 가집니다.
 
 ```mermaid
-stateDiagram-v2
-    direction LR
-
-    %% =========================
-    %% Incident (SoT)
-    %% =========================
-    state "Incident (Source of Truth)" as Incident {
-        [*] --> OPEN : New Error
-
-        OPEN --> IN_PROGRESS : Acknowledge
-        OPEN --> IGNORED : Ignore
-
-        IN_PROGRESS --> RESOLVED : Fix
-        IN_PROGRESS --> IGNORED : Ignore
-
-        RESOLVED --> CLOSED : Auto Close (Scheduler)
-
-        %% Recurrence (Exception Transition)
-        RESOLVED --> OPEN : Recurrence
-        CLOSED --> OPEN : Recurrence
-    }
-
-    %% =========================
-    %% Knowledge (KB)
-    %% =========================
-    state "KbArticle (Knowledge)" as KB {
-        [*] --> DRAFT : Auto Create
-        DRAFT --> IN_PROGRESS : Writing
-        IN_PROGRESS --> PUBLISHED : Approve
-        PUBLISHED --> ARCHIVED : Deprecate
-    }
+flowchart LR
+  A[External Systems\n(App/DB/API Logs)] --> B[Log Ingestion API]
+  B --> C[Normalize]
+  C --> D[Hash + Dedup]
+  D <-->|dup check| R[(Redis)]
+  D -->|raw log| L[(MariaDB: LC)]
+  D -->|upsert| I[Incident (SoT)]
+  I --> K[(MariaDB: KB)]
+  I -.->|trigger| P[Draft Policy]
+  P --> W[KbArticle (Writer of Truth)]
+  W --> K
+  U[Dashboard (React)] <-->|query/manage| I
+  U <-->|write| W
 ```
 
 ### Key Rules
@@ -242,7 +223,6 @@ v1.0의 목적은 **기능 나열이 아니라, 운영 흐름과 데이터 책�
 ---
 
 ## 📂 Documentation Link
-* [run-local Guide](docs/run-local.md)
-* [run-docker Guide](docs/run-docker.md)
-* [run-k8s Guide](/docs/run-k8s.md)
-* [Status Specification](docs/status.md)
+* [ run-local ](docs/run-local.md)
+* [ run-docker ](docs/run-docker.md)
+* [ run-k8s ](/docs/run-k8s.md)
