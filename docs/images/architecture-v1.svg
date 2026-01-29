@@ -1,0 +1,93 @@
+<!--?xml version="1.0" encoding="UTF-8"?-->
+<svg width="1200" height="520" viewBox="0 0 1200 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LogCollector Architecture">
+  <defs>
+    <style>
+      .box { stroke:#111; stroke-width:2; rx:14; ry:14; }
+      .title { font: 700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill:#111; }
+      .text  { font: 500 14px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill:#111; }
+      .small { font: 500 12px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; fill:#111; }
+      .arrow { stroke:#111; stroke-width:2.5; fill:none; marker-end:url(#m); }
+      .darrow { stroke:#111; stroke-width:2.5; fill:none; stroke-dasharray:7 6; marker-end:url(#m); }
+    </style>
+
+    <marker id="m" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#111"></path>
+    </marker>
+  </defs>
+
+  <!-- Column labels -->
+  <text x="60" y="38" class="title">External</text>
+  <text x="330" y="38" class="title">LogCollector (LC)</text>
+  <text x="650" y="38" class="title">Core</text>
+  <text x="920" y="38" class="title">Storage</text>
+
+  <!-- External -->
+  <rect x="40" y="70" width="220" height="90" class="box" fill="#F2F2F2"></rect>
+  <text x="60" y="105" class="text">External Systems</text>
+  <text x="60" y="130" class="small">App / DB / API Logs</text>
+
+  <!-- LC pipeline -->
+  <rect x="300" y="70" width="260" height="70" class="box" fill="#FFF1D6"></rect>
+  <text x="320" y="110" class="text">Ingestion</text>
+
+  <rect x="300" y="160" width="260" height="70" class="box" fill="#FFF1D6"></rect>
+  <text x="320" y="200" class="text">Normalize</text>
+
+  <rect x="300" y="250" width="260" height="70" class="box" fill="#FFF1D6"></rect>
+  <text x="320" y="290" class="text">Hash + Dedup</text>
+
+  <!-- Core -->
+  <rect x="620" y="110" width="240" height="100" class="box" fill="#DFF3E1"></rect>
+  <text x="640" y="150" class="text">Incident</text>
+  <text x="640" y="175" class="small">Source of Truth (SoT)</text>
+
+  <rect x="620" y="250" width="240" height="100" class="box" fill="#D8ECFF"></rect>
+  <text x="640" y="290" class="text">KbArticle</text>
+  <text x="640" y="315" class="small">Writer of Truth (WoT)</text>
+
+  <!-- Storage -->
+  <rect x="920" y="70" width="240" height="70" class="box" fill="#F7D9E5"></rect>
+  <text x="940" y="110" class="text">Redis</text>
+  <text x="940" y="132" class="small">dup check / cache</text>
+
+  <rect x="920" y="160" width="240" height="70" class="box" fill="#EFEFEF"></rect>
+  <text x="940" y="200" class="text">MariaDB (LC)</text>
+  <text x="940" y="222" class="small">raw error logs</text>
+
+  <rect x="920" y="250" width="240" height="70" class="box" fill="#EFEFEF"></rect>
+  <text x="940" y="290" class="text">MariaDB (KB)</text>
+  <text x="940" y="312" class="small">incidents / articles</text>
+
+  <!-- Arrows -->
+  <path d="M260 115 L300 105" class="arrow"></path>      <!-- External -> Ingestion -->
+  <path d="M430 140 L430 160" class="arrow"></path>      <!-- Ingestion -> Normalize -->
+  <path d="M430 230 L430 250" class="arrow"></path>      <!-- Normalize -> Hash -->
+  <path d="M560 285 L620 160" class="arrow"></path>      <!-- Hash -> Incident -->
+  <path d="M560 285 L920 105" class="arrow"></path>      <!-- Hash -> Redis -->
+  <path d="M560 285 L920 195" class="arrow"></path>      <!-- Hash -> DB LC -->
+  <path d="M860 160 L920 285" class="arrow"></path>      <!-- Incident -> DB KB -->
+  <path d="M620 160 L620 250" class="darrow"></path>     <!-- Incident -> KbArticle (async policy) -->
+  <path d="M860 300 L920 285" class="arrow"></path>      <!-- KbArticle -> DB KB -->
+
+  <!-- Legend -->
+  <rect x="40" y="400" width="1120" height="90" class="box" fill="none"></rect>
+  <text x="60" y="435" class="text">Legend</text>
+
+  <rect x="140" y="416" width="24" height="16" fill="#FFF1D6" stroke="#111" stroke-width="1.5"></rect>
+  <text x="175" y="430" class="small">LC processing</text>
+
+  <rect x="320" y="416" width="24" height="16" fill="#DFF3E1" stroke="#111" stroke-width="1.5"></rect>
+  <text x="355" y="430" class="small">Incident (SoT)</text>
+
+  <rect x="500" y="416" width="24" height="16" fill="#D8ECFF" stroke="#111" stroke-width="1.5"></rect>
+  <text x="535" y="430" class="small">KbArticle (WoT)</text>
+
+  <rect x="690" y="416" width="24" height="16" fill="#F7D9E5" stroke="#111" stroke-width="1.5"></rect>
+  <text x="725" y="430" class="small">Redis</text>
+
+  <rect x="820" y="416" width="24" height="16" fill="#EFEFEF" stroke="#111" stroke-width="1.5"></rect>
+  <text x="855" y="430" class="small">MariaDB</text>
+
+  <path d="M1040 424 L1100 424" class="darrow"></path>
+  <text x="1110" y="430" class="small">Async</text>
+</svg>
