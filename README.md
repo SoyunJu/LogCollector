@@ -116,29 +116,7 @@ make test
 상태 관리는 **Incident(운영)** 와 **KbArticle(지식)** 로 분리됩니다.  
 상태 정책의 단일 기준은 Incident이며, 재발 시 `RESOLVED/CLOSED → OPEN` 전이를 허용합니다. :contentReference[oaicite:1]{index=1}
 
-```mermaid
-stateDiagram-v2
-  direction LR
-
-  [*] --> OPEN : New Error
-  OPEN --> IN_PROGRESS : Acknowledge
-  OPEN --> IGNORED : Ignore
-
-  IN_PROGRESS --> RESOLVED : Fix
-  IN_PROGRESS --> IGNORED : Ignore
-
-  RESOLVED --> CLOSED : Auto Close (Scheduler)
-
-  RESOLVED --> OPEN : Recurrence
-  CLOSED --> OPEN : Recurrence
-
-  state "KbArticle" as KB {
-    [*] --> DRAFT : Auto Create
-    DRAFT --> IN_PROGRESS : Writing
-    IN_PROGRESS --> PUBLISHED : Approve
-    PUBLISHED --> ARCHIVED : Deprecate
-  }
-```
+![Status Model](docs/images/status-v1.png)
 
 상세 정책: [docs/status.md](docs/status.md)
 
@@ -150,7 +128,6 @@ v1.0의 목적은 기능 확장이 아니라 **운영 흐름과 데이터 책임
 
 의도적으로 제외한 항목:
 - Full-text Search (Elasticsearch)
-- AI 자동 요약/추천
 - 분산 트랜잭션(2PC)
 
 Eventual Consistency와 멱등성 설계로 운영 환경을 커버할 수 있음을 검증합니다.
