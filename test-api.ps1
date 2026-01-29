@@ -1,5 +1,5 @@
 # LogCollector API Test Script (PowerShell)
-# local Port 8082 / Docker Port 8081
+# local Port 8082 / Docker Port 8080
 
 $BaseUrl = "http://localhost:8082/api"
 

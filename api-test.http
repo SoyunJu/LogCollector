@@ -1,4 +1,4 @@
-# local Port 8082 / Docker Port 8081
+# local Port 8082 / Docker Port 8080
 
 ### 1. 로그 생성 (Log Ingestion)
 POST http://localhost:8082/api/logs
