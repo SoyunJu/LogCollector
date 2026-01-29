@@ -1,0 +1,53 @@
+grafana:
+  enabled: true
+
+  adminUser: admin
+  adminPassword: admin
+
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: logcollector
+          orgId: 1
+          folder: LogCollector
+          folderUid: logcollector
+          type: file
+          disableDeletion: true
+          editable: false
+          options:
+            path: /var/lib/grafana/dashboards/logcollector
+
+  dashboardsConfigMaps:
+    logcollector: grafana-logcollector-dashboards
+
+  extraConfigmapMounts:
+    - name: grafana-folder
+      mountPath: /etc/grafana/provisioning/folders
+      configMap: grafana-folder
+      readOnly: true
+
+  grafana.ini:
+    users:
+      viewers_can_edit: false
+    dashboards:
+      default_home_dashboard_path: /var/lib/grafana/dashboards/logcollector/logcollector-dashboard.json
+    auth.anonymous:
+      enabled: false
+    security:
+      allow_embedding: true
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+prometheus-node-exporter:
+  enabled: false

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-folder
+  namespace: default
+data:
+  folders.yaml: |
+    apiVersion: 1
+    folders:
+      - uid: logcollector
+        title: LogCollector

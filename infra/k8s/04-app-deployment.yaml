@@ -19,36 +19,35 @@ spec:
           ports:
             - containerPort: 8081
           env:
-            # [추가] 한국 시간대 설정
             - name: TZ
               value: Asia/Seoul
 
             - name: SPRING_PROFILES_ACTIVE
               value: docker
 
-            # [핵심] LC DB 연결 설정 (root 계정 사용)
+            # LC DB 연결 설정 (서비스 이름 logcollector-db 확인 완료)
             - name: SPRING_LC_DATASOURCE_URL
-              value: jdbc:mariadb://lc-db-mariadb:3306/logcollector?createDatabaseIfNotExist=true
+              value: jdbc:mariadb://logcollector-db:3306/logcollector?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
             - name: SPRING_LC_DATASOURCE_USERNAME
               value: root
             - name: SPRING_LC_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: lc-db-mariadb
-                  key: mariadb-root-password
+                  name: logcollector-secrets
+                  key: db-root-password
 
-            # [핵심] KB DB 연결 설정 (kb_root 대신 root 계정 사용 강제)
+            # KB DB 연결 설정
             - name: SPRING_KB_DATASOURCE_URL
-              value: jdbc:mariadb://lc-db-mariadb:3306/knowledge_base?createDatabaseIfNotExist=true
+              value: jdbc:mariadb://logcollector-db:3306/knowledge_base?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
             - name: SPRING_KB_DATASOURCE_USERNAME
               value: root
             - name: SPRING_KB_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: lc-db-mariadb
-                  key: mariadb-root-password
+                  name: logcollector-secrets
+                  key: db-root-password
 
-            # Redis 설정
+            # Redis 설정 (서비스 이름 lc-redis-master 확인 완료)
             - name: SPRING_REDIS_HOST
               value: lc-redis-master
 

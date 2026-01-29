@@ -1,0 +1,162 @@
+{
+  "annotations": {
+	"list": [
+	  {
+		"builtIn": 1,
+		"datasource": {
+		  "type": "grafana",
+		  "uid": "-- Graphics --"
+		},
+		"enable": true,
+		"hide": true,
+		"iconColor": "rgba(0, 211, 255, 1)",
+		"name": "Annotations & Alerts",
+		"type": "dashboard"
+	  }
+	]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+	{
+	  "collapsed": false,
+	  "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+	  "id": 1,
+	  "panels": [],
+	  "title": "JVM Memory",
+	  "type": "row"
+	},
+	{
+	  "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+	  "fieldConfig": {
+		"defaults": { "unit": "bytes" }
+	  },
+	  "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+	  "id": 2,
+	  "options": {
+		"tooltip": { "mode": "multi" }
+	  },
+	  "targets": [
+		{
+		  "expr": "jvm_memory_used_bytes{instance=~\"$instance\", area=\"heap\"}",
+		  "legendFormat": "Used Heap",
+		  "refId": "A"
+		},
+		{
+		  "expr": "jvm_memory_max_bytes{instance=~\"$instance\", area=\"heap\"}",
+		  "legendFormat": "Max Heap",
+		  "refId": "B"
+		}
+	  ],
+	  "title": "JVM Heap Memory",
+	  "type": "timeseries"
+	},
+	{
+	  "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+	  "fieldConfig": {
+		"defaults": { "unit": "bytes" }
+	  },
+	  "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+	  "id": 3,
+	  "targets": [
+		{
+		  "expr": "jvm_memory_used_bytes{instance=~\"$instance\", area=\"nonheap\"}",
+		  "legendFormat": "Used Non-Heap",
+		  "refId": "A"
+		}
+	  ],
+	  "title": "JVM Non-Heap Memory",
+	  "type": "timeseries"
+	},
+	{
+	  "collapsed": false,
+	  "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+	  "id": 4,
+	  "panels": [],
+	  "title": "CPU & Threads",
+	  "type": "row"
+	},
+	{
+	  "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+	  "fieldConfig": {
+		"defaults": { "unit": "percentunit" }
+	  },
+	  "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+	  "id": 5,
+	  "targets": [
+		{
+		  "expr": "system_cpu_usage{instance=~\"$instance\"}",
+		  "legendFormat": "System CPU",
+		  "refId": "A"
+		},
+		{
+		  "expr": "process_cpu_usage{instance=~\"$instance\"}",
+		  "legendFormat": "Process CPU",
+		  "refId": "B"
+		}
+	  ],
+	  "title": "CPU Usage",
+	  "type": "timeseries"
+	},
+	{
+	  "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+	  "fieldConfig": {
+		"defaults": { "unit": "short" }
+	  },
+	  "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+	  "id": 6,
+	  "targets": [
+		{
+		  "expr": "jvm_threads_live_threads{instance=~\"$instance\"}",
+		  "legendFormat": "Live Threads",
+		  "refId": "A"
+		}
+	  ],
+	  "title": "JVM Threads",
+	  "type": "timeseries"
+	}
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["jvm", "micrometer", "springboot"],
+  "templating": {
+	"list": [
+	  {
+		"current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+		"hide": 0,
+		"includeAll": false,
+		"label": "Datasource",
+		"multi": false,
+		"name": "DS_PROMETHEUS",
+		"options": [],
+		"query": "prometheus",
+		"refresh": 1,
+		"regex": "",
+		"type": "datasource"
+	  },
+	  {
+		"allValue": null,
+		"current": { "selected": true, "text": "All", "value": "$__all" },
+		"datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+		"hide": 0,
+		"includeAll": true,
+		"label": "Instance",
+		"multi": true,
+		"name": "instance",
+		"options": [],
+		"query": "label_values(jvm_memory_used_bytes, instance)",
+		"refresh": 1,
+		"regex": "",
+		"type": "query"
+	  }
+	]
+  },
+  "title": "JVM (Micrometer) Dashboard - KB Custom",
+  "uid": "jvm_micrometer_kb",
+  "version": 1
+}

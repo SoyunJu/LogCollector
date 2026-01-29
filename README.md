@@ -22,6 +22,11 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 
 3) **결과 확인**
 - Frontend: `Logs` 탭에서 실시간 로그 유입 및 Incident 생성 확인
+
+![Dashboard / Incident Overview](docs/images/evidence/01-dashboard-overview.png)
+
+![Incident Detail (KB-first)](docs/images/evidence/02-incident-detail-kb-first.png)
+
 - Grafana: http://localhost:3000 (admin / admin)
   - `LogCollector` 대시보드에서 트래픽/에러 변화 확인
 
@@ -75,7 +80,7 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 - JPA / Querydsl
 - Docker, Docker Compose
 - Kubernetes (Optional)
-- 
+-
 
 ---
 
@@ -108,6 +113,8 @@ docker compose -f infra/compose/compose.yaml up -d --build
 make test
 ```
 
+![Automated Test Evidence (make test)](docs/images/evidence/04-automated-test-make-test.png)
+
 성공 시 터미널 마지막에 `ALL TESTS PASSED!` 메시지가 출력됩니다.
 
 ---
@@ -115,7 +122,7 @@ make test
 ## Status Model
 
 상태 관리는 **Incident(운영)** 와 **KbArticle(지식)** 로 분리됩니다.  
-상태 정책의 단일 기준은 Incident이며, 재발 시 `RESOLVED/CLOSED → OPEN` 전이를 허용합니다. :contentReference[oaicite:1]{index=1}
+상태 정책의 단일 기준은 Incident이며, 재발 시 `RESOLVED/CLOSED → OPEN` 전이를 허용합니다.
 
 ![Status Model](docs/images/status-v1.png)
 
@@ -131,7 +138,7 @@ make test
 
 ### 1. Noise Reduction Strategy (로그 정규화 & 해싱)
 - **Problem**: 변수(타임스탬프, 스택트레이스 라인 등)만 다른 동일 에러가 수천 건씩 유입되어 운영자의 피로도(Alert Fatigue) 유발.
-- **Solution**: 로그 정규화(Normalization) 후 고유 해시(`log_hash`)를 생성. **1,000건의 로그를 1건의 Incident로 압축**합니다. 
+- **Solution**: 로그 정규화(Normalization) 후 고유 해시(`log_hash`)를 생성. **1,000건의 로그를 1건의 Incident로 압축**합니다.
   - 이를 통해 상태 전이는 의미 있는 이벤트 단위로만 발생하도록 보장합니다.
 
 ### 2. High-Throughput & Deduplication (Redis 분산 처리)
@@ -154,6 +161,8 @@ make test
 - **Problem**: 초기 지식(KB)이 없을 때(Cold Start), 운영자가 참고할 가이드가 부재.
 - **Solution**: **OpenAI API**를 연동하여 AI가 1차 원인 분석 및 해결 가이드를 제안.
   - 개발/테스트 환경 비용 절감을 위해 `MockAiService`와 `OpenAiService`를 **Strategy Pattern**으로 유연하게 교체 가능하도록 설계.
+
+![AI Analysis → Create KB Draft](docs/images/evidence/03-ai-analysis-and-kb-draft.png)
 
 ### 6. Operational Control (Ignore Policy)
 - **Problem**: 의미 없는 경고성 로그나 알려진 이슈가 지속적으로 알림을 발생시킴.
