@@ -48,77 +48,38 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 아래 다이어그램은 **로그가 유입되어 지식으로 변환되는 Data Flow와 책임의 분리(LC vs KB)** 를 표현합니다.
 
 ```mermaid
-graph TD
-    %% 스타일 정의
-    classDef external fill:#f9f9f9,stroke:#333,stroke-dasharray: 5 5;
-    classDef db fill:#e1f5fe,stroke:#0277bd;
-    classDef component fill:#fff3e0,stroke:#ff6f00;
-    classDef cache fill:#fce4ec,stroke:#c2185b;
-    classDef frontend fill:#e8f5e9,stroke:#2e7d32;
+flowchart LR
+    %% External
+    EXT[External Systems\n(App / DB / API Logs)]
 
-    %% 외부 시스템
-    subgraph External["External Systems"]
-        ClientApp[Client Applications]:::external
+    %% LogCollector
+    subgraph LC["LogCollector (LC)"]
+        ING[Ingestion]
+        NORM[Normalize]
+        HASH[Hash & Dedup]
     end
 
-    %% Frontend
-    subgraph UI["Frontend (React)"]
-        Dashboard[Admin Dashboard]:::frontend
-    end
+    %% Core Domain
+    INC[Incident\n(Source of Truth)]
+    KB[KbArticle\n(Writer of Truth)]
 
-    %% Backend System
-    subgraph Backend["LogCollector & KB (Spring Boot)"]
-        
-        %% LogCollector Domain
-        subgraph LC_Domain["LogCollector Domain (LC)"]
-            Ingestion[Log Ingestion API]:::component
-            Normalizer[Log Normalizer]:::component
-            Hasher[Hasher & Dedup]:::component
-        end
+    %% Infra
+    REDIS[(Redis)]
+    DB_LC[(MariaDB\nLC)]
+    DB_KB[(MariaDB\nKB)]
 
-        %% KnowledgeBase Domain
-        subgraph KB_Domain["KnowledgeBase Domain (KB)"]
-            IncidentMgr[Incident Manager]:::component
-            DraftPolicy[Draft Policy Engine]:::component
-            KbWriter[KbArticle Writer]:::component
-        end
+    %% Flow
+    EXT --> ING
+    ING --> NORM --> HASH
+    HASH <-->|dup check| REDIS
+    HASH -->|raw log| DB_LC
 
-    end
+    HASH -->|create / update| INC
+    INC -->|persist| DB_KB
 
-    %% Data Store Layer
-    subgraph DataStore["Data Persistence Layer"]
-        Redis[(Redis Cache<br/>Dedup & Throttling)]:::cache
-        DB_LC[(MariaDB: LC<br/>Raw Error Logs)]:::db
-        DB_KB[(MariaDB: KB<br/>Incidents & Articles)]:::db
-    end
-
-    %% Flow Connections
-    ClientApp -->|1. Error Logs| Ingestion
-    
-    %% LC Flow
-    Ingestion --> Normalizer
-    Normalizer --> Hasher
-    Hasher <-->|2. Check Duplicate| Redis
-    Hasher -->|3. Save Raw Log| DB_LC
-
-    %% KB Flow
-    %% 수정됨: 소괄호 제거 (Github Renderer 호환성 문제 해결)
-    Hasher -->|4. Create or Update Projection| IncidentMgr
-    IncidentMgr -->|5. Sync Status| DB_KB
-    
-    %% Knowledge Flow
-    IncidentMgr -.->|6. Trigger Async| DraftPolicy
-    DraftPolicy -->|7. Create Draft| KbWriter
-    KbWriter -->|8. Store Knowledge| DB_KB
-
-    %% UI Connections
-    Dashboard <-->|Query & Manage| IncidentMgr
-    Dashboard <-->|Write Truth| KbWriter
-
-    %% Link Style
-    linkStyle default stroke:#333,stroke-width:2px;
- ```
-
+    INC -.->|async policy| KB
+    KB --> DB_KB
+```
 
 
 ### Core Concepts
@@ -204,6 +165,7 @@ flowchart LR
   U[Dashboard (React)] <-->|query/manage| I
   U <-->|write| W
 ```
+
 
 ### Key Rules
 1. **Incident is SoT**: 모든 상태의 기준은 Incident입니다.
