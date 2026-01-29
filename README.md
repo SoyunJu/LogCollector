@@ -50,7 +50,7 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 
 아래 다이어그램은 로그 유입부터 지식 확정까지의 핵심 흐름을 단순화한 그림입니다.
 
-![Architecture Diagram](docs/images/architecture-v2.svg)
+![Architecture Diagram](docs/images/architecture-v2.png)
 
 ### Core Concepts
 
