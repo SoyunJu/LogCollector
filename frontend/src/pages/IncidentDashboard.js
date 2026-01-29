@@ -1,157 +1,138 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { LogCollectorApi } from '../api/logCollectorApi';
 import { formatKst } from '../utils/date';
-import { Container, Card, Table, Badge, Button, Form, Row, Col, InputGroup } from 'react-bootstrap';
+import LogDetailModal from '../components/LogDetailModal';
+import {
+Container,
+Table,
+Badge,
+Button,
+ButtonGroup
+} from 'react-bootstrap';
 
-const IncidentDashboard = () => {
-const [q, setQ] = useState({ keyword: '', status: '', page: 0, size: 20 });
+const LogDashboard = () => {
+const navigate = useNavigate();
+const [page, setPage] = useState(0);
 const [rows, setRows] = useState([]);
-const [miniLogs, setMiniLogs] = useState([]);
+const [selectedLog, setSelectedLog] = useState(null);
+const PAGE_SIZE = 20;
 
-const loadIncidents = async () => {
+const loadLogs = async () => {
 try {
-const res = await LogCollectorApi.searchIncidents(q);
+const res = await LogCollectorApi.searchLogs({
+page: page,
+size: PAGE_SIZE,
+serviceName: '',
+keyword: '',
+status: '',
+isToday: false
+});
 setRows(res.data?.content ?? []);
-} catch(e) {}
-};
-
-const loadMiniLogs = async () => {
-try {
-const res = await LogCollectorApi.searchLogs({ page: 0, size: 5, status: 'NEW' });
-setMiniLogs(res.data?.content ?? []);
-} catch(e) {}
-};
-
-// [추가] Unignore 핸들러
-const handleUnignore = async (logHash) => {
-if (!window.confirm("이 Incident의 차단을 해제(Unignore) 하시겠습니까?\n상태가 OPEN으로 변경됩니다.")) return;
-try {
-await LogCollectorApi.unignore(logHash);
-alert("차단이 해제되었습니다.");
-loadIncidents();
 } catch (e) {
-console.error("Unignore failed:", e);
-alert("오류가 발생했습니다.");
+console.error(e);
 }
 };
 
-useEffect(() => { loadIncidents(); }, [q]);
-useEffect(() => { loadMiniLogs(); }, []);
-
-const handleSearch = () => {
-setQ({ ...q, page: 0 });
-};
+useEffect(() => {
+loadLogs();
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [page]);
 
 return (
-<Container className="page py-3">
-    <Card className="mb-3 shadow-sm border-0 bg-light">
-        <Card.Body className="py-3">
-            <Row className="g-2 align-items-center">
-                <Col md={2}>
-                <Form.Select
-                        value={q.status}
-                        onChange={(e) => setQ({...q, status: e.target.value})}
-                >
-                <option value="">(All Status)</option>
-                <option value="OPEN">OPEN</option>
-                <option value="UNDERWAY">UNDERWAY</option>
-                <option value="RESOLVED">RESOLVED</option>
-                <option value="CLOSED">CLOSED</option>
-                <option value="IGNORED">IGNORED</option>
-                </Form.Select>
-                </Col>
-                <Col md={8}>
-                <InputGroup>
-                    <Form.Control
-                            placeholder="Search by Title, Summary or Error Code..."
-                            value={q.keyword || ''}
-                    onChange={(e) => setQ({...q, keyword: e.target.value})}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    />
-                    <Button variant="primary" onClick={handleSearch}>Search</Button>
-                </InputGroup>
-                </Col>
-                <Col md={2} className="text-end">
-                <Button variant="outline-secondary" onClick={() => { setQ({keyword:'', status:'', page:0, size:20}); }}>
-                Reset
-                </Button>
-                </Col>
-            </Row>
-        </Card.Body>
-    </Card>
+<Container className="page py-4">
+    <div className="mb-4">
+        <h3 className="fw-bold mb-2">Log Dashboard</h3>
+        <p className="text-muted small mb-0">
+            * 이 페이지는 데이터 검증 편의상 제공되는 화면입니다. 실제 서비스는 View가 없는 수집 모듈(Backend Service)로 동작합니다.
+        </p>
+    </div>
 
-    {/* 3. Incidents List */}
-    <Card className="shadow-sm">
-        <Card.Body>
-            <div className="d-flex justify-content-between mb-3">
-                <h3 className="m-0">🚨 Incidents</h3>
-                <div className="text-muted small align-self-center">
-                    Showing page {q.page + 1}
-                </div>
-            </div>
-            <Table hover responsive>
-                <thead className="table-light">
-                <tr>
-                    <th>Service</th>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th>Last Occurred</th>
-                    <th style={{width: '120px'}}>Action</th>
-                </tr>
-                </thead>
-                <tbody>
-                {rows.length === 0 ? (
-                <tr><td colSpan="5" className="text-center py-4">No incidents found.</td></tr>
-                ) : rows.map((r, idx) => (
-                <tr key={r.incidentId || r.logHash || idx}>
-                    <td>{r.serviceName}</td>
-                    <td>
-                        <Link to={`/incidents/${r.logHash}`}>
-                        {r.incidentTitle || r.title || r.logSummary || "(No Title)"}
-                        </Link>
-                    </td>
-                    <td>
-                        <Badge bg={
-                               r.status === 'RESOLVED' ? 'success' :
-                        r.status === 'CLOSED' ? 'secondary' :
-                        r.status === 'IGNORED' ? 'dark' : 'danger'
-                        }>
-                        {r.status}
-                        </Badge>
-                    </td>
-                    <td>{formatKst(r.lastOccurredAt)}</td>
-                    <td>
-                        <div className="d-flex gap-1">
-                            <Link to={`/incidents/${r.logHash}`}>
-                            <Button variant="outline-primary" size="sm">View</Button>
-                            </Link>
-                            {/* [추가] IGNORED 상태일 때 Unignore 버튼 노출 */}
-                            {r.status === 'IGNORED' && (
-                            <Button
-                                    variant="outline-secondary"
-                                    size="sm"
-                                    onClick={() => handleUnignore(r.logHash)}
-                            >
-                            Unignore
-                            </Button>
-                            )}
-                        </div>
-                    </td>
-                </tr>
-                ))}
-                </tbody>
-            </Table>
+    <Table hover responsive className="shadow-sm bg-white rounded align-middle">
+        <thead className="bg-light table-light">
+        <tr>
+            <th style={{ width: '120px' }}>Service</th>
+            <th>Summary</th>
+            <th style={{ width: '100px' }}>Level</th>
+            <th style={{ width: '180px' }}>Time</th>
+            <th style={{ width: '80px' }}>Count</th>
+            <th style={{ width: '160px' }}>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        {rows.length === 0 ? (
+        <tr>
+            <td colSpan="6" className="text-center py-4 text-muted">
+                No logs found.
+            </td>
+        </tr>
+        ) : (
+        rows.map((log) => (
+        <tr key={log.logId ?? log.id}>
+            <td className="fw-semibold text-secondary">{log.serviceName}</td>
+            <td className="text-truncate" style={{ maxWidth: '360px' }} title={log.summary}>
+            {log.summary || log.message || '(No summary)'}
+            </td>
+            <td>
+                <Badge bg={log.logLevel === 'ERROR' ? 'danger' : 'info'}>
+                {log.logLevel}
+                </Badge>
+            </td>
+            <td className="small text-muted">{formatKst(log.occurredTime)}</td>
+            <td>{log.repeatCount}</td>
+            <td>
+                <ButtonGroup size="sm">
+                    <Button
+                            variant="outline-primary"
+                            onClick={() => setSelectedLog(log)}
+                    >
+                    View
+                    </Button>
+                    {/* LogDashboard에서도 Incident로 바로 이동하는 버튼 추가 */}
+                    <Button
+                            variant="outline-secondary"
+                            onClick={() => navigate(`/incidents/${log.logHash}`)}
+                    title="Go to Linked Incident"
+                    >
+                    Incident
+                    </Button>
+                </ButtonGroup>
+            </td>
+        </tr>
+        ))
+        )}
+        </tbody>
+    </Table>
 
-            {/* Pagination */}
-            <div className="d-flex justify-content-center gap-2 mt-3">
-                <Button size="sm" variant="outline-primary" disabled={q.page === 0} onClick={() => setQ({...q, page: q.page - 1})}>Prev</Button>
-                <Button size="sm" variant="outline-primary" onClick={() => setQ({...q, page: q.page + 1})}>Next</Button>
-            </div>
-        </Card.Body>
-    </Card>
+    {/* 페이지네이션 */}
+    <div className="d-flex justify-content-center gap-2 mt-3 mb-3">
+        <Button
+                size="sm"
+                variant="outline-primary"
+                disabled={page === 0}
+        onClick={() => setPage(page - 1)}
+        >
+        Prev
+        </Button>
+        <span className="align-self-center text-muted small">Page {page + 1}</span>
+        <Button
+                size="sm"
+                variant="outline-primary"
+                disabled={rows.length < PAGE_SIZE}
+        onClick={() => setPage(page + 1)}
+        >
+        Next
+        </Button>
+    </div>
+
+    {selectedLog && (
+    <LogDetailModal
+            log={selectedLog}
+            onClose={() => setSelectedLog(null)}
+    />
+    )}
 </Container>
 );
 };
 
-export default IncidentDashboard;
+export default LogDashboard;

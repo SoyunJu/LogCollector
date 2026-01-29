@@ -1,109 +1,103 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LogCollectorApi } from '../api/logCollectorApi';
-import { Link } from 'react-router-dom'; // [추가] 링크 이동을 위해 임포트
-import { Modal, Button, Alert, Badge, ButtonGroup, Spinner, Card } from 'react-bootstrap';
+import { Modal, Button, Badge, Table } from 'react-bootstrap';
 import { formatKst } from '../utils/date';
 
 const LogDetailModal = ({ log, onClose }) => {
+const navigate = useNavigate();
 const [incident, setIncident] = useState(null);
-const [aiResult, setAiResult] = useState(null);
-const [loadingAi, setLoadingAi] = useState(false);
 
 useEffect(() => {
 if (log?.logHash) {
-LogCollectorApi.getIncidentByHash(log.logHash)
-.then(res => setIncident(res.data))
+LogCollectorApi.getIncidentByLogHash(log.logHash)
+.then((res) => setIncident(res.data))
 .catch(() => setIncident(null));
 }
-setAiResult(null);
 }, [log]);
 
-const handleStatusChange = async (newStatus) => {
-if (!window.confirm(`상태를 ${newStatus}로 변경하시겠습니까?`)) return;
-try {
-await LogCollectorApi.updateLogStatus(log.logId ?? log.id, newStatus);
-alert('상태가 변경되었습니다.');
-onClose();
-} catch (err) {
-alert('상태 변경 실패: ' + (err.response?.data?.message || err.message));
+const goToIncident = () => {
+onClose(); // 모달 닫기
+if (log.logHash) {
+navigate(`/incidents/${log.logHash}`);
 }
 };
-
-const handleAiAnalyze = async () => {
-if (!log.logHash) {
-alert("로그 해시가 없어 분석할 수 없습니다.");
-return;
-}
-setLoadingAi(true);
-try {
-const res = await LogCollectorApi.analyzeAi(log.logHash);
-setAiResult(res.data);
-} catch (err) {
-const errMsg = err.response?.data?.message || err.message || "시스템 오류";
-alert("AI 분석 실패: " + errMsg);
-} finally {
-setLoadingAi(false);
-}
-};
-
-if (!log) return null;
 
 return (
 <Modal show={true} onHide={onClose} size="lg" centered>
     <Modal.Header closeButton>
-        <Modal.Title className="d-flex align-items-center gap-2">
-            <Badge bg="dark">{log.serviceName}</Badge>
-            <span>Log Detail</span>
-        </Modal.Title>
+        <Modal.Title>Log Details</Modal.Title>
     </Modal.Header>
 
     <Modal.Body>
-        {/* 상단 요약 정보 */}
-        <div className="d-flex justify-content-between mb-3 bg-light p-2 rounded">
-            <div>
-                <strong>Status: </strong>
-                <Badge bg={log.status === 'RESOLVED' ? 'success' : log.status === 'IGNORED' ? 'secondary' : 'danger'}>
-                {log.status}
-                </Badge>
-            </div>
-            <div className="text-muted small">
-                {formatKst(log.occurredTime ?? log.createdAt)}
-            </div>
-        </div>
+        {/* 기본 정보 테이블 */}
+        <Table borderless size="sm" className="mb-3">
+            <tbody>
+            <tr>
+                <td className="text-muted" style={{ width: '100px' }}>Service</td>
+                <td className="fw-bold text-primary">{log.serviceName}</td>
+            </tr>
+            <tr>
+                <td className="text-muted">Level</td>
+                <td>
+                    <Badge bg={log.logLevel === 'ERROR' ? 'danger' : 'info'}>
+                    {log.logLevel}
+                    </Badge>
+                </td>
+            </tr>
+            <tr>
+                <td className="text-muted">Occurred</td>
+                <td>{formatKst(log.occurredTime ?? log.createdAt)}</td>
+            </tr>
+            <tr>
+                <td className="text-muted">Log Hash</td>
+                <td><code>{log.logHash}</code></td>
+            </tr>
+            {/* Incident 연결 정보가 있을 때만 표시 */}
+            {incident && (
+            <tr className="table-warning">
+                <td className="text-muted align-middle">Incident</td>
+                <td className="align-middle">
+                  <span className="me-2 fw-semibold">
+                    {incident.incidentTitle ?? incident.summary}
+                  </span>
+                    <Badge bg="warning" text="dark" className="small">Linked</Badge>
+                </td>
+            </tr>
+            )}
+            </tbody>
+        </Table>
 
-        <h6 className="fw-bold">Message</h6>
-        <div className="p-3 bg-white border rounded mb-3 text-break">
-            {log.summary || log.message || "(No message)"}
+        <hr />
+
+        <h6 className="fw-bold text-secondary">Message</h6>
+        <div className="p-3 bg-light border rounded mb-3 text-break" style={{ maxHeight: '150px', overflowY: 'auto' }}>
+        {log.summary || log.message || "(No message)"}
         </div>
 
         {log.stackTrace && (
         <>
-        <h6 className="fw-bold">Stack Trace</h6>
-        <div className="p-3 bg-dark text-light border rounded mb-3 font-monospace small" style={{maxHeight: '200px', overflowY: 'auto', whiteSpace: 'pre-wrap'}}>
+        <h6 className="fw-bold text-secondary">Stack Trace</h6>
+        <div
+                className="p-3 bg-dark text-light border rounded mb-0 font-monospace small"
+                style={{ maxHeight: '350px', overflowY: 'auto', whiteSpace: 'pre-wrap' }}
+        >
         {log.stackTrace}
         </div>
     </>
     )}
-
-    {aiResult && (
-    <Alert variant="info" className="mt-3">
-        <h6>🤖 AI Analysis</h6>
-        <hr />
-        <p><strong>Cause:</strong> {aiResult.cause}</p>
-        <p><strong>Suggestion:</strong> {aiResult.suggestion}</p>
-    </Alert>
-    )}
     </Modal.Body>
 
-    <Modal.Footer className="justify-content-between">
-        <ButtonGroup>
-            <Button variant="outline-danger" size="sm" onClick={() => handleStatusChange('NEW')} disabled={log.status === 'NEW'}>NEW</Button>
-            <Button variant="outline-success" size="sm" onClick={() => handleStatusChange('RESOLVED')} disabled={log.status === 'RESOLVED'}>FIX</Button>
-        </ButtonGroup>
-
-        <div className="d-flex gap-2">
-            <Button variant="outline-secondary" onClick={onClose}>Close</Button>
-        </div>
+    <Modal.Footer>
+        <Button variant="secondary" onClick={onClose}>
+            Close
+        </Button>
+        {/* Incident가 존재할 경우 이동 버튼 활성화 */}
+        {incident && (
+        <Button variant="primary" onClick={goToIncident}>
+            Go to Incident &rarr;
+        </Button>
+        )}
     </Modal.Footer>
 </Modal>
 );

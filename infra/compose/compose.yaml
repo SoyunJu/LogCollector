@@ -19,15 +19,13 @@ services:
       REDIS_HOST: logcollector-redis
       REDIS_PORT: "6379"
 
-      ELASTICSEARCH_HOST: elasticsearch
-      ELASTICSEARCH_PORT: "9200"
     depends_on:
       logcollector-db:
         condition: service_healthy
       logcollector-redis:
         condition: service_started
-      elasticsearch:
-        condition: service_started
+      # elasticsearch:
+      #   condition: service_started
 
   logcollector-db:
     image: mariadb:latest
@@ -44,6 +42,7 @@ services:
       retries: 10
     volumes:
       - logcollector-db-data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
 
   logcollector-redis:
     image: redis:7-alpine
@@ -54,17 +53,17 @@ services:
     volumes:
       - logcollector-redis-data:/data
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
-    container_name: logcollector-es
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
-    volumes:
-      - es-data:/usr/share/elasticsearch/data
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+  #   container_name: logcollector-es
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #     - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  #   ports:
+  #     - "9200:9200"
+  #   volumes:
+  #     - es-data:/usr/share/elasticsearch/data
 
   prometheus:
     image: prom/prometheus:latest
@@ -75,7 +74,6 @@ services:
       - "9090:9090"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
 
   grafana:
     image: grafana/grafana:latest
@@ -92,13 +90,13 @@ services:
 
   frontend:
     build: ../../frontend
-    container_name: logcollector-frontend # 컨테이너 이름 명시 추천
+    container_name: logcollector-frontend
     ports:
-      - "80:80"      # 수정: 호스트 80 -> 컨테이너 80 (브라우저에서 포트 없이 접속 가능)
+      - "80:80"
     depends_on:
       - app
 
 volumes:
   logcollector-db-data:
   logcollector-redis-data:
-  es-data:
+  # es-data:
