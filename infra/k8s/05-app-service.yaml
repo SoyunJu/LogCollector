@@ -9,6 +9,7 @@ spec:
   selector:
     app: log-app
   ports:
-    - protocol: TCP
-      port: 8081          # 외부 접속 포트
-      targetPort: 8081    # 컨테이너 내부 포트
+    - name: http
+      protocol: TCP
+      port: 8081
+      targetPort: 8081
