@@ -48,6 +48,7 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 아래 다이어그램은 **로그가 유입되어 지식으로 변환되는 Data Flow와 책임의 분리(LC vs KB)** 를 표현합니다.
 
 ```mermaid
+```mermaid
 graph TD
     %% 스타일 정의
     classDef external fill:#f9f9f9,stroke:#333,stroke-dasharray: 5 5;
@@ -102,11 +103,12 @@ graph TD
     Hasher -->|3. Save Raw Log| DB_LC
 
     %% KB Flow
-    Hasher -->|4. Create/Update (Projection)| IncidentMgr
+    %% 수정됨: 소괄호 제거 (Github Renderer 호환성 문제 해결)
+    Hasher -->|4. Create or Update Projection| IncidentMgr
     IncidentMgr -->|5. Sync Status| DB_KB
     
     %% Knowledge Flow
-    IncidentMgr -.->|6. Trigger (Async)| DraftPolicy
+    IncidentMgr -.->|6. Trigger Async| DraftPolicy
     DraftPolicy -->|7. Create Draft| KbWriter
     KbWriter -->|8. Store Knowledge| DB_KB
 
@@ -192,23 +194,33 @@ make test
 stateDiagram-v2
     direction LR
 
-    state "Incident (Operations)" as Ops {
-        [*] --> OPEN: New Error
-        OPEN --> IN_PROGRESS: Ack
-        IN_PROGRESS --> RESOLVED: Fix
-        OPEN --> IGNORED: Filter
+    %% =========================
+    %% Incident (SoT)
+    %% =========================
+    state "Incident (Source of Truth)" as Incident {
+        [*] --> OPEN : New Error
 
-        %% Reopen Flows
-        RESOLVED --> OPEN: Recurrence!
-        RESOLVED --> CLOSED: Auto Schedule
-        CLOSED --> OPEN: Recurrence!
+        OPEN --> IN_PROGRESS : Acknowledge
+        OPEN --> IGNORED : Ignore
+
+        IN_PROGRESS --> RESOLVED : Fix
+        IN_PROGRESS --> IGNORED : Ignore
+
+        RESOLVED --> CLOSED : Auto Close (Scheduler)
+
+        %% Recurrence (Exception Transition)
+        RESOLVED --> OPEN : Recurrence
+        CLOSED --> OPEN : Recurrence
     }
 
-    state "KbArticle (Knowledge)" as Know {
-        [*] --> DRAFT: Auto Created
-        DRAFT --> IN_PROGRESS: Writing
-        IN_PROGRESS --> PUBLISHED: Approved
-        PUBLISHED --> ARCHIVED: Deprecated
+    %% =========================
+    %% Knowledge (KB)
+    %% =========================
+    state "KbArticle (Knowledge)" as KB {
+        [*] --> DRAFT : Auto Create
+        DRAFT --> IN_PROGRESS : Writing
+        IN_PROGRESS --> PUBLISHED : Approve
+        PUBLISHED --> ARCHIVED : Deprecate
     }
 ```
 
@@ -230,6 +242,7 @@ v1.0의 목적은 **기능 나열이 아니라, 운영 흐름과 데이터 책�
 ---
 
 ## 📂 Documentation Link
-* [Local Run Guide](docs/run-local.md)
-* [Docker Run Guide](docs/run-docker.md)
+* [run-local Guide](docs/run-local.md)
+* [run-docker Guide](docs/run-docker.md)
+* [run-k8s Guide](/docs/run-k8s.md)
 * [Status Specification](docs/status.md)
