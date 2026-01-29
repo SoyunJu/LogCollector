@@ -1,0 +1,286 @@
+﻿apiVersion: v1
+data:
+  jvm-dashboard.json: "{\r\n  \"annotations\": {\r\n\t\"list\": [\r\n\t  {\r\n\t\t\"builtIn\":
+    1,\r\n\t\t\"datasource\": {\r\n\t\t  \"type\": \"grafana\",\r\n\t\t  \"uid\":
+    \"-- Graphics --\"\r\n\t\t},\r\n\t\t\"enable\": true,\r\n\t\t\"hide\": true,\r\n\t\t\"iconColor\":
+    \"rgba(0, 211, 255, 1)\",\r\n\t\t\"name\": \"Annotations & Alerts\",\r\n\t\t\"type\":
+    \"dashboard\"\r\n\t  }\r\n\t]\r\n  },\r\n  \"editable\": true,\r\n  \"fiscalYearStartMonth\":
+    0,\r\n  \"graphTooltip\": 1,\r\n  \"id\": null,\r\n  \"links\": [],\r\n  \"liveNow\":
+    false,\r\n  \"panels\": [\r\n\t{\r\n\t  \"collapsed\": false,\r\n\t  \"gridPos\":
+    { \"h\": 1, \"w\": 24, \"x\": 0, \"y\": 0 },\r\n\t  \"id\": 1,\r\n\t  \"panels\":
+    [],\r\n\t  \"title\": \"JVM Memory\",\r\n\t  \"type\": \"row\"\r\n\t},\r\n\t{\r\n\t
+    \ \"datasource\": { \"type\": \"prometheus\", \"uid\": \"${DS_PROMETHEUS}\" },\r\n\t
+    \ \"fieldConfig\": {\r\n\t\t\"defaults\": { \"unit\": \"bytes\" }\r\n\t  },\r\n\t
+    \ \"gridPos\": { \"h\": 8, \"w\": 12, \"x\": 0, \"y\": 1 },\r\n\t  \"id\": 2,\r\n\t
+    \ \"options\": {\r\n\t\t\"tooltip\": { \"mode\": \"multi\" }\r\n\t  },\r\n\t  \"targets\":
+    [\r\n\t\t{\r\n\t\t  \"expr\": \"jvm_memory_used_bytes{instance=~\\\"$instance\\\",
+    area=\\\"heap\\\"}\",\r\n\t\t  \"legendFormat\": \"Used Heap\",\r\n\t\t  \"refId\":
+    \"A\"\r\n\t\t},\r\n\t\t{\r\n\t\t  \"expr\": \"jvm_memory_max_bytes{instance=~\\\"$instance\\\",
+    area=\\\"heap\\\"}\",\r\n\t\t  \"legendFormat\": \"Max Heap\",\r\n\t\t  \"refId\":
+    \"B\"\r\n\t\t}\r\n\t  ],\r\n\t  \"title\": \"JVM Heap Memory\",\r\n\t  \"type\":
+    \"timeseries\"\r\n\t},\r\n\t{\r\n\t  \"datasource\": { \"type\": \"prometheus\",
+    \"uid\": \"${DS_PROMETHEUS}\" },\r\n\t  \"fieldConfig\": {\r\n\t\t\"defaults\":
+    { \"unit\": \"bytes\" }\r\n\t  },\r\n\t  \"gridPos\": { \"h\": 8, \"w\": 12, \"x\":
+    12, \"y\": 1 },\r\n\t  \"id\": 3,\r\n\t  \"targets\": [\r\n\t\t{\r\n\t\t  \"expr\":
+    \"jvm_memory_used_bytes{instance=~\\\"$instance\\\", area=\\\"nonheap\\\"}\",\r\n\t\t
+    \ \"legendFormat\": \"Used Non-Heap\",\r\n\t\t  \"refId\": \"A\"\r\n\t\t}\r\n\t
+    \ ],\r\n\t  \"title\": \"JVM Non-Heap Memory\",\r\n\t  \"type\": \"timeseries\"\r\n\t},\r\n\t{\r\n\t
+    \ \"collapsed\": false,\r\n\t  \"gridPos\": { \"h\": 1, \"w\": 24, \"x\": 0, \"y\":
+    9 },\r\n\t  \"id\": 4,\r\n\t  \"panels\": [],\r\n\t  \"title\": \"CPU & Threads\",\r\n\t
+    \ \"type\": \"row\"\r\n\t},\r\n\t{\r\n\t  \"datasource\": { \"type\": \"prometheus\",
+    \"uid\": \"${DS_PROMETHEUS}\" },\r\n\t  \"fieldConfig\": {\r\n\t\t\"defaults\":
+    { \"unit\": \"percentunit\" }\r\n\t  },\r\n\t  \"gridPos\": { \"h\": 8, \"w\":
+    12, \"x\": 0, \"y\": 10 },\r\n\t  \"id\": 5,\r\n\t  \"targets\": [\r\n\t\t{\r\n\t\t
+    \ \"expr\": \"system_cpu_usage{instance=~\\\"$instance\\\"}\",\r\n\t\t  \"legendFormat\":
+    \"System CPU\",\r\n\t\t  \"refId\": \"A\"\r\n\t\t},\r\n\t\t{\r\n\t\t  \"expr\":
+    \"process_cpu_usage{instance=~\\\"$instance\\\"}\",\r\n\t\t  \"legendFormat\":
+    \"Process CPU\",\r\n\t\t  \"refId\": \"B\"\r\n\t\t}\r\n\t  ],\r\n\t  \"title\":
+    \"CPU Usage\",\r\n\t  \"type\": \"timeseries\"\r\n\t},\r\n\t{\r\n\t  \"datasource\":
+    { \"type\": \"prometheus\", \"uid\": \"${DS_PROMETHEUS}\" },\r\n\t  \"fieldConfig\":
+    {\r\n\t\t\"defaults\": { \"unit\": \"short\" }\r\n\t  },\r\n\t  \"gridPos\": {
+    \"h\": 8, \"w\": 12, \"x\": 12, \"y\": 10 },\r\n\t  \"id\": 6,\r\n\t  \"targets\":
+    [\r\n\t\t{\r\n\t\t  \"expr\": \"jvm_threads_live_threads{instance=~\\\"$instance\\\"}\",\r\n\t\t
+    \ \"legendFormat\": \"Live Threads\",\r\n\t\t  \"refId\": \"A\"\r\n\t\t}\r\n\t
+    \ ],\r\n\t  \"title\": \"JVM Threads\",\r\n\t  \"type\": \"timeseries\"\r\n\t}\r\n
+    \ ],\r\n  \"refresh\": \"5s\",\r\n  \"schemaVersion\": 39,\r\n  \"style\": \"dark\",\r\n
+    \ \"tags\": [\"jvm\", \"micrometer\", \"springboot\"],\r\n  \"templating\": {\r\n\t\"list\":
+    [\r\n\t  {\r\n\t\t\"current\": { \"selected\": false, \"text\": \"Prometheus\",
+    \"value\": \"Prometheus\" },\r\n\t\t\"hide\": 0,\r\n\t\t\"includeAll\": false,\r\n\t\t\"label\":
+    \"Datasource\",\r\n\t\t\"multi\": false,\r\n\t\t\"name\": \"DS_PROMETHEUS\",\r\n\t\t\"options\":
+    [],\r\n\t\t\"query\": \"prometheus\",\r\n\t\t\"refresh\": 1,\r\n\t\t\"regex\":
+    \"\",\r\n\t\t\"type\": \"datasource\"\r\n\t  },\r\n\t  {\r\n\t\t\"allValue\":
+    null,\r\n\t\t\"current\": { \"selected\": true, \"text\": \"All\", \"value\":
+    \"$__all\" },\r\n\t\t\"datasource\": { \"type\": \"prometheus\", \"uid\": \"${DS_PROMETHEUS}\"
+    },\r\n\t\t\"hide\": 0,\r\n\t\t\"includeAll\": true,\r\n\t\t\"label\": \"Instance\",\r\n\t\t\"multi\":
+    true,\r\n\t\t\"name\": \"instance\",\r\n\t\t\"options\": [],\r\n\t\t\"query\":
+    \"label_values(jvm_memory_used_bytes, instance)\",\r\n\t\t\"refresh\": 1,\r\n\t\t\"regex\":
+    \"\",\r\n\t\t\"type\": \"query\"\r\n\t  }\r\n\t]\r\n  },\r\n  \"title\": \"JVM
+    (Micrometer) Dashboard - KB Custom\",\r\n  \"uid\": \"jvm_micrometer_kb\",\r\n
+    \ \"version\": 1\r\n}"
+  logcollector-dashboard.json: "{\r\n  \"annotations\": {\r\n    \"list\": [\r\n      {\r\n
+    \       \"builtIn\": 1,\r\n        \"datasource\": {\r\n          \"type\": \"prometheus\",\r\n
+    \         \"uid\": \"PBFA97CFB590B2093\"\r\n        },\r\n        \"enable\":
+    true,\r\n        \"hide\": true,\r\n        \"iconColor\": \"rgba(0, 211, 255,
+    1)\",\r\n        \"name\": \"Annotations & Alerts\",\r\n        \"type\": \"dashboard\"\r\n
+    \     }\r\n    ]\r\n  },\r\n  \"editable\": true,\r\n  \"fiscalYearStartMonth\":
+    0,\r\n  \"graphTooltip\": 1,\r\n  \"id\": null,\r\n  \"links\": [],\r\n  \"liveNow\":
+    false,\r\n  \"panels\": [\r\n    {\r\n      \"id\": 10,\r\n      \"type\": \"row\",\r\n
+    \     \"title\": \"A. System Snapshot\",\r\n      \"collapsed\": false,\r\n      \"gridPos\":
+    {\r\n        \"x\": 0,\r\n        \"y\": 0,\r\n        \"w\": 24,\r\n        \"h\":
+    1\r\n      },\r\n      \"panels\": []\r\n    },\r\n    {\r\n      \"id\": 8,\r\n
+    \     \"type\": \"stat\",\r\n      \"title\": \"Consumer Processed (req/s)\",\r\n
+    \     \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"$DS_PROMETHEUS\"\r\n      },\r\n      \"targets\": [\r\n        {\r\n          \"expr\":
+    \"sum(rate(lc_consumer_processed_total{instance=~\\\"$instance\\\"}[1m]))\",\r\n
+    \         \"refId\": \"A\",\r\n          \"legendFormat\": \"value\",\r\n          \"instant\":
+    false,\r\n          \"range\": true\r\n        }\r\n      ],\r\n      \"options\":
+    {\r\n        \"colorMode\": \"background\",\r\n        \"graphMode\": \"none\",\r\n
+    \       \"justifyMode\": \"auto\",\r\n        \"reduceOptions\": {\r\n          \"calcs\":
+    [\r\n            \"lastNotNull\"\r\n          ],\r\n          \"fields\": \"\",\r\n
+    \         \"values\": false\r\n        },\r\n        \"textMode\": \"value\"\r\n
+    \     },\r\n      \"fieldConfig\": {\r\n        \"defaults\": {\r\n          \"unit\":
+    \"reqps\",\r\n          \"thresholds\": {\r\n            \"mode\": \"absolute\",\r\n
+    \           \"steps\": [\r\n              {\r\n                \"color\": \"red\",\r\n
+    \               \"value\": null\r\n              },\r\n              {\r\n                \"color\":
+    \"yellow\",\r\n                \"value\": 0.1\r\n              },\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": 1\r\n              }\r\n
+    \           ]\r\n          }\r\n        },\r\n        \"overrides\": []\r\n      },\r\n
+    \     \"gridPos\": {\r\n        \"x\": 0,\r\n        \"y\": 1,\r\n        \"w\":
+    8,\r\n        \"h\": 5\r\n      }\r\n    },\r\n    {\r\n      \"datasource\":
+    {\r\n        \"type\": \"prometheus\",\r\n        \"uid\": \"${DS_PROMETHEUS}\"\r\n
+    \     },\r\n      \"fieldConfig\": {\r\n        \"defaults\": {\r\n          \"unit\":
+    \"none\",\r\n          \"thresholds\": {\r\n            \"mode\": \"absolute\",\r\n
+    \           \"steps\": [\r\n              {\r\n                \"color\": \"green\",\r\n
+    \               \"value\": null\r\n              },\r\n              {\r\n                \"color\":
+    \"yellow\",\r\n                \"value\": 100\r\n              },\r\n              {\r\n
+    \               \"color\": \"red\",\r\n                \"value\": 1000\r\n              }\r\n
+    \           ]\r\n          }\r\n        },\r\n        \"overrides\": []\r\n      },\r\n
+    \     \"gridPos\": {\r\n        \"x\": 8,\r\n        \"y\": 1,\r\n        \"w\":
+    8,\r\n        \"h\": 5\r\n      },\r\n      \"id\": 1,\r\n      \"options\": {\r\n
+    \       \"colorMode\": \"background\",\r\n        \"graphMode\": \"none\",\r\n
+    \       \"justifyMode\": \"auto\",\r\n        \"reduceOptions\": {\r\n          \"calcs\":
+    [\r\n            \"lastNotNull\"\r\n          ],\r\n          \"fields\": \"\",\r\n
+    \         \"values\": false\r\n        },\r\n        \"textMode\": \"value\"\r\n
+    \     },\r\n      \"pluginVersion\": \"10.4.0\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"expr\": \"lc_redis_queue_size{instance=~\\\"$instance\\\"}\",\r\n
+    \         \"legendFormat\": \"queue\",\r\n          \"refId\": \"A\"\r\n        }\r\n
+    \     ],\r\n      \"title\": \"Queue Backlog (Redis)\",\r\n      \"type\": \"stat\"\r\n
+    \   },\r\n    {\r\n      \"id\": 9,\r\n      \"type\": \"stat\",\r\n      \"title\":
+    \"Consumer Failed (req/s)\",\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n
+    \       \"uid\": \"$DS_PROMETHEUS\"\r\n      },\r\n      \"targets\": [\r\n        {\r\n
+    \         \"expr\": \"sum(rate(lc_consumer_failed_total{instance=~\\\"$instance\\\"}[1m]))\",\r\n
+    \         \"refId\": \"A\",\r\n          \"legendFormat\": \"value\",\r\n          \"instant\":
+    false,\r\n          \"range\": true\r\n        }\r\n      ],\r\n      \"options\":
+    {\r\n        \"colorMode\": \"background\",\r\n        \"graphMode\": \"none\",\r\n
+    \       \"justifyMode\": \"auto\",\r\n        \"reduceOptions\": {\r\n          \"calcs\":
+    [\r\n            \"lastNotNull\"\r\n          ],\r\n          \"fields\": \"\",\r\n
+    \         \"values\": false\r\n        },\r\n        \"textMode\": \"value\"\r\n
+    \     },\r\n      \"fieldConfig\": {\r\n        \"defaults\": {\r\n          \"unit\":
+    \"reqps\",\r\n          \"thresholds\": {\r\n            \"mode\": \"absolute\",\r\n
+    \           \"steps\": [\r\n              {\r\n                \"color\": \"green\",\r\n
+    \               \"value\": null\r\n              },\r\n              {\r\n                \"color\":
+    \"red\",\r\n                \"value\": 1e-07\r\n              }\r\n            ]\r\n
+    \         }\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"x\": 16,\r\n        \"y\": 1,\r\n        \"w\": 8,\r\n        \"h\":
+    5\r\n      }\r\n    },\r\n    {\r\n      \"id\": 11,\r\n      \"type\": \"row\",\r\n
+    \     \"title\": \"B. Redis\",\r\n      \"collapsed\": false,\r\n      \"gridPos\":
+    {\r\n        \"x\": 0,\r\n        \"y\": 6,\r\n        \"w\": 24,\r\n        \"h\":
+    1\r\n      },\r\n      \"panels\": []\r\n    },\r\n    {\r\n      \"datasource\":
+    {\r\n        \"type\": \"prometheus\",\r\n        \"uid\": \"${DS_PROMETHEUS}\"\r\n
+    \     },\r\n      \"fieldConfig\": {\r\n        \"defaults\": {\r\n          \"unit\":
+    \"none\",\r\n          \"thresholds\": {\r\n            \"mode\": \"absolute\",\r\n
+    \           \"steps\": [\r\n              {\r\n                \"color\": \"green\",\r\n
+    \               \"value\": null\r\n              },\r\n              {\r\n                \"color\":
+    \"yellow\",\r\n                \"value\": 1\r\n              },\r\n              {\r\n
+    \               \"color\": \"red\",\r\n                \"value\": 10\r\n              }\r\n
+    \           ]\r\n          }\r\n        },\r\n        \"overrides\": []\r\n      },\r\n
+    \     \"gridPos\": {\r\n        \"x\": 0,\r\n        \"y\": 7,\r\n        \"w\":
+    6,\r\n        \"h\": 5\r\n      },\r\n      \"id\": 2,\r\n      \"options\": {\r\n
+    \       \"colorMode\": \"background\",\r\n        \"graphMode\": \"none\",\r\n
+    \       \"justifyMode\": \"auto\",\r\n        \"reduceOptions\": {\r\n          \"calcs\":
+    [\r\n            \"lastNotNull\"\r\n          ],\r\n          \"fields\": \"\",\r\n
+    \         \"values\": false\r\n        },\r\n        \"textMode\": \"value\"\r\n
+    \     },\r\n      \"pluginVersion\": \"10.4.0\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"expr\": \"lc_redis_dlq_size{instance=~\\\"$instance\\\"}\",\r\n          \"legendFormat\":
+    \"dlq\",\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"DLQ Size (Redis)\",\r\n      \"type\": \"stat\"\r\n    },\r\n    {\r\n      \"datasource\":
+    {\r\n        \"type\": \"prometheus\",\r\n        \"uid\": \"${DS_PROMETHEUS}\"\r\n
+    \     },\r\n      \"fieldConfig\": {\r\n        \"defaults\": {\r\n          \"unit\":
+    \"reqps\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"x\": 6,\r\n        \"y\": 7,\r\n        \"w\": 18,\r\n        \"h\":
+    8\r\n      },\r\n      \"id\": 4,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"displayMode\": \"table\",\r\n          \"placement\": \"right\",\r\n
+    \         \"showLegend\": true\r\n        },\r\n        \"tooltip\": {\r\n          \"mode\":
+    \"single\"\r\n        }\r\n      },\r\n      \"targets\": [\r\n        {\r\n          \"expr\":
+    \"sum(rate(lc_redis_enqueue_total{instance=~\\\"$instance\\\",result=\\\"success\\\"}[1m]))\",\r\n
+    \         \"legendFormat\": \"enqueue_success/s\",\r\n          \"refId\": \"A\"\r\n
+    \       },\r\n        {\r\n          \"expr\": \"sum(rate(lc_redis_enqueue_total{instance=~\\\"$instance\\\",result=\\\"failure\\\"}[1m]))\",\r\n
+    \         \"legendFormat\": \"enqueue_failure/s\",\r\n          \"refId\": \"B\"\r\n
+    \       },\r\n        {\r\n          \"expr\": \"sum(rate(lc_redis_db_fallback_total{instance=~\\\"$instance\\\"}[1m]))\",\r\n
+    \         \"legendFormat\": \"db_fallback/s\",\r\n          \"refId\": \"C\"\r\n
+    \       }\r\n      ],\r\n      \"title\": \"Redis Enqueue / DB Fallback (req/s)\",\r\n
+    \     \"type\": \"timeseries\"\r\n    },\r\n    {\r\n      \"id\": 12,\r\n      \"type\":
+    \"row\",\r\n      \"title\": \"C. Consumer\",\r\n      \"collapsed\": false,\r\n
+    \     \"gridPos\": {\r\n        \"x\": 0,\r\n        \"y\": 15,\r\n        \"w\":
+    24,\r\n        \"h\": 1\r\n      },\r\n      \"panels\": []\r\n    },\r\n    {\r\n
+    \     \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"${DS_PROMETHEUS}\"\r\n      },\r\n      \"fieldConfig\": {\r\n        \"defaults\":
+    {\r\n          \"unit\": \"reqps\"\r\n        },\r\n        \"overrides\": [\r\n
+    \         {\r\n            \"matcher\": {\r\n              \"id\": \"byName\",\r\n
+    \             \"options\": \"processed/s\"\r\n            },\r\n            \"properties\":
+    [\r\n              {\r\n                \"id\": \"custom.lineWidth\",\r\n                \"value\":
+    2\r\n              }\r\n            ]\r\n          },\r\n          {\r\n            \"matcher\":
+    {\r\n              \"id\": \"byName\",\r\n              \"options\": \"failed/s\"\r\n
+    \           },\r\n            \"properties\": [\r\n              {\r\n                \"id\":
+    \"custom.lineWidth\",\r\n                \"value\": 1\r\n              },\r\n
+    \             {\r\n                \"id\": \"custom.lineStyle\",\r\n                \"value\":
+    {\r\n                  \"dash\": [\r\n                    8,\r\n                    4\r\n
+    \                 ],\r\n                  \"fill\": \"dash\"\r\n                }\r\n
+    \             }\r\n            ]\r\n          },\r\n          {\r\n            \"matcher\":
+    {\r\n              \"id\": \"byName\",\r\n              \"options\": \"dlq_push/s\"\r\n
+    \           },\r\n            \"properties\": [\r\n              {\r\n                \"id\":
+    \"custom.lineWidth\",\r\n                \"value\": 1\r\n              },\r\n
+    \             {\r\n                \"id\": \"custom.lineStyle\",\r\n                \"value\":
+    {\r\n                  \"dash\": [\r\n                    2,\r\n                    4\r\n
+    \                 ],\r\n                  \"fill\": \"dash\"\r\n                }\r\n
+    \             }\r\n            ]\r\n          }\r\n        ]\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"x\": 0,\r\n        \"y\": 16,\r\n        \"w\": 24,\r\n        \"h\":
+    8\r\n      },\r\n      \"id\": 3,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"displayMode\": \"table\",\r\n          \"placement\": \"right\",\r\n
+    \         \"showLegend\": true\r\n        },\r\n        \"tooltip\": {\r\n          \"mode\":
+    \"single\"\r\n        }\r\n      },\r\n      \"targets\": [\r\n        {\r\n          \"expr\":
+    \"sum(rate(lc_consumer_processed_total{instance=~\\\"$instance\\\"}[1m]))\",\r\n
+    \         \"legendFormat\": \"processed/s\",\r\n          \"refId\": \"A\"\r\n
+    \       },\r\n        {\r\n          \"expr\": \"sum(rate(lc_consumer_failed_total{instance=~\\\"$instance\\\"}[1m]))\",\r\n
+    \         \"legendFormat\": \"failed/s\",\r\n          \"refId\": \"B\"\r\n        },\r\n
+    \       {\r\n          \"expr\": \"sum(rate(lc_consumer_dlq_push_total{instance=~\\\"$instance\\\"}[1m]))\",\r\n
+    \         \"legendFormat\": \"dlq_push/s\",\r\n          \"refId\": \"C\"\r\n
+    \       }\r\n      ],\r\n      \"title\": \"Consumer Throughput (processed / failed
+    / dlq)\",\r\n      \"type\": \"timeseries\"\r\n    },\r\n    {\r\n      \"id\":
+    13,\r\n      \"type\": \"row\",\r\n      \"title\": \"D. Persist / Save\",\r\n
+    \     \"collapsed\": false,\r\n      \"gridPos\": {\r\n        \"x\": 0,\r\n        \"y\":
+    24,\r\n        \"w\": 24,\r\n        \"h\": 1\r\n      },\r\n      \"panels\":
+    []\r\n    },\r\n    {\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n
+    \       \"uid\": \"${DS_PROMETHEUS}\"\r\n      },\r\n      \"fieldConfig\": {\r\n
+    \       \"defaults\": {\r\n          \"unit\": \"s\",\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"yellow\",\r\n                \"value\":
+    1\r\n              },\r\n              {\r\n                \"color\": \"red\",\r\n
+    \               \"value\": 5\r\n              }\r\n            ]\r\n          }\r\n
+    \       },\r\n        \"overrides\": [\r\n          {\r\n            \"matcher\":
+    {\r\n              \"id\": \"byName\",\r\n              \"options\": \"p95\"\r\n
+    \           },\r\n            \"properties\": [\r\n              {\r\n                \"id\":
+    \"custom.lineWidth\",\r\n                \"value\": 2\r\n              }\r\n            ]\r\n
+    \         },\r\n          {\r\n            \"matcher\": {\r\n              \"id\":
+    \"byName\",\r\n              \"options\": \"p50\"\r\n            },\r\n            \"properties\":
+    [\r\n              {\r\n                \"id\": \"custom.lineWidth\",\r\n                \"value\":
+    1\r\n              },\r\n              {\r\n                \"id\": \"custom.lineStyle\",\r\n
+    \               \"value\": {\r\n                  \"dash\": [\r\n                    6,\r\n
+    \                   4\r\n                  ],\r\n                  \"fill\": \"dash\"\r\n
+    \               }\r\n              }\r\n            ]\r\n          }\r\n        ]\r\n
+    \     },\r\n      \"gridPos\": {\r\n        \"x\": 0,\r\n        \"y\": 25,\r\n
+    \       \"w\": 12,\r\n        \"h\": 8\r\n      },\r\n      \"id\": 5,\r\n      \"options\":
+    {\r\n        \"legend\": {\r\n          \"displayMode\": \"table\",\r\n          \"placement\":
+    \"right\",\r\n          \"showLegend\": true\r\n        },\r\n        \"tooltip\":
+    {\r\n          \"mode\": \"single\"\r\n        }\r\n      },\r\n      \"targets\":
+    [\r\n        {\r\n          \"expr\": \"histogram_quantile(0.95, sum(rate(lc_persist_lag_seconds_bucket{instance=~\\\"$instance\\\"}[5m]))
+    by (le))\",\r\n          \"legendFormat\": \"p95\",\r\n          \"refId\": \"A\"\r\n
+    \       },\r\n        {\r\n          \"expr\": \"histogram_quantile(0.50, sum(rate(lc_persist_lag_seconds_bucket{instance=~\\\"$instance\\\"}[5m]))
+    by (le))\",\r\n          \"legendFormat\": \"p50\",\r\n          \"refId\": \"B\"\r\n
+    \       }\r\n      ],\r\n      \"title\": \"Persist Lag (p50/p95, occurred ??DB)\",\r\n
+    \     \"type\": \"timeseries\"\r\n    },\r\n    {\r\n      \"datasource\": {\r\n
+    \       \"type\": \"prometheus\",\r\n        \"uid\": \"${DS_PROMETHEUS}\"\r\n
+    \     },\r\n      \"fieldConfig\": {\r\n        \"defaults\": {\r\n          \"unit\":
+    \"reqps\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"x\": 12,\r\n        \"y\": 25,\r\n        \"w\": 12,\r\n        \"h\":
+    8\r\n      },\r\n      \"id\": 6,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"displayMode\": \"table\",\r\n          \"placement\": \"right\",\r\n
+    \         \"showLegend\": true\r\n        },\r\n        \"tooltip\": {\r\n          \"mode\":
+    \"single\"\r\n        }\r\n      },\r\n      \"targets\": [\r\n        {\r\n          \"expr\":
+    \"sum(rate(lc_savelog_total{instance=~\\\"$instance\\\",result=\\\"success\\\"}[1m]))\",\r\n
+    \         \"legendFormat\": \"save_success/s\",\r\n          \"refId\": \"A\"\r\n
+    \       },\r\n        {\r\n          \"expr\": \"sum(rate(lc_savelog_total{instance=~\\\"$instance\\\",result=\\\"skipped\\\"}[1m]))\",\r\n
+    \         \"legendFormat\": \"save_skipped/s\",\r\n          \"refId\": \"B\"\r\n
+    \       },\r\n        {\r\n          \"expr\": \"sum(rate(lc_savelog_total{instance=~\\\"$instance\\\",result=\\\"failure\\\"}[1m]))\",\r\n
+    \         \"legendFormat\": \"save_failure/s\",\r\n          \"refId\": \"C\"\r\n
+    \       }\r\n      ],\r\n      \"title\": \"saveLog Result (success / skipped
+    / failure)\",\r\n      \"type\": \"timeseries\"\r\n    },\r\n    {\r\n      \"id\":
+    14,\r\n      \"type\": \"row\",\r\n      \"title\": \"E. Notification\",\r\n      \"collapsed\":
+    false,\r\n      \"gridPos\": {\r\n        \"x\": 0,\r\n        \"y\": 33,\r\n
+    \       \"w\": 24,\r\n        \"h\": 1\r\n      },\r\n      \"panels\": []\r\n
+    \   },\r\n    {\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n
+    \       \"uid\": \"${DS_PROMETHEUS}\"\r\n      },\r\n      \"fieldConfig\": {\r\n
+    \       \"defaults\": {\r\n          \"unit\": \"reqps\"\r\n        },\r\n        \"overrides\":
+    []\r\n      },\r\n      \"gridPos\": {\r\n        \"x\": 0,\r\n        \"y\":
+    34,\r\n        \"w\": 24,\r\n        \"h\": 8\r\n      },\r\n      \"id\": 7,\r\n
+    \     \"options\": {\r\n        \"legend\": {\r\n          \"displayMode\": \"table\",\r\n
+    \         \"placement\": \"right\",\r\n          \"showLegend\": true\r\n        },\r\n
+    \       \"tooltip\": {\r\n          \"mode\": \"single\"\r\n        }\r\n      },\r\n
+    \     \"targets\": [\r\n        {\r\n          \"expr\": \"sum(rate(lc_notify_slack_total{instance=~\\\"$instance\\\"}[1m]))
+    by (type)\",\r\n          \"legendFormat\": \"{{type}}\",\r\n          \"refId\":
+    \"A\"\r\n        }\r\n      ],\r\n      \"title\": \"Slack Notify Rate (by type)\",\r\n
+    \     \"type\": \"timeseries\"\r\n    }\r\n  ],\r\n  \"refresh\": \"10s\",\r\n
+    \ \"schemaVersion\": 39,\r\n  \"style\": \"dark\",\r\n  \"tags\": [\r\n    \"logcollector\",\r\n
+    \   \"observability\"\r\n  ],\r\n  \"templating\": {\r\n    \"list\": [\r\n      {\r\n
+    \       \"current\": {\r\n          \"selected\": false,\r\n          \"text\":
+    \"Prometheus\",\r\n          \"value\": \"Prometheus\"\r\n        },\r\n        \"hide\":
+    0,\r\n        \"includeAll\": false,\r\n        \"label\": \"Datasource\",\r\n
+    \       \"multi\": false,\r\n        \"name\": \"DS_PROMETHEUS\",\r\n        \"options\":
+    [],\r\n        \"query\": \"prometheus\",\r\n        \"refresh\": 1,\r\n        \"regex\":
+    \"\",\r\n        \"type\": \"datasource\"\r\n      },\r\n      {\r\n        \"current\":
+    {\r\n          \"selected\": true,\r\n          \"text\": \".*\",\r\n          \"value\":
+    \".*\"\r\n        },\r\n        \"hide\": 0,\r\n        \"includeAll\": false,\r\n
+    \       \"label\": \"Instance\",\r\n        \"multi\": false,\r\n        \"name\":
+    \"instance\",\r\n        \"options\": [\r\n          {\r\n            \"selected\":
+    true,\r\n            \"text\": \".*\",\r\n            \"value\": \".*\"\r\n          }\r\n
+    \       ],\r\n        \"query\": {\r\n          \"query\": \"label_values(lc_consumer_processed_total,
+    instance)\",\r\n          \"refId\": \"PromQuery\"\r\n        },\r\n        \"refresh\":
+    2,\r\n        \"regex\": \"\",\r\n        \"type\": \"query\"\r\n      }\r\n    ]\r\n
+    \ },\r\n  \"time\": {\r\n    \"from\": \"now-1h\",\r\n    \"to\": \"now\"\r\n
+    \ },\r\n  \"timepicker\": {},\r\n  \"timezone\": \"browser\",\r\n  \"title\":
+    \"LogCollector - Observability\",\r\n  \"uid\": \"logcollector-observability\",\r\n
+    \ \"version\": 1,\r\n  \"weekStart\": \"\"\r\n}"
+kind: ConfigMap
+metadata:
+  name: grafana-logcollector-dashboards
