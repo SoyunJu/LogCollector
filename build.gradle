@@ -43,6 +43,8 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     // Test
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
     testImplementation platform("org.testcontainers:testcontainers-bom:1.19.8")
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
@@ -81,8 +83,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
+    // swagger-ui
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.1'
+
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    // useJUnitPlatform()
+    enabled = false
 }

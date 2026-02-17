@@ -21,7 +21,12 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 - 상단 `Scenario Mode` 탭 → `DB_FAILOVER` 등 시나리오 선택 → `Run Simulation`
 
 3) **결과 확인**
-- Frontend: `Logs` 탭에서 실시간 로그 유입 및 Incident 생성 확인
+
+![Swagger-UI](docs/images/evidence/00-swagger.png)
+
+- Swagger-UI : http://localhost:8080/swagger-ui/index.html
+
+3-2) **Frontend**: `Logs` 탭에서 실시간 로그 유입 및 Incident 생성 확인
 
 ![Dashboard / Incident Overview](docs/images/evidence/01-dashboard-overview.png)
 

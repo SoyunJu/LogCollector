@@ -4,6 +4,7 @@ import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.dto.kb.IncidentRankResponse;
 import com.soyunju.logcollector.dto.kb.IncidentResponse;
 import com.soyunju.logcollector.service.kb.search.IncidentSearchService;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -12,10 +13,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Hidden
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/incidents")
