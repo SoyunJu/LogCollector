@@ -22,19 +22,19 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 
 3) **결과 확인**
 
-<p align="center">
-  <img src="docs/images/evidence/00-swagger.png" width="70%">
-</p>
-
-- Swagger-UI : http://localhost:8080/swagger-ui/index.html
-
-3-2) **Frontend**: `Logs` 탭에서 실시간 로그 유입 및 Incident 생성 확인
+- Frontend: `Logs` 탭에서 실시간 로그 유입 및 Incident 생성 확인
 
 <p align="center">
   <img src="docs/images/evidence/01-dashboard-overview.png" width="70%">
 </p>
 
-<!-- 필요 시 복원
+4) **Swagger-UI** : http://localhost:8080/swagger-ui/index.html
+
+<p align="center">
+  <img src="docs/images/evidence/00-swagger.png" width="70%">
+</p>
+
+<!-- 
 <p align="center">
   <img src="docs/images/evidence/02-incident-detail-kb-first.png" width="80%">
 </p>
