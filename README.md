@@ -22,15 +22,23 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 
 3) **결과 확인**
 
-![Swagger-UI](docs/images/evidence/00-swagger.png)
+<p align="center">
+  <img src="docs/images/evidence/00-swagger.png" width="70%">
+</p>
 
 - Swagger-UI : http://localhost:8080/swagger-ui/index.html
 
 3-2) **Frontend**: `Logs` 탭에서 실시간 로그 유입 및 Incident 생성 확인
 
-![Dashboard / Incident Overview](docs/images/evidence/01-dashboard-overview.png)
+<p align="center">
+  <img src="docs/images/evidence/01-dashboard-overview.png" width="70%">
+</p>
 
-![Incident Detail (KB-first)](docs/images/evidence/02-incident-detail-kb-first.png)
+<!-- 필요 시 복원
+<p align="center">
+  <img src="docs/images/evidence/02-incident-detail-kb-first.png" width="80%">
+</p>
+-->
 
 - Grafana: http://localhost:3000 (admin / admin)
   - `LogCollector` 대시보드에서 트래픽/에러 변화 확인
@@ -55,12 +63,15 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 ## Architecture Overview
 
 핵심 구성요소는 **LogCollector(LC)**, **Incident**, **KbArticle** 입니다.
+
 - **Incident = Source of Truth (SoT)**: 운영 상태/재발/종료 정책의 기준
 - **KbArticle = Writer of Truth (WoT)**: 지식 쓰기의 단일 진실 지점
 
 아래 다이어그램은 로그 유입부터 지식화까지의 핵심 흐름을 단순화한 그림입니다.
 
-![Architecture Diagram](docs/images/architecture-v2.png)
+<p align="center">
+  <img src="docs/images/architecture-v2.png" width="75%">
+</p>
 
 ### Core Concepts
 
@@ -85,7 +96,6 @@ LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 �
 - JPA / Querydsl
 - Docker, Docker Compose
 - Kubernetes (Optional)
--
 
 ---
 
@@ -118,7 +128,9 @@ docker compose -f infra/compose/compose.yaml up -d --build
 make test
 ```
 
-![Automated Test Evidence (make test)](docs/images/evidence/04-automated-test-make-test.png)
+<p align="center">
+  <img src="docs/images/evidence/04-automated-test-make-test.png" width="65%">
+</p>
 
 성공 시 터미널 마지막에 `ALL TESTS PASSED!` 메시지가 출력됩니다.
 
@@ -129,7 +141,9 @@ make test
 상태 관리는 **Incident(운영)** 와 **KbArticle(지식)** 로 분리됩니다.  
 상태 정책의 단일 기준은 Incident이며, 재발 시 `RESOLVED/CLOSED → OPEN` 전이를 허용합니다.
 
-![Status Model](docs/images/status-v1.png)
+<p align="center">
+  <img src="docs/images/status-v1.png" width="75%">
+</p>
 
 상세 정책: [docs/status.md](docs/status.md)
 
@@ -137,52 +151,67 @@ make test
 
 ## 💡 Why This Status Model Works (Design Decisions)
 
-아래 설계 선택들은 앞서 정의한 **Incident 중심 상태 모델이 운영 환경에서 실제로 동작하도록 만들기 위한 핵심 결정들**입니다.
-각 항목은 단순 기능 구현이 아니라,
-대량 로그·재발·무시·분산 환경을 전제로 한 문제 해결 관점에서 설계되었습니다.
-
 ### 1. Noise Reduction Strategy (로그 정규화 & 해싱)
-- **Problem**: 변수(타임스탬프, 스택트레이스 라인 등)만 다른 동일 에러가 수천 건씩 유입되어 운영자의 피로도(Alert Fatigue) 유발.
-- **Solution**: 로그 정규화(Normalization) 후 고유 해시(`log_hash`)를 생성. **1,000건의 로그를 1건의 Incident로 압축**합니다.
-  - 이를 통해 상태 전이는 의미 있는 이벤트 단위로만 발생하도록 보장합니다.
+
+- **Problem**: 동일 에러가 수천 건씩 유입되어 운영자의 피로도 증가
+- **Solution**: 로그 정규화 후 고유 해시(`log_hash`) 생성  
+  → **1,000건의 로그를 1건의 Incident로 압축**
+
+---
 
 ### 2. High-Throughput & Deduplication (Redis 분산 처리)
-- **Problem**: DB에 직접 insert 시 부하 발생 및 중복 체크 로직의 성능 저하.
-- **Solution**: **Redis**를 1차 버퍼 및 중복 제거(Dedup) 계층으로 활용.
-  - `Atomic Operation`을 통해 분산 환경에서도 정확한 카운팅 및 Throttling 구현.
+
+- **Problem**: DB 직접 insert 시 부하 및 중복 체크 비용 증가
+- **Solution**: Redis를 1차 Dedup 계층으로 활용  
+  → Atomic 연산 기반 분산 정확성 확보
+
+---
 
 ### 3. Architecture for Consistency (SoT & Status)
-- **Problem**: 로그 수집(LC)과 사건 관리(Incident)의 상태가 불일치하는 문제.
-- **Solution**: **Incident를 단일 진실 공급원(Source of Truth)**으로 정의.
-  - 상태 전이(`OPEN` → `RESOLVED` → `REOPEN`)가 엄격한 규칙 하에 동작하며, 재발 시(Reoccurrence) 자동으로 상태가 회귀되도록 설계.
-  - 이 구조 덕분에 상태는 로그 수집량과 무관하게 운영 판단 기준으로만 변화합니다.
+
+- **Problem**: 로그 수집과 사건 상태 불일치
+- **Solution**: Incident를 단일 진실 공급원(SoT)으로 정의  
+  → 재발 시 자동 상태 회귀 (Reopen)
+
+---
 
 ### 4. Physical Separation of Concerns (Dual DB)
-- **Problem**: 대량의 Write 트래픽(로그)이 Read/Update가 잦은 비즈니스 로직(지식 관리)의 성능에 영향을 줌.
-- **Solution**: **LC DB(Write-Heavy)** 와 **KB DB(Complex-Read)** 를 물리적으로 분리.
-  - 데이터 성격에 따른 독립적인 스케일링(Scale-out)이 가능한 구조 확보.
+
+- **Problem**: Write-heavy 로그 트래픽이 비즈니스 로직에 영향
+- **Solution**: LC DB / KB DB 물리적 분리  
+  → 독립적 스케일링 가능
+
+---
 
 ### 5. Hybrid Analysis (OpenAI & Strategy Pattern)
-- **Problem**: 초기 지식(KB)이 없을 때(Cold Start), 운영자가 참고할 가이드가 부재.
-- **Solution**: **OpenAI API**를 연동하여 AI가 1차 원인 분석 및 해결 가이드를 제안.
-  - 개발/테스트 환경 비용 절감을 위해 `MockAiService`와 `OpenAiService`를 **Strategy Pattern**으로 유연하게 교체 가능하도록 설계.
 
-![AI Analysis → Create KB Draft](docs/images/evidence/03-ai-analysis-and-kb-draft.png)
+- **Problem**: 초기 KB 부재 시 대응 가이드 부족
+- **Solution**: OpenAI 기반 1차 분석 + Draft 자동 생성  
+  → Strategy Pattern으로 Mock/실서비스 교체 가능
+
+<p align="center">
+  <img src="docs/images/evidence/03-ai-analysis-and-kb-draft.png" width="65%">
+</p>
+
+---
 
 ### 6. Operational Control (Ignore Policy)
-- **Problem**: 의미 없는 경고성 로그나 알려진 이슈가 지속적으로 알림을 발생시킴.
-- **Solution**: **Ignore Status** 도입. 특정 해시의 로그를 수집 단계에서 차단하거나, 사건화되지 않도록 제어하여 운영 노이즈 제거.
--  운영자는 'Ignore' 상태 전이를 통해 “관심 대상에서 제외”라는 의도를 시스템에 명시적으로 반영할 수 있습니다.
+
+- **Problem**: 의미 없는 경고 로그 반복
+- **Solution**: Ignore 상태 도입  
+  → 운영자가 관심 제외 의도를 명시적으로 시스템에 반영
 
 ---
 
 ## Scope & Limitations (v1.0)
 
-v1.0의 목적은 기능 확장이 아니라 **운영 흐름과 데이터 책임 구조의 검증**입니다.
+v1.0의 목적은 기능 확장이 아니라  
+**운영 흐름과 데이터 책임 구조의 검증**입니다.
 
-의도적으로 제외한 항목:
+의도적으로 제외:
+
 - Full-text Search (Elasticsearch)
-- 분산 트랜잭션(2PC)
+- 2PC 분산 트랜잭션
 
 Eventual Consistency와 멱등성 설계로 운영 환경을 커버할 수 있음을 검증합니다.
 
