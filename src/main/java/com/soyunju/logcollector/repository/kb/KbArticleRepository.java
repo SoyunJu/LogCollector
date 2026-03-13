@@ -66,12 +66,16 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
                               @Param("now") LocalDateTime now);
 
 
+    // kb confidenceLevel 순으로 조회
+    @Query("select k from KbArticle k join fetch k.incident i where i.logHash = :logHash order by k.confidenceLevel desc, k.updatedAt desc")
+    List<KbArticle> findByIncidentLogHashOrderByConfidenceDesc(@Param("logHash") String logHash);
+
+
     // 테스트 데이터 삭제용
     @Transactional
     @Modifying
     @Query("DELETE FROM KbArticle k WHERE k.incident.logHash = :logHash")
     void deleteByIncident_LogHash(@Param("logHash") String logHash);
-
 
 
 }

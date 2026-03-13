@@ -7,6 +7,7 @@ import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
 import com.soyunju.logcollector.domain.kb.enums.DraftReason;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.dto.kb.KbArticleResponse;
+import com.soyunju.logcollector.es.KbArticleEsService;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
 import com.soyunju.logcollector.repository.kb.SystemDraftRepository;
@@ -26,15 +27,19 @@ public class KbDraftService {
     private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;
     private final SystemDraftRepository systemDraftRepository;
+    private final KbArticleEsService kbArticleEsService;
+
     private static final List<KbStatus> ACTIVE_DRAFT_STATUSES =
             List.of(KbStatus.DRAFT, KbStatus.IN_PROGRESS);
 
     public KbDraftService(IncidentRepository incidentRepository,
                           KbArticleRepository kbArticleRepository,
-                          SystemDraftRepository systemDraftRepository) {
+                          SystemDraftRepository systemDraftRepository,
+                          KbArticleEsService kbArticleEsService) {
         this.incidentRepository = incidentRepository;
         this.kbArticleRepository = kbArticleRepository;
         this.systemDraftRepository = systemDraftRepository;
+        this.kbArticleEsService = kbArticleEsService;
     }
 
     // LC 에서 RESOLVED 된 ERROR LOG 처리
@@ -82,6 +87,22 @@ public class KbDraftService {
         }
 
         return kbArticleId;
+    }
+
+    // 추가 : loghash 기반 draft 생성
+    @Transactional(transactionManager = "kbTransactionManager")
+    public void createSystemDraftByLogHash(String logHash) {
+        incidentRepository.findByLogHash(logHash).ifPresentOrElse(
+                incident -> {
+                    try {
+                        createSystemDraft(incident.getId());
+                    } catch (Exception e) {
+                        log.warn("[DRAFT][SKIP] createSystemDraftByLogHash failed. incidentId={}, logHash={}, err={}",
+                                incident.getId(), logHash, e.toString());
+                    }
+                },
+                () -> log.warn("[DRAFT][SKIP] Incident not found for logHash={}", logHash)
+        );
     }
 
     // draft 유무 체크
@@ -136,11 +157,14 @@ public class KbDraftService {
             kb.setStatus(KbStatus.IN_PROGRESS);
         }
         kb.touchActivity();
-        kbArticleRepository.save(kb);
+        // 반환 값 저장
+        KbArticle saved = kbArticleRepository.save(kb);
+        // KB Draft ES indexing
+        kbArticleEsService.index(saved);
     }
 
     // System create KbArticle
-    @Transactional(transactionManager = "kbTransactionManager")
+    // @Transactional(transactionManager = "kbTransactionManager")
     private Long createSystemKbArticle(Incident incident) {
 
         Optional<KbArticle> existing = kbArticleRepository.findByIncident_Id(incident.getId());

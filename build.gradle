@@ -83,9 +83,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
-    // swagger-ui
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.1'
+    // ES 연동
+    implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
 
+    // 패키지 분리
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.2.1'
 }
 
 tasks.named('test') {

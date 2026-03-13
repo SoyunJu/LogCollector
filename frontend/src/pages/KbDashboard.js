@@ -1,3 +1,4 @@
+// frontend/src/pages/KbDashboard.js
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LogCollectorApi } from '../api/logCollectorApi';
@@ -43,6 +44,17 @@ case 'DRAFT': return <Badge bg="secondary">DRAFT</Badge>;
 case 'IN_PROGRESS': return <Badge bg="primary">IN_PROGRESS</Badge>;
 case 'ARCHIVED': return <Badge bg="dark">ARCHIVED</Badge>;
 default: return <Badge bg="light" text="dark">{status}</Badge>;
+}
+};
+
+// ✅ 추가: confidenceLevel 배지
+const getConfidenceBadge = (level) => {
+switch (level) {
+case 5: return <Badge bg="dark">Lv.5</Badge>;
+case 4: return <Badge bg="success">Lv.4</Badge>;
+case 3: return <Badge bg="primary">Lv.3</Badge>;
+case 2: return <Badge bg="warning" text="dark">Lv.2</Badge>;
+default: return <Badge bg="secondary">Lv.1</Badge>;
 }
 };
 
@@ -101,6 +113,7 @@ return (
             <tr>
                 <th style={{width:'60px'}}>ID</th>
                 <th style={{width:'100px'}}>Status</th>
+                <th style={{width:'80px'}}>Level</th>{/* ✅ 추가 */}
                 <th>Title</th>
                 <th style={{width:'120px'}}>Author</th>
                 <th style={{width:'160px'}}>Last Activity</th>
@@ -109,11 +122,12 @@ return (
             </thead>
             <tbody>
             {rows.length === 0 ? (
-            <tr><td colSpan="6" className="text-center py-4 text-muted">문서가 없습니다.</td></tr>
+            <tr><td colSpan="7" className="text-center py-4 text-muted">문서가 없습니다.</td></tr>
             ) : rows.map((r) => (
             <tr key={r.id}>
                 <td className="text-muted small">#{r.id}</td>
                 <td>{getStatusBadge(r.status)}</td>
+                <td>{getConfidenceBadge(r.confidenceLevel)}</td>{/* ✅ 추가 */}
                 <td>
                     <Link to={`/kb/${r.id}`} className="text-decoration-none fw-bold text-dark">
                     {r.title || r.incidentTitle || <span className="text-muted fst-italic">(No Title)</span>}
