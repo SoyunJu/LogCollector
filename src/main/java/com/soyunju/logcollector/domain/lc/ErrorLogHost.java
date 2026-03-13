@@ -39,11 +39,9 @@ public class ErrorLogHost {
     @Column(name = "ip", length = 45)
     private String ip;
 
-    // ✅ DB: first_occurrence_time
     @Column(name = "first_occurrence_time", nullable = false)
     private LocalDateTime firstOccurredTime;
 
-    // ✅ DB: last_occurrence_time
     @Column(name = "last_occurrence_time", nullable = false)
     private LocalDateTime lastoccurredTime;
 
