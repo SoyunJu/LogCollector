@@ -38,10 +38,18 @@ class ErrorLogIntegrationTest {
 
     @DynamicPropertySource
     static void overrideProps(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mariadb::getJdbcUrl);
-        registry.add("spring.datasource.username", mariadb::getUsername);
-        registry.add("spring.datasource.password", mariadb::getPassword);
-        registry.add("spring.datasource.driver-class-name", mariadb::getDriverClassName);
+        // LC datasource
+        registry.add("spring.datasource.lc.jdbc-url", mariadb::getJdbcUrl);
+        registry.add("spring.datasource.lc.username", mariadb::getUsername);
+        registry.add("spring.datasource.lc.password", mariadb::getPassword);
+        registry.add("spring.datasource.lc.driver-class-name", mariadb::getDriverClassName);
+
+        // KB datasource - 동일 컨테이너 사용
+        registry.add("spring.datasource.kb.jdbc-url", mariadb::getJdbcUrl);
+        registry.add("spring.datasource.kb.username", mariadb::getUsername);
+        registry.add("spring.datasource.kb.password", mariadb::getPassword);
+        registry.add("spring.datasource.kb.driver-class-name", mariadb::getDriverClassName);
+
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
     }
 
