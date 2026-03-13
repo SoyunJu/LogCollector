@@ -32,7 +32,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Integration Tests
-        run: ./gradlew test --no-daemon
+        run: ./gradlew test --no-daemon --info 2>&1 | tail -100
         env:
           RUN_INTEGRATION_TEST: "true"
 
