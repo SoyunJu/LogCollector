@@ -9,15 +9,20 @@ import com.soyunju.logcollector.repository.kb.KbAddendumRepository;
 import com.soyunju.logcollector.service.kb.crud.KbCrudService;
 import com.soyunju.logcollector.service.kb.crud.KbDraftService;
 import com.soyunju.logcollector.service.kb.search.KbArticleSearchService;
+import io.swagger.v3.oas.annotations.Hidden;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "04. KB Draft", description = "Draft 생성/누적/게시 + KB 상세 조회(= addendum 포함)")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/kb")
@@ -28,29 +33,40 @@ public class KbArticleController {
     private final KbArticleSearchService kbArticleSearchService;
     private final KbAddendumRepository kbAddendumRepository;
 
-    // LC resolved -> Draft 생성
+    @Operation(summary = "POST /api/kb/draft - Draft 생성", description = "Resolved된 incident 기반으로 Draft(KB article) 생성")
     @PostMapping("/draft")
     public ResponseEntity<Long> createDraft(@RequestParam Long incidentId) {
         return ResponseEntity.ok(kbDraftService.createSystemDraft(incidentId));
     }
 
-    // KB Draft List 조회
+    @Operation(
+            summary = "GET /api/kb - KB list 조회",
+            description = "KB list를 조회합니다."
+    )
     @GetMapping
     public ResponseEntity<Page<KbArticleResponse>> getKbArticles(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String createdBy,
-            @PageableDefault(size = 20) Pageable pageable
+            @PageableDefault(
+                    page = 0,
+                    size = 10,
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
     ) {
         KbArticleSearch kas = new KbArticleSearch();
         kas.setStatus(status);
         kas.setKeyword(keyword);
         kas.setCreatedBy(createdBy);
-
         return ResponseEntity.ok(kbArticleSearchService.findAll(kas, pageable));
     }
 
-    // KB 상세 조회 => addendums 포함
+    @Operation(
+            summary = "GET /api/kb/{kbArticleId} - KB 상세 조회",
+            description = "Draft/KB 문서 상세를 조회합니다."
+    )
     @GetMapping("/{kbArticleId}")
     public ResponseEntity<KbArticleResponse> getKbArticle(
             @PathVariable Long kbArticleId,
@@ -60,7 +76,7 @@ public class KbArticleController {
         return ResponseEntity.ok(kbArticleSearchService.getArticle(kbArticleId, addendumPage, addendumSize));
     }
 
-    // KB Addendum Post
+    @Operation(summary = "POST /api/kb/articles/{kbArticleId} - 게시(내용 확정/승격)")
     @PostMapping("/articles/{kbArticleId}")
     public ResponseEntity<Void> postArticle(
             @PathVariable Long kbArticleId,
@@ -69,7 +85,7 @@ public class KbArticleController {
         return ResponseEntity.ok().build();
     }
 
-    // KB 상태 변경 API
+    @Operation(summary = "PATCH /api/kb/articles/{kbArticleId}/status - KB 상태 변경")
     @PatchMapping("/articles/{kbArticleId}/status")
     public ResponseEntity<Void> updateStatus(
             @PathVariable Long kbArticleId,
@@ -78,7 +94,7 @@ public class KbArticleController {
         return ResponseEntity.ok().build();
     }
 
-    // Draft Update (title 과 addendum 만)
+    @Operation(summary = "POST /api/kb/draft/{kbArticleId}/update - 제목/작성자 수정")
     @PostMapping("/draft/{kbArticleId}/update")
     public ResponseEntity<Void> updateDraft(
             @PathVariable Long kbArticleId,
@@ -93,7 +109,7 @@ public class KbArticleController {
         return ResponseEntity.ok().build();
     }
 
-    // KB Addendum 목록 조회 desc
+    @Hidden
     @GetMapping("/articles/{kbArticleId}/addendums")
     public ResponseEntity<List<KbAddendumResponse>> getAddendums(@PathVariable Long kbArticleId) {
         return ResponseEntity.ok(
@@ -103,5 +119,4 @@ public class KbArticleController {
                         .toList()
         );
     }
-
 }
