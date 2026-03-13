@@ -4,6 +4,7 @@ import com.soyunju.logcollector.domain.kb.KbAddendum;
 import com.soyunju.logcollector.domain.kb.KbArticle;
 import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
+import com.soyunju.logcollector.es.KbArticleEsService;
 import com.soyunju.logcollector.repository.kb.KbAddendumRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class KbCrudService {
 
     private final KbArticleRepository kbArticleRepository;
     private final KbAddendumRepository kbAddendumRepository;
+    private final KbArticleEsService kbArticleEsService;
 
     // 사용자 입력 단계 (Title 수정 및 Addendum 추가)
     @Transactional(transactionManager = "kbTransactionManager")
@@ -74,6 +76,9 @@ public class KbCrudService {
         // KB 메타데이터 갱신
         kb.setUpdatedAt(LocalDateTime.now());
         kb.setLastActivityAt(LocalDateTime.now());
+
+        // ES indexing 추가 (addendum 포함)
+        kbArticleEsService.index(kb);
     }
 
     // KB 상태 변경

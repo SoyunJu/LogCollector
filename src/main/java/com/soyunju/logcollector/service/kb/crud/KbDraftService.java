@@ -7,6 +7,7 @@ import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
 import com.soyunju.logcollector.domain.kb.enums.DraftReason;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.dto.kb.KbArticleResponse;
+import com.soyunju.logcollector.es.KbArticleEsService;
 import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
 import com.soyunju.logcollector.repository.kb.SystemDraftRepository;
@@ -26,15 +27,19 @@ public class KbDraftService {
     private final IncidentRepository incidentRepository;
     private final KbArticleRepository kbArticleRepository;
     private final SystemDraftRepository systemDraftRepository;
+    private final KbArticleEsService kbArticleEsService;
+
     private static final List<KbStatus> ACTIVE_DRAFT_STATUSES =
             List.of(KbStatus.DRAFT, KbStatus.IN_PROGRESS);
 
     public KbDraftService(IncidentRepository incidentRepository,
                           KbArticleRepository kbArticleRepository,
-                          SystemDraftRepository systemDraftRepository) {
+                          SystemDraftRepository systemDraftRepository,
+                          KbArticleEsService kbArticleEsService) {
         this.incidentRepository = incidentRepository;
         this.kbArticleRepository = kbArticleRepository;
         this.systemDraftRepository = systemDraftRepository;
+        this.kbArticleEsService = kbArticleEsService;
     }
 
     // LC 에서 RESOLVED 된 ERROR LOG 처리
@@ -136,7 +141,10 @@ public class KbDraftService {
             kb.setStatus(KbStatus.IN_PROGRESS);
         }
         kb.touchActivity();
-        kbArticleRepository.save(kb);
+        // 반환 값 저장
+        KbArticle saved = kbArticleRepository.save(kb);
+        // KB Draft ES indexing
+        kbArticleEsService.index(saved);
     }
 
     // System create KbArticle

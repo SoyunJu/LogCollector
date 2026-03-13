@@ -7,6 +7,7 @@ import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.dto.kb.KbArticleResponse;
 import com.soyunju.logcollector.dto.kb.KbArticleSearch;
+import com.soyunju.logcollector.es.KbArticleEsService;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -28,17 +29,19 @@ public class KbArticleSearchService {
 
     private final KbArticleRepository kbArticleRepository;
     private final JPAQueryFactory queryFactory;
-
+    private final KbArticleEsService kbArticleEsService;
 
     public KbArticleSearchService(
             KbArticleRepository kbArticleRepository,
-            @Qualifier("kbQueryFactory") JPAQueryFactory queryFactory
+            @Qualifier("kbQueryFactory") JPAQueryFactory queryFactory,
+            KbArticleEsService kbArticleEsService
     ) {
         this.kbArticleRepository = kbArticleRepository;
         this.queryFactory = queryFactory;
+        this.kbArticleEsService = kbArticleEsService;
     }
 
-    // KB 전체 목록 조회
+    // 전체 목록 조회
     @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
     public Page<KbArticleResponse> findAll(KbArticleSearch kas, Pageable pageable) {
 
@@ -51,16 +54,26 @@ public class KbArticleSearchService {
                 } catch (IllegalArgumentException ignored) {
                 }
             }
-
-            if (kas.getKeyword() != null && !kas.getKeyword().isBlank()) {
-                where.and(kbArticle.incidentTitle.containsIgnoreCase(kas.getKeyword()));
-            }
-
             if (kas.getCreatedBy() != null && !kas.getCreatedBy().isBlank()) {
                 try {
                     where.and(kbArticle.createdBy.eq(CreatedBy.valueOf(kas.getCreatedBy())));
                 } catch (IllegalArgumentException ignored) {
                 }
+            }
+
+            // keyword not null -> ES JPA in
+            if (kas.getKeyword() != null && !kas.getKeyword().isBlank()) {
+                List<Long> esIds = kbArticleEsService.searchIds(
+                        kas.getKeyword(),
+                        pageable.getPageNumber(),
+                        pageable.getPageSize()
+                );
+
+                if (esIds.isEmpty()) {
+                    // ES 결과 없음 -> 빈 페이지 즉시 반환
+                    return new PageImpl<>(List.of(), pageable, 0);
+                }
+                where.and(kbArticle.id.in(esIds));
             }
         }
 
@@ -93,16 +106,13 @@ public class KbArticleSearchService {
         return new PageImpl<>(content, pageable, totalCount);
     }
 
-    // KBarticle 상세 조회 addendum 0 ~ 20size
     @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
     public KbArticleResponse getArticle(Long kbArticleId) {
         return getArticle(kbArticleId, 0, 20);
     }
 
-    // KBarticle addendum paging)
     @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
     public KbArticleResponse getArticle(Long kbArticleId, int addendumPage, int addendumSize) {
-        // 방어
         if (addendumPage < 0) addendumPage = 0;
         if (addendumSize <= 0) addendumSize = 20;
         if (addendumSize > 200) addendumSize = 200;
@@ -112,7 +122,6 @@ public class KbArticleSearchService {
 
         long offset = (long) addendumPage * addendumSize;
 
-        // total count
         Long total = queryFactory
                 .select(kbAddendum.count())
                 .from(kbAddendum)
@@ -121,7 +130,6 @@ public class KbArticleSearchService {
 
         long totalCount = (total == null) ? 0L : total;
 
-        // content fetch (limit+1로 hasNext 판단)
         List<com.soyunju.logcollector.domain.kb.KbAddendum> rows = queryFactory
                 .selectFrom(kbAddendum)
                 .where(kbAddendum.kbArticle.id.eq(kbArticleId))
@@ -131,9 +139,7 @@ public class KbArticleSearchService {
                 .fetch();
 
         boolean hasNext = rows.size() > addendumSize;
-        if (hasNext) {
-            rows = rows.subList(0, addendumSize);
-        }
+        if (hasNext) rows = rows.subList(0, addendumSize);
 
         List<KbArticleResponse.AddendumDto> addendums = rows.stream()
                 .map(a -> KbArticleResponse.AddendumDto.builder()
@@ -152,16 +158,13 @@ public class KbArticleSearchService {
                 .status(kb.getStatus() != null ? kb.getStatus().name() : null)
                 .createdAt(kb.getCreatedAt())
                 .createdBy(kb.getCreatedBy() != null ? kb.getCreatedBy().name() : null)
-
                 .serviceName(kb.getIncident() != null ? kb.getIncident().getServiceName() : null)
                 .errorCode(kb.getIncident() != null ? kb.getIncident().getErrorCode() : null)
-
                 .addendums(addendums)
                 .addendumPage(addendumPage)
                 .addendumSize(addendumSize)
                 .addendumTotal(totalCount)
                 .addendumHasNext(hasNext)
-
                 .build();
     }
 }
