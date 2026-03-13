@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.controller.test;
+package com.soyunju.logcollector.controller.kb;
 
 import com.soyunju.logcollector.domain.kb.KbArticle;
 import com.soyunju.logcollector.es.KbArticleEsService;

@@ -168,4 +168,5 @@ public class KbArticleSearchService {
                 .addendumHasNext(hasNext)
                 .build();
     }
+
 }

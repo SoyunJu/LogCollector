@@ -45,7 +45,7 @@ dependencies {
     // Test
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
-    testImplementation platform("org.testcontainers:testcontainers-bom:1.19.8")
+    testImplementation platform("org.testcontainers:testcontainers-bom:1.20.4")
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
     // Spring Boot 3.4.x 테스트컨테이너 지원
@@ -88,9 +88,12 @@ dependencies {
 
     // 패키지 분리
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.2.1'
+
+    // Swagger (SpringDoc OpenAPI)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
 }
 
 tasks.named('test') {
-    // useJUnitPlatform()
-    enabled = false
+    useJUnitPlatform()
+    // enabled = false
 }

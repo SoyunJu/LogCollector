@@ -55,24 +55,6 @@ public class RedisToDB {
         }
     }
 
-    private List<ErrorLogRequest> popBatch() {
-
-        List<ErrorLogRequest> batch = new ArrayList<>(batchSize);
-
-        ErrorLogRequest first = errorLogRequestRedisTemplate.opsForList()
-                .leftPop(queueKey, Duration.ofSeconds(popTimeoutSeconds));
-        if (first == null) return batch;
-        batch.add(first);
-
-        // batchSize 까지 큐 채움
-        for (int i = 1; i < batchSize; i++) {
-            ErrorLogRequest next = errorLogRequestRedisTemplate.opsForList().leftPop(queueKey);
-            if (next == null) break;
-            batch.add(next);
-        }
-        return batch;
-    }
-
     private List<ErrorLogRequest> popBatch(int batchSize) {
         List<ErrorLogRequest> batch = new ArrayList<>(batchSize);
 
@@ -113,12 +95,6 @@ public class RedisToDB {
             String logHash = logProcessor.generateIncidentHash(
                     request.getServiceName(), request.getMessage(), request.getStackTrace()
             );
-
-        /*    if (errorLogCrdService.isIgnored(logHash)) {
-                lcMetrics.incIgnored();
-                lcMetrics.recordPersistLagSeconds(lagSample, "ignored");
-                return;
-            } */
 
             ErrorLogResponse response = errorLogCrdService.saveLog(request);
             if (response == null) {

@@ -77,6 +77,9 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
     @Query("DELETE FROM KbArticle k WHERE k.incident.logHash = :logHash")
     void deleteByIncident_LogHash(@Param("logHash") String logHash);
 
+    // ES 재인덱싱용 (updateAt 기반)
+    @Query("SELECT k FROM KbArticle k WHERE k.updatedAt >= :since")
+    List<KbArticle> findUpdatedSince(@Param("since") LocalDateTime since);
 
 }
 

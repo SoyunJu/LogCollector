@@ -1,9 +1,14 @@
 package com.soyunju.logcollector.service.kb.crud;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.soyunju.logcollector.domain.kb.KbEventOutbox;
 import com.soyunju.logcollector.domain.kb.enums.DraftReason;
 import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
+import com.soyunju.logcollector.domain.kb.enums.KbEventOutboxStatus;
+import com.soyunju.logcollector.domain.kb.enums.KbEventType;
 import com.soyunju.logcollector.dto.event.LogResolvedEvent;
 import com.soyunju.logcollector.dto.event.LogSavedEvent;
+import com.soyunju.logcollector.repository.kb.KbEventOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -19,6 +24,8 @@ public class KbEventListener {
 
     private final IncidentBridgeService incidentBridgeService;
     private final KbDraftService kbDraftService;
+    private final KbEventOutboxRepository kbEventOutboxRepository;
+    private final ObjectMapper objectMapper;
 
     // LC TX 커밋 완료 후 실행 -> LC 롤백시 실행X
     // KB가 LC에 영향 X
@@ -40,6 +47,8 @@ public class KbEventListener {
         } catch (Exception e) {
             log.warn("[KB][INCIDENT][SKIP] recordOccurrence failed. logHash={}, err={}",
                     event.getLogHash(), e.toString());
+            // 실패 시 outbox 적재 → 스케줄러가 재시도
+            saveToOutbox(event.getLogHash(), KbEventType.LOG_SAVED, event, e);
             return; // Incident 실패 시 Draft도 의미 없으므로 중단
         }
 
@@ -72,6 +81,8 @@ public class KbEventListener {
         } catch (Exception e) {
             log.warn("[KB][RESOLVED][SKIP] markResolved failed. logHash={}, err={}",
                     event.getLogHash(), e.toString());
+            saveToOutbox(event.getLogHash(), KbEventType.LOG_RESOLVED, event, e);
+            return;
         }
 
         // RESOLVED 상태 전이
@@ -90,6 +101,24 @@ public class KbEventListener {
                 log.warn("[KB][DRAFT][SKIP] createSystemDraft on RESOLVED failed. incidentId={}, logHash={}, err={}",
                         event.getIncidentId(), event.getLogHash(), e.toString());
             }
+        }
+    }
+
+    // 이벤트 처리 실패 시 KB DB에 outbox 적재 (스케줄러 재시도용)
+    private void saveToOutbox(String logHash, KbEventType eventType, Object event, Exception cause) {
+        try {
+            String payload = objectMapper.writeValueAsString(event);
+            kbEventOutboxRepository.save(KbEventOutbox.builder()
+                    .logHash(logHash)
+                    .eventType(eventType)
+                    .payload(payload)
+                    .status(KbEventOutboxStatus.PENDING)
+                    .attemptCount(0)
+                    .lastError(cause.getMessage())
+                    .build());
+            log.info("[KB][OUTBOX] 이벤트 저장 완료. logHash={}, type={}", logHash, eventType);
+        } catch (Exception ex) {
+            log.error("[KB][OUTBOX] 저장 실패 (이벤트 유실 가능). logHash={}, err={}", logHash, ex.getMessage());
         }
     }
 }
