@@ -56,17 +56,21 @@ services:
       - logcollector-redis-data:/data
 
   elasticsearch:
-     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
-     container_name: logcollector-es
-     environment:
+    build:
+      context: .
+      dockerfile: Dockerfile.es
+
+    container_name: logcollector-es
+
+    environment:
        - discovery.type=single-node
        - xpack.security.enabled=false
        - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-     ports:
+    ports:
        - "9200:9200"
-     volumes:
+    volumes:
        - es-data:/usr/share/elasticsearch/data
-     healthcheck:
+    healthcheck:
        test: [ "CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1" ]
        interval: 10s
        timeout: 5s

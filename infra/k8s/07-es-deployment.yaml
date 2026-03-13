@@ -14,7 +14,8 @@ spec:
     spec:
       containers:
         - name: elasticsearch
-          image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+          image: soyunju/logcollector-es-nori:8.15.0
+          imagePullPolicy: Always
           ports:
             - containerPort: 9200
           env:
@@ -22,3 +23,11 @@ spec:
               value: "single-node"
             - name: xpack.security.enabled
               value: "false"
+            # ES 힙 직접 제한 (노드 메모리 부족으로 OOM Kill 방지)
+            - name: ES_JAVA_OPTS
+              value: "-Xms1g -Xmx1g"
+          resources:
+            requests:
+              memory: "1.5Gi"
+            limits:
+              memory: "2Gi"

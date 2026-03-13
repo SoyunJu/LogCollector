@@ -3,8 +3,13 @@ kind: Service
 metadata:
   name: logcollector-db # 해당 name 으로 app-db 연결
 spec:
+  # selector:
+   # app: mariadb
   selector:
-    app: mariadb
+    app.kubernetes.io/component: primary
+    app.kubernetes.io/instance: lc-db
+    app.kubernetes.io/name: mariadb
+
   ports:
     - protocol: TCP
       port: 3306

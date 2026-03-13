@@ -25,7 +25,11 @@ spec:
             - name: SPRING_PROFILES_ACTIVE
               value: docker
 
-            # LC DB 연결 설정 (서비스 이름 logcollector-db 확인 완료)
+            # JVM 힙 제한 (OOM Kill 방지)
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xms256m -Xmx512m"
+
+            # LC DB 연결 설정
             - name: SPRING_LC_DATASOURCE_URL
               value: jdbc:mariadb://logcollector-db:3306/logcollector?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
             - name: SPRING_LC_DATASOURCE_USERNAME
@@ -47,7 +51,7 @@ spec:
                   name: logcollector-secrets
                   key: db-root-password
 
-            # Redis 설정 (서비스 이름 lc-redis-master 확인 완료)
+            # Redis 설정
             - name: SPRING_REDIS_HOST
               value: lc-redis-master
 
@@ -63,3 +67,8 @@ spec:
               value: "logcollector-es"
             - name: ES_PORT
               value: "9200"
+          resources:
+            requests:
+              memory: "512Mi"
+            limits:
+              memory: "1Gi"

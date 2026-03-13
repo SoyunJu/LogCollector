@@ -9,3 +9,4 @@ FROM eclipse-temurin:17-jre-focal
 EXPOSE 8081
 COPY --from=build /home/gradle/src/build/libs/*.jar app.jar
 ENTRYPOINT ["java", "-jar", "/app.jar"]
+
