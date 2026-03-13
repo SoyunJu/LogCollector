@@ -1,25 +1,22 @@
 package com.soyunju.logcollector.service.lc.crd;
 
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.domain.kb.enums.DraftReason;
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
 import com.soyunju.logcollector.domain.lc.ErrorLog;
 import com.soyunju.logcollector.domain.lc.ErrorStatus;
+import com.soyunju.logcollector.dto.event.LogResolvedEvent;
+import com.soyunju.logcollector.dto.event.LogSavedEvent;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
 import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
 import com.soyunju.logcollector.exception.InvalidStatusTransitionException;
 import com.soyunju.logcollector.monitornig.LcMetrics;
-import com.soyunju.logcollector.repository.kb.IncidentRepository;
 import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
 import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
 import com.soyunju.logcollector.service.audit.AuditLogService;
-import com.soyunju.logcollector.service.kb.crud.IncidentBridgeService;
-import com.soyunju.logcollector.service.kb.crud.KbDraftService;
 import com.soyunju.logcollector.service.lc.processor.LogNormalization;
 import com.soyunju.logcollector.service.lc.processor.LogProcessor;
 import com.soyunju.logcollector.service.lc.redis.IgnoredLogHashStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -48,10 +45,12 @@ public class ErrorLogCrdService {
     private final LogProcessor logProcessor;
     private final IgnoredLogHashStore ignoredLogHashStore;
 
-    // KB 연동을 위한 서비스 및 레파지토리 주입
-    private final KbDraftService kbDraftService;
+    // KB 연동을 위한 서비스 및 레파지토리 주입 -> 서비스 분리를 위해 주석 처리
+   /*  private final KbDraftService kbDraftService;
     private final IncidentBridgeService incidentBridgeService;
-    private final IncidentRepository incidentRepository;
+    private final IncidentRepository incidentRepository; */
+
+    private final ApplicationEventPublisher eventPublisher;
 
     private final AuditLogService auditLogService;
     private final LcMetrics lcMetrics;
@@ -63,9 +62,10 @@ public class ErrorLogCrdService {
 
     @Transactional(readOnly = true)
     public boolean isIgnored(String logHash) {
-        return incidentRepository.findByLogHash(logHash)
+      /*  return incidentRepository.findByLogHash(logHash)
                 .map(incident -> incident.getStatus() == IncidentStatus.IGNORED)
-                .orElse(false);
+                .orElse(false); */
+        return ignoredLogHashStore.isIgnored(logHash);
     }
 
     @Retryable(
@@ -102,19 +102,8 @@ public class ErrorLogCrdService {
         // 3. 해시 생성
         String logHash = logProcessor.generateIncidentHash(dto.getServiceName(), dto.getMessage(), dto.getStackTrace());
 
-        // [최적화] 3-1. IGNORED 상태 확인 및 시간 갱신 (Atomic Update)
-        // touchLastOccurredIfIgnored:
-        //   - 반환값 > 0: 이미 존재하며 IGNORED 상태임 (시간 갱신 완료) -> 수집 중단
-        //   - 반환값 = 0: 존재하지 않거나, IGNORED가 아님 -> 정상 수집 진행
-        int ignoredUpdateCount = incidentRepository.touchLastOccurredIfIgnored(logHash, occurredTime);
-
-        if (ignoredUpdateCount > 0) {
-            // KB Incident는 이미 갱신되었으므로, LC ErrorLog의 시간도 동기화
-            errorLogRepository.findByLogHash(logHash).ifPresent(el -> {
-                el.setLastOccurredTime(occurredTime);
-            });
-
-            // IGNORED 상태이므로 수집 중단
+        // 3-1. IGNORED 상태 확인
+        if (ignoredLogHashStore.isIgnored(logHash)) {
             return null;
         }
 
@@ -141,50 +130,28 @@ public class ErrorLogCrdService {
         // 영향 host agg
         int impactedHostCount = errorLogHostRepository.countHostsByLogHash(logHash);
 
-        // 6. Incident 연동
-        // (참고: incrementIfNotIgnored는 IncidentService 내부 로직이나
-        //  recordOccurrence 안에서 활용하는 것이 좋습니다. 여기서는 Incident 객체가 필요하므로 기존 흐름 유지)
-        Incident incident = null;
+        // 6. Incident 연동을 위해 이벤트 발행
+        int repeatCount = (targetLog.getRepeatCount() == null) ? 1 : targetLog.getRepeatCount();
+        boolean draftNeeded = (impactedHostCount >= hostSpreadThreshold) || (repeatCount >= highRecurThreshold);
+        String draftReason = (impactedHostCount >= hostSpreadThreshold) ? "HOST_SPREAD" : "HIGH_RECUR";
+
+        eventPublisher.publishEvent(new LogSavedEvent(
+                logHash,
+                dto.getServiceName(),
+                targetLog.getSummary(),
+                dto.getStackTrace(),
+                errorCode,
+                effectiveLevel,
+                occurredTime,
+                impactedHostCount,
+                repeatCount,
+                null,       // incidentId: Listener에서 recordOccurrence 후 Draft 생성
+                draftNeeded,
+                draftReason
+        ));
+
+        // 7. Metrics 처리
         try {
-            incident = incidentBridgeService.recordOccurrence(
-                    logHash,
-                    dto.getServiceName(),
-                    targetLog.getSummary(),
-                    dto.getStackTrace(),
-                    errorCode,
-                    effectiveLevel,
-                    occurredTime
-            );
-        } catch (RuntimeException e) {
-            log.warn("[INCIDENT][SKIP] recordOccurrence failed. logHash={}, err={}", logHash, e.toString());
-            throw e;
-        }
-
-        // KB Draft 생성 (Incident가 정상적으로 존재할 때만)
-        if (incident != null) {
-            int repeatCount = (targetLog.getRepeatCount() == null) ? 1 : targetLog.getRepeatCount();
-
-            boolean matched = (impactedHostCount >= hostSpreadThreshold) || (repeatCount >= highRecurThreshold);
-            if (matched) {
-                DraftReason reason = (impactedHostCount >= hostSpreadThreshold)
-                        ? DraftReason.HOST_SPREAD
-                        : DraftReason.HIGH_RECUR;
-                try {
-                    kbDraftService.createSystemDraft(incident.getId(), impactedHostCount, repeatCount, reason);
-                } catch (RuntimeException e) {
-                    log.warn("[DRAFT][SKIP] createSystemDraft failed. incidentId={}, logHash={}, hostCount={}, repeatCount={}, reason={}, err={}",
-                            incident.getId(), logHash, impactedHostCount, repeatCount, reason, e.toString());
-                }
-            }
-        }
-
-        try {
-            // Metrics 처리
-            if (!logProcessor.isTargetLevel(effectiveLevel)) {
-                lcMetrics.incSaveLog("skipped");
-                return null;
-            }
-
             ErrorLogResponse response = logProcessor.convertToResponse(targetLog, impactedHostCount, isNewIncident, isNewHost);
             lcMetrics.incSaveLog("success");
             return response;
@@ -193,7 +160,6 @@ public class ErrorLogCrdService {
             throw e;
         }
     }
-
 
     @Transactional(transactionManager = "lcTransactionManager")
     public void updateStatus(Long logId, ErrorStatus status) {
@@ -205,7 +171,7 @@ public class ErrorLogCrdService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 로그 ID: " + logId));
 
         ErrorStatus from = errorLog.getStatus();
-        errorLog.setStatus(status);
+        // errorLog.setStatus(status);
         lcMetrics.incStatusChange(from, status);
 
         ErrorStatus es = status;
@@ -219,27 +185,21 @@ public class ErrorLogCrdService {
             case RESOLVED -> {
                 LocalDateTime now = LocalDateTime.now();
                 errorLog.setResolvedAt(now);
-
-                incidentBridgeService.markResolved(errorLog.getLogHash(), now);
-
-                incidentRepository.findByLogHash(errorLog.getLogHash())
-                        .ifPresentOrElse(
-                                incident -> {
-                                    try {
-                                        kbDraftService.createSystemDraft(incident.getId());
-                                    } catch (RuntimeException e) {
-                                        log.warn("[DRAFT][SKIP] createSystemDraft on RESOLVED failed. incidentId={}, logHash={}, err={}",
-                                                incident.getId(), errorLog.getLogHash(), e.toString());
-                                    }
-                                },
-                                () -> log.warn("로그 해시({})에 해당하는 인시던트를 찾을 수 없어 KB 초안을 생성하지 못했습니다.", errorLog.getLogHash())
-                        );
-
-                incidentBridgeService.updateStatus(errorLog.getLogHash(), com.soyunju.logcollector.domain.kb.enums.IncidentStatus.RESOLVED);
+                //  이벤트 발행
+                eventPublisher.publishEvent(new LogResolvedEvent(
+                        errorLog.getLogHash(),
+                        null,   // incidentId: Listener에서 markResolved 후 조회
+                        now
+                ));
             }
             case NEW -> {
                 errorLog.setResolvedAt(null);
-                incidentBridgeService.updateStatus(errorLog.getLogHash(), com.soyunju.logcollector.domain.kb.enums.IncidentStatus.OPEN);
+                // 이벤트 발행 (OPEN 전이)
+                eventPublisher.publishEvent(new LogResolvedEvent(
+                        errorLog.getLogHash(),
+                        null,
+                        null    // resolvedAt null = OPEN 전이 신호
+                ));
             }
             case IGNORED -> { }
         }

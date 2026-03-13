@@ -83,6 +83,9 @@ dependencies {
 
     // ES 연동
     implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+
+    // 패키지 분리
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.2.1'
 }
 
 tasks.named('test') {

@@ -89,6 +89,22 @@ public class KbDraftService {
         return kbArticleId;
     }
 
+    // 추가 : loghash 기반 draft 생성
+    @Transactional(transactionManager = "kbTransactionManager")
+    public void createSystemDraftByLogHash(String logHash) {
+        incidentRepository.findByLogHash(logHash).ifPresentOrElse(
+                incident -> {
+                    try {
+                        createSystemDraft(incident.getId());
+                    } catch (Exception e) {
+                        log.warn("[DRAFT][SKIP] createSystemDraftByLogHash failed. incidentId={}, logHash={}, err={}",
+                                incident.getId(), logHash, e.toString());
+                    }
+                },
+                () -> log.warn("[DRAFT][SKIP] Incident not found for logHash={}", logHash)
+        );
+    }
+
     // draft 유무 체크
     @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
     public Optional<Long> findActiveSystemDraftId(Long incidentId) {
@@ -148,7 +164,7 @@ public class KbDraftService {
     }
 
     // System create KbArticle
-    @Transactional(transactionManager = "kbTransactionManager")
+    // @Transactional(transactionManager = "kbTransactionManager")
     private Long createSystemKbArticle(Incident incident) {
 
         Optional<KbArticle> existing = kbArticleRepository.findByIncident_Id(incident.getId());
