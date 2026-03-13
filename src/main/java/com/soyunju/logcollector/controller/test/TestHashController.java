@@ -4,9 +4,11 @@ import com.soyunju.logcollector.service.lc.processor.LogProcessor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import io.swagger.v3.oas.annotations.Hidden;
 import java.util.Map;
 
+
+@Hidden
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/test")

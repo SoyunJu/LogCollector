@@ -4,7 +4,9 @@ import com.soyunju.logcollector.service.lc.redis.RedisToDB;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Hidden;
 
+@Hidden
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/test")
