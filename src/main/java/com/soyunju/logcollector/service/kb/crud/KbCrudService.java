@@ -7,6 +7,7 @@ import com.soyunju.logcollector.domain.kb.enums.KbStatus;
 import com.soyunju.logcollector.es.KbArticleEsService;
 import com.soyunju.logcollector.repository.kb.KbAddendumRepository;
 import com.soyunju.logcollector.repository.kb.KbArticleRepository;
+import com.soyunju.logcollector.service.kb.autopolicy.KbConfidenceCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class KbCrudService {
 
     private final KbArticleRepository kbArticleRepository;
     private final KbAddendumRepository kbAddendumRepository;
+    private final KbConfidenceCalculator confidenceCalculator;
     private final KbArticleEsService kbArticleEsService;
 
     // 사용자 입력 단계 (Title 수정 및 Addendum 추가)
@@ -56,13 +58,10 @@ public class KbCrudService {
 
         // Content가 넘어오면 Addendum(댓글)으로 저장 (KB 본문은 덮어쓰지 않음)
         if (StringUtils.hasText(content)) {
-            // [정책 반영] 본문(content)은 시스템 데이터이므로 업데이트하지 않음 (kb.setContent 제거)
-
-            // [정책 적용] DRAFT 상태에서 사용자가 개입(댓글 작성 등) 시 IN_PROGRESS로 자동 전환
+            //  DRAFT 상태에서 addednum 등록 시 IN_PROGRESS로 자동 전환
             if (kb.getStatus() == KbStatus.DRAFT) {
                 kb.setStatus(KbStatus.IN_PROGRESS);
             }
-
             kbAddendumRepository.save(
                     KbAddendum.builder()
                             .kbArticle(kb)
@@ -77,7 +76,8 @@ public class KbCrudService {
         kb.setUpdatedAt(LocalDateTime.now());
         kb.setLastActivityAt(LocalDateTime.now());
 
-        // ES indexing 추가 (addendum 포함)
+        // ES indexing
+        refreshConfidence(kb);
         kbArticleEsService.index(kb);
     }
 
@@ -86,25 +86,41 @@ public class KbCrudService {
         KbArticle kbArticle = kbArticleRepository.findById(kbArticleId)
                 .orElseThrow(() -> new IllegalArgumentException("KB Article not found"));
 
-        // [정책 적용] PUBLISHED 전환 시 필수 조건 검증
+        //  PUBLISHED 전환 시 필수 조건 검증
         if (status == KbStatus.PUBLISHED) {
             // 1. 제목 확인
             if (!StringUtils.hasText(kbArticle.getIncidentTitle())) {
                 throw new IllegalStateException("제목(Title)이 입력되지 않아 발행할 수 없습니다.");
             }
 
-            // 2. [변경] 본문(Content) 체크 대신 해결 내용(Addendum) 존재 여부 체크
-            // content는 시스템 로그이므로 항상 존재한다고 가정하며, 중요한 건 해결책(Addendum)임
-            // 주의: KbAddendumRepository에 boolean existsByKbArticle_Id(Long id); 메서드가 필요할 수 있습니다.
+            // 2. Addendum 존재 여부 체크
             boolean hasAddendum = kbAddendumRepository.existsByKbArticle_Id(kbArticleId);
             if (!hasAddendum) {
                 throw new IllegalStateException("해결 내용(Addendum)이 작성되지 않아 발행할 수 없습니다. 댓글로 해결 방법을 남겨주세요.");
             }
             kbArticle.setPublishedAt(LocalDateTime.now());
         }
-
         kbArticle.setStatus(status);
         kbArticle.setUpdatedAt(LocalDateTime.now());
+
+        // ES
+        refreshConfidence(kbArticle);
+        kbArticleEsService.index(kbArticle);
+    }
+
+
+    // Helper Method
+
+    // level 반영 메서드
+    private void refreshConfidence(KbArticle kb) {
+        int addendumCount = (int) kbAddendumRepository.countByKbArticle_Id(kb.getId());
+        int repeatCount = (kb.getIncident() != null && kb.getIncident().getRepeatCount() != null)
+                ? kb.getIncident().getRepeatCount() : 0;
+        var errorLevel = (kb.getIncident() != null) ? kb.getIncident().getErrorLevel() : null;
+        var lastOccurredAt = (kb.getIncident() != null) ? kb.getIncident().getLastOccurredAt() : null;
+
+        int level = confidenceCalculator.calculate(kb, addendumCount, repeatCount, errorLevel, lastOccurredAt);
+        kb.setConfidenceLevel(level);
     }
 
     private String formatDateOnly(LocalDateTime firstOccurredAt, LocalDateTime lastOccurredAt) {

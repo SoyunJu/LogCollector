@@ -100,6 +100,7 @@ public class KbArticleSearchService {
                         .status(kb.getStatus() != null ? kb.getStatus().name() : null)
                         .createdAt(kb.getCreatedAt())
                         .createdBy(kb.getCreatedBy() != null ? kb.getCreatedBy().name() : null)
+                        .confidenceLevel(kb.getConfidenceLevel())
                         .build())
                 .toList();
 

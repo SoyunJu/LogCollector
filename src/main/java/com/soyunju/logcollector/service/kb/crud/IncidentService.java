@@ -143,7 +143,13 @@ public class IncidentService {
                 .orElseThrow(() -> new IllegalArgumentException("인시던트를 찾을 수 없습니다. hash: " + logHash));
 
         // KB 존재 여부 확인
-        Optional<KbArticle> kbOpt = kbArticleRepository.findTopByIncident_LogHashOrderByCreatedAtDesc(logHash);
+        // Optional<KbArticle> kbOpt = kbArticleRepository.findTopByIncident_LogHashOrderByCreatedAtDesc(logHash);
+        
+        // 신뢰 Level 순으로 조회
+        Optional<KbArticle> kbOpt = kbArticleRepository
+                .findByIncidentLogHashOrderByConfidenceDesc(logHash)
+                .stream().findFirst();
+
         Long kbId = kbOpt.map(KbArticle::getId).orElse(null);
 
         // 1. Force 모드가 아니고(false), KB가 있다면 -> Addendum 확인
