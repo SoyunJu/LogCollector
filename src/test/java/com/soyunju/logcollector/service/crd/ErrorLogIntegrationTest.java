@@ -4,7 +4,10 @@ import com.soyunju.logcollector.domain.lc.ErrorLog;
 import com.soyunju.logcollector.domain.lc.ErrorStatus;
 import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
 import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
+import com.soyunju.logcollector.es.KbArticleEsRepository;
+import com.soyunju.logcollector.es.KbArticleEsService;
 import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
+import com.soyunju.logcollector.service.kb.crud.KbEventOutboxProcessorService;
 import com.soyunju.logcollector.service.lc.crd.ErrorLogCrdService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -29,6 +33,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ActiveProfiles("test")
 @org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable(named = "RUN_INTEGRATION_TEST", matches = "true")
 class ErrorLogIntegrationTest {
+
+    @MockBean
+    KbArticleEsRepository kbArticleEsRepository;
+
+    @MockBean
+    KbArticleEsService kbArticleEsService;
+
+    @MockBean
+    KbEventOutboxProcessorService kbEventOutboxProcessorService;
 
     @Container
     static final MariaDBContainer<?> mariadb = new MariaDBContainer<>("mariadb:11.4")
