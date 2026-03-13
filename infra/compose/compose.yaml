@@ -18,7 +18,7 @@ services:
 
       REDIS_HOST: logcollector-redis
       REDIS_PORT: "6379"
-      ES_HOST: logcollector-es
+      ES_HOST: elasticsearch
       ES_PORT: "9200"
 
     depends_on:
@@ -55,7 +55,7 @@ services:
     volumes:
       - logcollector-redis-data:/data
 
-   elasticsearch:
+  elasticsearch:
      image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
      container_name: logcollector-es
      environment:

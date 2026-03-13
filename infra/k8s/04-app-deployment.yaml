@@ -57,3 +57,9 @@ spec:
                 secretKeyRef:
                   name: logcollector-secrets
                   key: openai-api-key
+
+            # ES 추가
+            - name: ES_HOST
+              value: "logcollector-es"
+            - name: ES_PORT
+              value: "9200"
