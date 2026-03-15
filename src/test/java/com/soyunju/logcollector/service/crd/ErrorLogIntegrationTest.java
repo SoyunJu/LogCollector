@@ -19,9 +19,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import java.time.LocalDateTime;
 
@@ -49,6 +51,10 @@ class ErrorLogIntegrationTest {
             .withUsername("test")
             .withPassword("test");
 
+    @Container
+    static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
+            .withExposedPorts(6379);
+
     @DynamicPropertySource
     static void overrideProps(DynamicPropertyRegistry registry) {
         // LC datasource
@@ -64,6 +70,9 @@ class ErrorLogIntegrationTest {
         registry.add("spring.datasource.kb.driver-class-name", mariadb::getDriverClassName);
 
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379).toString());
     }
 
     @Autowired private ErrorLogCrdService errorLogCrdService;

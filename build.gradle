@@ -51,9 +51,10 @@ dependencies {
     // Spring Boot 3.4.x 테스트컨테이너 지원
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 
-    // Testcontainers (정식 artifactId)
+    // Testcontainers
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:mariadb'
+    testImplementation 'org.testcontainers:testcontainers'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
@@ -91,6 +92,8 @@ dependencies {
 
     // Swagger (SpringDoc OpenAPI)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+
+
 }
 
 tasks.named('test') {
