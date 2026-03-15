@@ -32,7 +32,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Integration Tests
-        run: ./gradlew test --no-daemon --info 2>&1 | grep -A 5 "NoSuchBean\|BeanCreation\|required a bean\|Consider defining"
+        run: ./gradlew test --no-daemon --info 2>&1
         env:
           RUN_INTEGRATION_TEST: "true"
 

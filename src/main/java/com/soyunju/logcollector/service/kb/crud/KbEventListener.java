@@ -8,7 +8,9 @@ import com.soyunju.logcollector.domain.kb.enums.KbEventOutboxStatus;
 import com.soyunju.logcollector.domain.kb.enums.KbEventType;
 import com.soyunju.logcollector.dto.event.LogResolvedEvent;
 import com.soyunju.logcollector.dto.event.LogSavedEvent;
+import com.soyunju.logcollector.dto.logfixer.LogFixerIncidentPayload;
 import com.soyunju.logcollector.repository.kb.KbEventOutboxRepository;
+import com.soyunju.logcollector.service.logfixer.LogFixerWebhookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -26,6 +28,7 @@ public class KbEventListener {
     private final KbDraftService kbDraftService;
     private final KbEventOutboxRepository kbEventOutboxRepository;
     private final ObjectMapper objectMapper;
+    private final LogFixerWebhookService logFixerWebhookService;
 
     // LC TX 커밋 완료 후 실행 -> LC 롤백시 실행X
     // KB가 LC에 영향 X
@@ -68,6 +71,24 @@ public class KbEventListener {
                 log.warn("[KB][DRAFT][SKIP] createSystemDraft failed. incidentId={}, logHash={}, err={}",
                         event.getIncidentId(), event.getLogHash(), e.toString());
             }
+        }
+        // 8. LogFixer webhook
+        try {
+            logFixerWebhookService.sendIncident(
+                    LogFixerIncidentPayload.builder()
+                            .logHash(event.getLogHash())
+                            .serviceName(event.getServiceName())
+                            .summary(event.getSummary())
+                            .stackTrace(event.getStackTrace())
+                            .errorCode(event.getErrorCode())
+                            .logLevel(event.getEffectiveLevel())
+                            .occurredTime(event.getOccurredTime())
+                            .impactedHostCount(event.getImpactedHostCount())
+                            .repeatCount(event.getRepeatCount())
+                            .build()
+            );
+        } catch (Exception e) {
+            log.warn("[LogFixer][WEBHOOK][SKIP] 발송 중 예외. logHash={}, err={}", event.getLogHash(), e.getMessage());
         }
     }
 
