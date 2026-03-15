@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 import static com.soyunju.logcollector.domain.kb.QKbAddendum.kbAddendum;
 import static com.soyunju.logcollector.domain.kb.QKbArticle.kbArticle;
@@ -106,6 +107,17 @@ public class KbArticleSearchService {
 
         return new PageImpl<>(content, pageable, totalCount);
     }
+
+
+    // LogHash 로 특정 KbArticle search
+    @Transactional(transactionManager = "kbTransactionManager", readOnly = true)
+    public Optional<Long> findKbArticleIdByLogHash(String logHash) {
+        return kbArticleRepository.findTopByIncident_LogHashOrderByCreatedAtDesc(logHash)
+                .map(KbArticle::getId);
+    }
+
+
+    // Helper Method
 
     @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
     public KbArticleResponse getArticle(Long kbArticleId) {

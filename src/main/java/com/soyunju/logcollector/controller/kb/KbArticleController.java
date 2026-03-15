@@ -1,10 +1,7 @@
 package com.soyunju.logcollector.controller.kb;
 
 import com.soyunju.logcollector.domain.kb.enums.KbStatus;
-import com.soyunju.logcollector.dto.kb.KbAddendumCreateRequest;
-import com.soyunju.logcollector.dto.kb.KbAddendumResponse;
-import com.soyunju.logcollector.dto.kb.KbArticleResponse;
-import com.soyunju.logcollector.dto.kb.KbArticleSearch;
+import com.soyunju.logcollector.dto.kb.*;
 import com.soyunju.logcollector.repository.kb.KbAddendumRepository;
 import com.soyunju.logcollector.service.kb.crud.KbCrudService;
 import com.soyunju.logcollector.service.kb.crud.KbDraftService;
@@ -119,4 +116,17 @@ public class KbArticleController {
                         .toList()
         );
     }
+
+    @Operation(
+            summary = "GET /api/kb/articles/by-hash/{logHash} - logHash로 kbArticleId 조회",
+            description = "LogFixer 연동용. logHash 기준으로 최신 KbArticle ID를 반환합니다."
+    )
+    @GetMapping("/articles/byhash/{logHash}")
+    public ResponseEntity<KbArticleIdResponse> getKbArticleIdByLogHash(@PathVariable String logHash) {
+        return kbArticleSearchService.findKbArticleIdByLogHash(logHash)
+                .map(KbArticleIdResponse::new)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
 }
