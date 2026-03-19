@@ -1,257 +1,248 @@
 # LogCollector & KnowledgeBase
-### 로그에서 지식으로 (From Logs to Knowledge Assets) v1.1
 
-> **"운영 환경의 에러 로그, 버리고 계신가요?"**
+> **에러 로그를 수집·해싱·중복 제거하고, Incident 단위로 관리하며, 대응 과정을 KnowledgeBase로 축적하는 백엔드 시스템**  
+> Java · Spring Boot · Elasticsearch · Redis · Kubernetes · Terraform
 
-단순히 로그를 수집하는 시스템은 이미 많습니다.  
-LogCollector & KnowledgeBase는 **에러 로그를 사건(Incident) 단위로 식별하고, 대응 과정을 지식(KnowledgeBase)으로 축적·재활용**하는 것을 목표로 한 백엔드 중심 프로젝트입니다.
-
-이 프로젝트는 단순 로깅이 아니라,  
-**에러 발생 → 사건 관리 → 재발 대응 → 지식화** 로 이어지는 운영 흐름을  
-**아키텍처와 데이터 책임 구조 차원에서 구현/검증**하는 데 초점을 둡니다.
+반복 에러를 하나의 Incident로 묶고, 해결 이력을 KB Article로 누적해  
+재발 시 대응 비용을 낮추는 **에러 로그 → 지식 자산화** 파이프라인을 구현했습니다.  
+[LogFixer](../LogFixer)와 연동하여 AI Agent 기반 자동 해결까지 이어지는 전체 흐름의 데이터 원천(Source of Truth)을 담당합니다.
 
 ---
 
-## Quick Demo (Visual)
+## 기술 스택
 
-1) **대시보드 접속**
-- http://localhost
-
-2) **시나리오 실행 (로그 발생 시뮬레이션)**
-- 상단 `Scenario Mode` 탭 → `DB_FAILOVER` 등 시나리오 선택 → `Run Simulation`
-
-3) **결과 확인**
-
-- Frontend: `Logs` 탭에서 실시간 로그 유입 및 Incident 생성 확인
-
-<p align="center">
-  <img src="docs/images/evidence/01-dashboard-overview.png" width="70%">
-</p>
-
-4) **Swagger-UI** : http://localhost:8080/swagger-ui/index.html
-
-<p align="center">
-  <img src="docs/images/evidence/00-swagger.png" width="70%">
-</p>
-
-<!-- 
-<p align="center">
-  <img src="docs/images/evidence/02-incident-detail-kb-first.png" width="80%">
-</p>
--->
-
-- Grafana: http://localhost:3000 (admin / admin)
-  - `LogCollector` 대시보드에서 트래픽/에러 변화 확인
+| 분류 | 기술 |
+|---|---|
+| **Backend** | Java 17, Spring Boot 3.4.1, JPA, Querydsl |
+| **Search** | Elasticsearch 8.15 + Nori 형태소 분석기 |
+| **Cache / Queue** | Redis 7 (중복 제거, 로그 큐) |
+| **DB** | MariaDB (LC / KB 물리적 분리) |
+| **Infra** | Docker Compose, Kubernetes (Terraform + Helm + kubectl) |
+| **Monitoring** | Prometheus, Grafana |
+| **Test** | Testcontainers, JUnit 5, ArchUnit |
 
 ---
 
-## Project Goal
+## 핵심 구현 포인트
 
-운영 환경의 로그는 파편화되어 있고 대부분 일회성으로 소비됩니다.  
-그 결과 동일한 장애가 반복되어도 대응 경험은 개인의 기억에만 의존하게 됩니다.
-
-이 프로젝트는 다음 두 가지 문제를 해결합니다.
-
-- **Noise Reduction**  
-  반복 에러 로그를 하나의 Incident로 묶어 운영 관점에서 관리
-
-- **Knowledge Assetization**  
-  장애 대응 경험을 지식(KB)으로 축적해 재발 대응 비용을 낮춤
+| 항목 | 내용 |
+|---|---|
+| **로그 해싱 · 중복 제거** | 서비스명 + 정규화된 메시지 + 스택 상단 시그니처를 SHA-256 해싱 → 동일 에러는 하나의 Incident로 수렴. host/ip는 제외하고 `error_log_hosts`로 영향 호스트 수를 별도 관리 |
+| **이중 DB 분리 설계** | LC DB(수집·정규화)와 KB DB(Incident·KbArticle)를 물리적으로 분리. Incident를 SoT(Source of Truth)로 두고 상태 프로세스를 단일 기준으로 통제 |
+| **Elasticsearch 전문 검색** | KB Article을 Nori 형태소 분석기로 인덱싱. BM25 기반 키워드 검색으로 유사 장애 이력 조회 — LogFixer RAG 파이프라인의 검색 소스로 활용됨 |
+| **LogFixer 웹훅 발송** | Incident 생성·갱신 시 이벤트 리스너가 LogFixer로 자동 웹훅 발송. 실패 시 outbox 패턴으로 재시도 |
+| **KB Addendum 누적** | LogFixer 해결 완료 후 REST API로 분석 결과·실행 이력을 KbArticle에 addendum으로 추가. 재발 시 지식은 삭제 없이 이력으로 쌓임 |
+| **Kubernetes 배포 (Terraform + Helm)** | MariaDB, Redis, Prometheus/Grafana, Spring Boot 앱을 Terraform으로 통합 배포. Kubernetes Job 기반 자동화 테스트(`make test`) 포함 |
 
 ---
 
-## Architecture Overview
+## 시스템 아키텍처
 
-핵심 구성요소는 **LogCollector(LC)**, **Incident**, **KbArticle** 입니다.
+![시스템 아키텍처](docs/images/architecture-v1.svg)
 
-- **Incident = Source of Truth (SoT)**: 운영 상태/재발/종료 정책의 기준
-- **KbArticle = Writer of Truth (WoT)**: 지식 쓰기의 단일 진실 지점
-
-아래 다이어그램은 로그 유입부터 지식화까지의 핵심 흐름을 단순화한 그림입니다.
-
-<p align="center">
-  <img src="docs/images/architecture-v2.png" width="75%">
-</p>
-
-### Core Concepts
-
-- **LogCollector (LC)**  
-  로그 수집, 정규화, 해싱, 중복 제거를 담당하는 전처리 계층
-
-- **Incident (Operations View / SoT)**  
-  운영자가 보는 "현재 사건"의 단위  
-  상태 관리 및 재발 판단의 단일 기준
-
-- **KbArticle (Knowledge View / WoT)**  
-  대응 결과를 지식으로 확정/축적하는 단일 쓰기 지점  
-  재발 시 지식은 삭제되지 않고 이력으로 누적됨
+```
+외부 시스템 (앱 서버, DB, API)
+      │ POST /api/logs
+      ▼
+┌─────────────────────────────────────────────────────┐
+│                   LogCollector (LC DB)              │
+│                                                     │
+│  Ingestion          Processing          Dedup       │
+│  ──────────         ────────────        ──────────  │
+│  로그 수신          정규화 · 요약        Redis        │
+│  레벨 추론          SHA-256 해싱         중복 제거    │
+│  최소 검증          ErrorCode 분류       로그 큐      │
+└─────────────────────────────────────────────────────┘
+      │ 이벤트 (LogSavedEvent)
+      ▼
+┌─────────────────────────────────────────────────────┐
+│               KnowledgeBase (KB DB)                 │
+│                                                     │
+│  Incident (SoT)         KbArticle (WoT)            │
+│  ────────────────        ────────────────           │
+│  재발 감지 · 상태관리    Draft 자동생성              │
+│  host spread 집계        Addendum 누적               │
+│  OPEN/IN_PROGRESS/       DRAFT/PUBLISHED/           │
+│  RESOLVED/CLOSED         ARCHIVED                   │
+│                                                     │
+│  Elasticsearch: KB Article 전문 검색 인덱싱         │
+└─────────────────────────────────────────────────────┘
+      │ webhook push (Incident 생성·갱신 시)
+      ▼
+  LogFixer (AI Agent 자동 해결)
+      │ REST API (해결 완료 후)
+      └─ PATCH /incidents/{logHash}/status
+         GET  /kb/articles/by-hash/{logHash}
+         POST /kb/{kbArticleId}/addendums
+```
 
 ---
 
-## Tech Stack
+## 전체 처리 흐름
 
-- Java 17, Spring Boot 3.4.1
-- MariaDB (LC / KB 물리적 분리)
-- Redis (Deduplication, Cache)
-- Elasticsearch 8.15 + Nori 형태소 분석기 (KB 전문 검색)
-- JPA / Querydsl
-- Docker, Docker Compose
-- Kubernetes (Terraform + Helm + kubectl)
+```
+[외부 시스템] 에러 로그 전송
+      │ POST /api/logs
+      ▼
+① 수신 · 검증     ── 레벨 추론, 최소 유효성 검사
+      │
+      ▼
+② 정규화 · 해싱   ── 메시지 정규화 + 스택 상단 시그니처
+                  ── SHA-256 → logHash 생성
+                  ── Redis 큐 적재
+      │
+      ▼
+③ Incident 처리   ── 신규: OPEN 상태로 생성
+                  ── 재발: repeatCount 증가, host 추가
+                  ── RESOLVED/CLOSED → OPEN 재오픈
+      │
+      ├─ Draft 조건 충족 시 ─ KbArticle DRAFT 자동 생성
+      │                       (host_spread / high_recur 트리거)
+      │
+      └─ LogFixer 웹훅 발송 ─ POST /api/incident
+                              (실패 시 outbox 재시도)
+
+[LogFixer 해결 완료 시]
+      │ PATCH /api/incidents/{logHash}/status  →  RESOLVED
+      │ GET   /api/kb/articles/by-hash/{logHash}
+      │ POST  /api/kb/{kbArticleId}/addendums  →  분석 결과 + 실행 이력 저장
+      ▼
+KbArticle에 해결 이력 누적 → 다음 유사 장애 시 LogFixer RAG 소스로 재활용
+```
 
 ---
 
-## Verification Paths
+## 상태 모델
 
-실행 환경별로 검증 경로를 분리합니다.
+### Incident 상태 (SoT)
 
-### 1) Local (run-local)
-- 목적: IDE(IntelliJ) 기반 개발/디버깅
-- 문서: [docs/run-local.md](docs/run-local.md)
-- 참고: 프론트엔드 없음, curl 또는 IntelliJ HTTP Client 기반 검증
+```
+OPEN ──→ IN_PROGRESS ──→ RESOLVED ──→ CLOSED
+  ↑                          │
+  └────── 재발 시 재오픈 ────┘ (CLOSED → OPEN 포함)
+```
 
-### 2) Docker (run-docker) — 주요 검증 경로
-- 목적: 재현 가능한 통합 실행
-- 문서: [docs/run-docker.md](docs/run-docker.md)
-- API Base URL: `http://localhost:8080/api`
+| 상태 | 의미 |
+|---|---|
+| `OPEN` | 인시던트 신규 오픈 |
+| `IN_PROGRESS` | 조치·분석 진행 중 |
+| `RESOLVED` | 기술적으로 해결 완료 |
+| `CLOSED` | 안정 구간 확인 후 최종 종료 |
+| `IGNORED` | 수집·저장 차단 (재발 이벤트 차단) |
+
+### KbArticle 상태
+
+```
+DRAFT ──→ IN_PROGRESS ──→ PUBLISHED ──→ ARCHIVED (불가역)
+```
+
+후속 조치·해결 기록은 KbArticle을 재작성하지 않고 **Addendum으로 누적**합니다.
+
+---
+
+## LC ↔ LogFixer 연동
+
+| 방향 | 방식 | 내용 |
+|---|---|---|
+| LC → LogFixer | Webhook push | Incident 생성·갱신 시 자동 발송 |
+| LogFixer → LC | REST API 호출 | 해결 완료 후 상태 변경 + addendum 저장 |
+
+---
+
+## 실행 방법
+
+### Docker (권장 — 빠른 검증)
 
 ```bash
 docker compose -f infra/compose/compose.yaml up -d --build
-./test-api.ps1
+
+# API 확인
+curl http://localhost:8080/actuator/health
+
+# 로그 수집 테스트
+.\test-api.ps1
 ```
 
-### 3) Kubernetes (run-k8s) & Automated Test
-- 목적: 클러스터 내부 통합 테스트(Job 기반)
-- 문서:
-  - [docs/run-k8s.md](docs/run-k8s.md)
-  - [docs/verify-k8s.md](docs/verify-k8s.md)
+| 서비스 | 주소 |
+|---|---|
+| Backend API / Swagger | http://localhost:8080 |
+| Frontend (검증용) | http://localhost |
+| Grafana | http://localhost:3000 (admin/admin) |
+
+### Kubernetes (Terraform + Helm)
 
 ```bash
+cd infra/terraform
+terraform init
+terraform apply
+
+# 프론트엔드
+kubectl apply -f infra/k8s/06-frontend-deployment.yaml
+
+# 자동화 테스트 (ALL TESTS PASSED! 확인)
 make test
 ```
 
-<p align="center">
-  <img src="docs/images/evidence/04-automated-test-make-test.png" width="65%">
-</p>
+> Kubernetes 환경에서 Grafana 접근 시 포트 포워딩이 필요합니다.
+> ```bash
+> kubectl port-forward svc/monitoring-grafana 3000:80 -n monitoring
+> ```
 
-성공 시 터미널 마지막에 `ALL TESTS PASSED!` 메시지가 출력됩니다.
+### 리소스 정리
 
----
-
-## Status Model
-
-상태 관리는 **Incident(운영)** 와 **KbArticle(지식)** 로 분리됩니다.  
-상태 정책의 단일 기준은 Incident이며, 재발 시 `RESOLVED/CLOSED → OPEN` 전이를 허용합니다.
-
-<p align="center">
-  <img src="docs/images/status-v1.png" width="75%">
-</p>
-
-상세 정책: [docs/status.md](docs/status.md)
-
----
-
-## 💡 Why This Status Model Works (Design Decisions)
-
-### 1. Noise Reduction Strategy (로그 정규화 & 해싱)
-
-- **Problem**: 동일 에러가 수천 건씩 유입되어 운영자의 피로도 증가
-- **Solution**: 로그 정규화 후 고유 해시(`log_hash`) 생성  
-  → **1,000건의 로그를 1건의 Incident로 압축**
-
----
-
-### 2. High-Throughput & Deduplication (Redis 분산 처리)
-
-- **Problem**: DB 직접 insert 시 부하 및 중복 체크 비용 증가
-- **Solution**: Redis를 1차 Dedup 계층으로 활용  
-  → Atomic 연산 기반 분산 정확성 확보
-
----
-
-### 3. Architecture for Consistency (SoT & Status)
-
-- **Problem**: 로그 수집과 사건 상태 불일치
-- **Solution**: Incident를 단일 진실 공급원(SoT)으로 정의  
-  → 재발 시 자동 상태 회귀 (Reopen)
-
----
-
-### 4. Physical Separation of Concerns (Dual DB)
-
-- **Problem**: Write-heavy 로그 트래픽이 비즈니스 로직에 영향
-- **Solution**: LC DB / KB DB 물리적 분리  
-  → 독립적 스케일링 가능
-
----
-
-### 5. Hybrid Analysis (OpenAI & Strategy Pattern)
-
-- **Problem**: 초기 KB 부재 시 대응 가이드 부족
-- **Solution**: OpenAI 기반 1차 분석 + Draft 자동 생성  
-  → Strategy Pattern으로 Mock/실서비스 교체 가능
-
-<p align="center">
-  <img src="docs/images/evidence/03-ai-analysis-and-kb-draft.png" width="65%">
-</p>
-
----
-
-### 6. Operational Control (Ignore Policy)
-
-- **Problem**: 의미 없는 경고 로그 반복
-- **Solution**: Ignore 상태 도입  
-  → 운영자가 관심 제외 의도를 명시적으로 시스템에 반영
-
----
-
-### 7. Event-Driven Service Separation (LC → KB)
-
-- **Problem**: LC(로그 수집)와 KB(지식 관리)가 동일 트랜잭션 내에 묶여 강결합
-- **Solution**: `@TransactionalEventListener` + `@Async` 기반 이벤트 분리  
-  → LC 트랜잭션 커밋 후 KB 로직이 별도 트랜잭션(`REQUIRES_NEW`)으로 실행  
-  → LC 롤백 시 KB에 영향 없음. KB 실패 시 LC에 영향 없음
-
-```
-LogSavedEvent  → KbEventListener → Incident upsert → Draft 생성
-LogResolvedEvent → KbEventListener → Incident RESOLVED → Draft 생성
+```bash
+kubectl delete -f infra/k8s/06-frontend-deployment.yaml
+cd infra/terraform && terraform destroy
 ```
 
 ---
 
-### 8. Full-Text Search (Elasticsearch + Nori)
+## 주요 API
 
-- **Problem**: KB 문서가 쌓일수록 LIKE 검색의 성능/품질 한계
-- **Solution**: KB 아티클을 Elasticsearch에 인덱싱, 키워드 검색 시 ES → JPA 2-phase 조회  
-  → `incidentTitle`, `content`, `addendumContent` 통합 전문 검색  
-  → ES 장애 시에도 서비스 영향 최소화 (예외 catch 후 warn 처리)
-
----
-
-## Scope & Limitations (v1.1)
-
-v1.1의 목적은 기능 확장이 아니라  
-**운영 흐름과 데이터 책임 구조의 검증**입니다.
-
-의도적으로 제외:
-
-- 2PC 분산 트랜잭션  
-  → Eventual Consistency + 이벤트 기반 분리 + 멱등성 설계로 운영 환경을 커버할 수 있음을 검증합니다.
-
-v1.0 → v1.1 주요 변경:
-
-| 항목 | v1.0 | v1.1 |
+| 메서드 | 경로 | 설명 |
 |---|---|---|
-| Elasticsearch | 미포함 (의도적 제외) | KB 전문 검색 연동 완료 |
-| LC ↔ KB 결합 | 동일 트랜잭션 내 직접 호출 | 이벤트 기반 서비스 분리 |
-| Kubernetes 배포 | Optional | Terraform + Helm 통합 배포 완료 |
-| 통합 테스트 | Docker 기반 | k8s Job 기반 자동화 검증 추가 |
+| `POST` | `/api/logs` | 에러 로그 수집 (Redis 큐 적재) |
+| `GET` | `/api/incidents` | Incident 목록 조회 |
+| `GET` | `/api/incidents/{logHash}` | Incident 상세 조회 |
+| `PATCH` | `/api/incidents/{logHash}/status` | 상태 변경 (LogFixer 호출) |
+| `GET` | `/api/kb/articles` | KB Article 목록 / 전문 검색 |
+| `GET` | `/api/kb/articles/by-hash/{logHash}` | logHash로 KB Article 조회 |
+| `POST` | `/api/kb/{kbArticleId}/addendums` | Addendum 저장 (LogFixer 호출) |
+| `GET` | `/api/rank` | Incident 랭킹 (호스트 수 / 재발 횟수 기준) |
+
+Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 
 ---
 
-## Documentation
+## 프로젝트 구조
 
-- [docs/run-local.md](docs/run-local.md)
-- [docs/run-docker.md](docs/run-docker.md)
-- [docs/run-k8s.md](docs/run-k8s.md)
-- [docs/verify-k8s.md](docs/verify-k8s.md)
-- [docs/status.md](docs/status.md)
+```
+LogCollector/
+├── src/main/java/com/soyunju/logcollector/
+│   ├── controller/
+│   │   ├── lc/                    # 로그 수집, Incident 상태 변경 API
+│   │   └── kb/                    # KB Article, Addendum, 랭킹 API
+│   ├── service/
+│   │   ├── lc/
+│   │   │   ├── crd/               # ErrorLog CRUD
+│   │   │   ├── processor/         # 정규화·해싱·ErrorCode 분류
+│   │   │   └── redis/             # Redis 큐 적재
+│   │   └── kb/
+│   │       ├── crud/              # Incident · KbArticle · Addendum CRUD
+│   │       ├── search/            # Elasticsearch 전문 검색
+│   │       └── webhook/           # LogFixer 웹훅 발송
+│   ├── domain/
+│   │   ├── lc/                    # ErrorLog, ErrorLogHost (LC DB)
+│   │   └── kb/                    # Incident, KbArticle, KbAddendum (KB DB)
+│   └── infra/
+│       ├── es/                    # Elasticsearch 인덱스 설정
+│       └── outbox/                # 웹훅 실패 시 재시도 outbox
+├── infra/
+│   ├── compose/                   # Docker Compose (로컬 실행)
+│   ├── k8s/                       # Kubernetes YAML
+│   ├── terraform/                 # Terraform (K8s 통합 배포)
+│   └── helm/                      # Helm values (MariaDB, Redis)
+└── src/test/
+    ├── unit/                      # 단위 테스트
+    └── integration/               # Testcontainers 통합 테스트
+```
