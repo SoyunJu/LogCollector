@@ -66,9 +66,18 @@ class LogFixerIntegrationTest {
     // ═══════════════════════════════════════════════════════════════
     //  Report
     // ═══════════════════════════════════════════════════════════════
+    // SLO 기준
+    static final long SLO_WEBHOOK_ASYNC_MS   = 2000;  // saveLog → sendIncident 비동기 호출
+    static final long SLO_CALLBACK_PATCH_MS  =  500;  // RESOLVED PATCH 응답
+    static final long SLO_CALLBACK_POST_MS   =  500;  // Addendum POST 응답
+    static final long SLO_CALLBACK_GET_MS    =  200;  // KB byhash GET 응답
+
     record TestResult(String id, String category, boolean passed, String detail) {}
     static final List<TestResult> RESULTS = Collections.synchronizedList(new ArrayList<>());
-    static long webhookAsyncLatencyMs = 0;
+    static long webhookAsyncLatencyMs  = 0;
+    static long resolvedCallbackMs     = 0;
+    static long addendumCallbackMs     = 0;
+    static long kbLookupCallbackMs     = 0;
 
     // ═══════════════════════════════════════════════════════════════
     //  Mocks
@@ -158,7 +167,11 @@ class LogFixerIntegrationTest {
 
         webhookAsyncLatencyMs = System.currentTimeMillis() - start;
         verify(logFixerWebhookService, atLeastOnce()).sendIncident(any());
-        recordResult("T1", "LC→LF", true, "webhook 호출 확인 (비동기 지연: " + webhookAsyncLatencyMs + "ms)");
+        assertThat(webhookAsyncLatencyMs)
+                .as("webhook 비동기 발송 지연 SLO: %dms 이내", SLO_WEBHOOK_ASYNC_MS)
+                .isLessThanOrEqualTo(SLO_WEBHOOK_ASYNC_MS);
+        recordResult("T1", "LC→LF", true,
+                "webhook 호출 확인 | 지연=" + webhookAsyncLatencyMs + "ms (SLO≤" + SLO_WEBHOOK_ASYNC_MS + "ms) ✓");
     }
 
     @Test @Order(2)
@@ -271,10 +284,15 @@ class LogFixerIntegrationTest {
         await().timeout(java.time.Duration.ofSeconds(5))
                 .until(() -> incidentRepository.findByLogHash(logHash).isPresent());
 
-        // LogFixer가 RESOLVED 콜백 전송
+        // LogFixer가 RESOLVED 콜백 전송 (응답 시간 측정)
+        long t6Start = System.currentTimeMillis();
         mockMvc.perform(patch("/api/incidents/{logHash}/status", logHash)
                         .param("newStatus", "RESOLVED"))
                 .andExpect(status().isOk());
+        resolvedCallbackMs = System.currentTimeMillis() - t6Start;
+        assertThat(resolvedCallbackMs)
+                .as("RESOLVED 콜백 응답 SLO: %dms 이내", SLO_CALLBACK_PATCH_MS)
+                .isLessThanOrEqualTo(SLO_CALLBACK_PATCH_MS);
 
         await().timeout(java.time.Duration.ofSeconds(3))
                 .until(() -> incidentRepository.findByLogHash(logHash)
@@ -285,7 +303,8 @@ class LogFixerIntegrationTest {
         assertThat(incident.getStatus()).isEqualTo(IncidentStatus.RESOLVED);
         assertThat(incident.getResolvedAt()).isNotNull();
 
-        recordResult("T6", "LF→LC", true, "RESOLVED 전환 + resolvedAt 기록됨");
+        recordResult("T6", "LF→LC", true,
+                "RESOLVED 전환 + resolvedAt 기록됨 | 응답=" + resolvedCallbackMs + "ms (SLO≤" + SLO_CALLBACK_PATCH_MS + "ms) ✓");
     }
 
     @Test @Order(11)
@@ -340,16 +359,22 @@ class LogFixerIntegrationTest {
                 }
                 """;
 
+        long t8Start = System.currentTimeMillis();
         mockMvc.perform(post("/api/kb/{kbArticleId}/addendums", kbArticleId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk());
+        addendumCallbackMs = System.currentTimeMillis() - t8Start;
+        assertThat(addendumCallbackMs)
+                .as("Addendum POST 응답 SLO: %dms 이내", SLO_CALLBACK_POST_MS)
+                .isLessThanOrEqualTo(SLO_CALLBACK_POST_MS);
 
         var addendums = kbAddendumRepository.findByKbArticle_IdOrderByCreatedAtDesc(kbArticleId);
         assertThat(addendums).hasSize(1);
         assertThat(addendums.get(0).getContent()).contains("LogFixer 분석");
 
-        recordResult("T8", "LF→LC", true, "Addendum 1건 저장 완료");
+        recordResult("T8", "LF→LC", true,
+                "Addendum 1건 저장 완료 | 응답=" + addendumCallbackMs + "ms (SLO≤" + SLO_CALLBACK_POST_MS + "ms) ✓");
     }
 
     @Test @Order(13)
@@ -365,11 +390,17 @@ class LogFixerIntegrationTest {
         Long incidentId = incidentRepository.findByLogHash(logHash).orElseThrow().getId();
         kbDraftService.createSystemDraft(incidentId);
 
+        long t9Start = System.currentTimeMillis();
         mockMvc.perform(get("/api/kb/articles/byhash/{logHash}", logHash))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.kbArticleId").isNumber());
+        kbLookupCallbackMs = System.currentTimeMillis() - t9Start;
+        assertThat(kbLookupCallbackMs)
+                .as("KB byhash GET 응답 SLO: %dms 이내", SLO_CALLBACK_GET_MS)
+                .isLessThanOrEqualTo(SLO_CALLBACK_GET_MS);
 
-        recordResult("T9", "LF→LC", true, "logHash로 KbArticleId 조회 성공");
+        recordResult("T9", "LF→LC", true,
+                "logHash로 KbArticleId 조회 성공 | 응답=" + kbLookupCallbackMs + "ms (SLO≤" + SLO_CALLBACK_GET_MS + "ms) ✓");
     }
 
     @Test @Order(14)
@@ -522,8 +553,12 @@ class LogFixerIntegrationTest {
         printByCategory("내결함성");
 
         System.out.println("╠══════════════════════════════════════════════════════════════════════════════════╣");
-        System.out.println("║ [성능 지표]                                                                        ║");
-        System.out.println("║  • Webhook 비동기 발송 지연 (saveLog → sendIncident 호출): " + webhookAsyncLatencyMs + "ms");
+        System.out.println("║ [성능 SLO 검증]                         실측값       SLO 기준    판정             ║");
+        System.out.println("╠══════════════════════════════════════════════════════════════════════════════════╣");
+        printSlo("Webhook 비동기 발송 (saveLog→sendIncident)", webhookAsyncLatencyMs, SLO_WEBHOOK_ASYNC_MS);
+        printSlo("RESOLVED 콜백 응답 (PATCH /status)        ", resolvedCallbackMs,    SLO_CALLBACK_PATCH_MS);
+        printSlo("Addendum POST 응답 (/addendums)            ", addendumCallbackMs,    SLO_CALLBACK_POST_MS);
+        printSlo("KB 조회 응답       (GET /byhash)           ", kbLookupCallbackMs,    SLO_CALLBACK_GET_MS);
         System.out.println("╠══════════════════════════════════════════════════════════════════════════════════╣");
 
         long pass = RESULTS.stream().filter(TestResult::passed).count();
@@ -537,6 +572,12 @@ class LogFixerIntegrationTest {
                 System.out.printf("  %s [%-6s] %-4s : %s%n",
                         r.passed() ? "✓ PASS" : "✗ FAIL",
                         r.category(), r.id(), r.detail()));
+    }
+
+    private static void printSlo(String label, long actualMs, long sloMs) {
+        String verdict = actualMs <= sloMs ? "✓ PASS" : "✗ FAIL";
+        System.out.printf("║  %-44s %6dms  ≤ %5dms   %s  ║%n",
+                label, actualMs, sloMs, verdict);
     }
 
     private static void printByCategory(String cat) {
