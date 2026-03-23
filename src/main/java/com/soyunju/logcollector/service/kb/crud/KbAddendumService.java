@@ -18,12 +18,21 @@ import java.time.LocalDateTime;
 @Transactional(transactionManager = "kbTransactionManager")
 public class KbAddendumService {
 
+    private static final double MIN_CONFIDENCE = 0.4;
+
     private final KbArticleRepository kbArticleRepository;
     private final KbAddendumRepository kbAddendumRepository;
 
     public KbAddendumResponse createAddendum(Long kbArticleId, KbAddendumCreateRequest req) {
         if (req == null || req.getContent() == null || req.getContent().isBlank()) {
             throw new IllegalArgumentException("content는 필수입니다.");
+        }
+
+        // LogFixer 신뢰도 임계치 검증: 제공된 경우에만 체크
+        if (req.getConfidence() != null && req.getConfidence() < MIN_CONFIDENCE) {
+            throw new IllegalArgumentException(
+                    "신뢰도 임계치 미달: confidence=" + req.getConfidence()
+                    + " < " + MIN_CONFIDENCE + " (최소 " + MIN_CONFIDENCE + " 이상 필요)");
         }
 
         KbArticle kb = kbArticleRepository.findById(kbArticleId)

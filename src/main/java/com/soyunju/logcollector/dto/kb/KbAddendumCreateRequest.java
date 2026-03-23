@@ -16,4 +16,9 @@ public class KbAddendumCreateRequest {
     )
     private String createdBy;
 
+    @Schema(
+            example = "0.8",
+            description = "LogFixer 신뢰도 점수 (0.0 ~ 1.0). 0.4 미만이면 저장 거부. 미제공 시 검증 생략."
+    )
+    private Double confidence;
 }
