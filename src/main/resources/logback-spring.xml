@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <property name="LOG_DIR" value="logs"/>
+
+    <property name="INFO_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId}] %logger{30} - %msg%n"/>
+
+    <property name="ERROR_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [traceId=%X{traceId}] [%X{method} %X{uri}] [tenantId=%X{tenantId}] [appId=%X{appId}] [source=%X{source}] %logger{30} - %msg%n%ex{10}"/>
+
+    <property name="CONSOLE_PATTERN"
+              value="%d{HH:mm:ss.SSS} %-5level [%X{traceId}] [%X{tenantId}:%X{appId}] %logger{30} - %msg%n"/>
+
+    <!-- local, test -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- LC -->
+    <appender name="COLLECTOR_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/collector/collector-info.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/collector/%d{yyyy/MM/yyyy-MM-dd}-info.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder><pattern>${INFO_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="COLLECTOR_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/collector/collector-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/collector/%d{yyyy/MM/yyyy-MM-dd}-error.log</fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+        <encoder><pattern>${ERROR_PATTERN}</pattern></encoder>
+    </appender>
+
+
+    <!-- Incident -->
+    <appender name="INCIDENT_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/incident/incident-info.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/incident/%d{yyyy/MM/yyyy-MM-dd}-info.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder><pattern>${INFO_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="INCIDENT_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/incident/incident-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/incident/%d{yyyy/MM/yyyy-MM-dd}-error.log</fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+        <encoder><pattern>${ERROR_PATTERN}</pattern></encoder>
+    </appender>
+
+
+    <!-- KB -->
+    <appender name="KB_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/kb/kb-info.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/kb/%d{yyyy/MM/yyyy-MM-dd}-info.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder><pattern>${INFO_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="KB_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/kb/kb-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/kb/%d{yyyy/MM/yyyy-MM-dd}-error.log</fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+        <encoder><pattern>${ERROR_PATTERN}</pattern></encoder>
+    </appender>
+
+
+    <!-- admin, infra -->
+    <appender name="ADMIN_INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/admin/admin-info.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/admin/%d{yyyy/MM/yyyy-MM-dd}-info.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder><pattern>${INFO_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="ADMIN_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/admin/admin-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/admin/%d{yyyy/MM/yyyy-MM-dd}-error.log</fileNamePattern>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+        <encoder><pattern>${ERROR_PATTERN}</pattern></encoder>
+    </appender>
+
+
+    <!-- Audit -->
+    <appender name="AUDIT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/audit/audit.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/audit/%d{yyyy/MM/yyyy-MM-dd}-audit.log</fileNamePattern>
+            <maxHistory>365</maxHistory>
+        </rollingPolicy>
+        <encoder><pattern>${ERROR_PATTERN}</pattern></encoder>
+    </appender>
+
+
+    <!-- Appender -->
+    <!-- collect, processing, redis queue -->
+    <logger name="com.soyunju.logcollector.service.lc" level="INFO" additivity="false">
+        <appender-ref ref="COLLECTOR_INFO"/>
+        <appender-ref ref="COLLECTOR_ERROR"/>
+    </logger>
+
+    <!-- Incident status -->
+    <logger name="com.soyunju.logcollector.domain.kb" level="INFO" additivity="false">
+        <appender-ref ref="INCIDENT_INFO"/>
+        <appender-ref ref="INCIDENT_ERROR"/>
+    </logger>
+
+    <logger name="com.soyunju.logcollector.service.kb.crud" level="INFO" additivity="false">
+        <appender-ref ref="INCIDENT_INFO"/>
+        <appender-ref ref="INCIDENT_ERROR"/>
+    </logger>
+
+    <!-- KB, ES, WebHook -->
+    <logger name="com.soyunju.logcollector.service.kb.search" level="INFO" additivity="false">
+        <appender-ref ref="KB_INFO"/>
+        <appender-ref ref="KB_ERROR"/>
+    </logger>
+
+    <logger name="com.soyunju.logcollector.service.kb.webhook" level="INFO" additivity="false">
+        <appender-ref ref="KB_INFO"/>
+        <appender-ref ref="KB_ERROR"/>
+    </logger>
+
+    <!-- infra -->
+    <logger name="com.soyunju.logcollector.infra" level="INFO" additivity="false">
+        <appender-ref ref="ADMIN_INFO"/>
+        <appender-ref ref="ADMIN_ERROR"/>
+    </logger>
+
+    <!-- Audit -->
+    <logger name="AUDIT_LOGGER" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT"/>
+    </logger>
+
+
+    <springProfile name="local,test,default, docker">
+        <root level="DEBUG">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- later: docker==prod -->
+    <springProfile name="prod">
+        <root level="WARN"/>
+    </springProfile>
+
+</configuration>
