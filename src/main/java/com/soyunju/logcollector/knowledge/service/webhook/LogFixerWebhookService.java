@@ -23,6 +23,8 @@ public class LogFixerWebhookService {
 
     private URI webhookUri;
 
+    private final WebhookSigner webhookSigner;
+
     @PostConstruct
     void init() {
         if (!StringUtils.hasText(webhookUrl)) {
@@ -44,8 +46,12 @@ public class LogFixerWebhookService {
             return;
         }
         try {
+            String body = objectMapper.writeValueAsString(payload); // 직렬화
+            Map<String, String> signHeaders = webhookSigner.generateHeaders(body); // 서명 헤더 생성
+
             restClient.post()
                     .uri(webhookUri)
+                    .headers(h -> signHeaders.forEach(h::add)) // 서명 헤더 추가
                     .body(payload)
                     .retrieve()
                     .toBodilessEntity();
