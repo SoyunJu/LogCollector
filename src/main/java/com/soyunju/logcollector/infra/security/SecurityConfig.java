@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers(PERMIT_ALL).permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.deny())
                         .contentTypeOptions(contentType -> {})

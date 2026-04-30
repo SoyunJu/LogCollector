@@ -37,6 +37,7 @@ out/
 .vscode/
 
 # Secrets
+*-secret.properties
 src/main/resources/application-secret.properties
 src/main/resources/secret.properties
 infra/compose/.env
@@ -49,3 +50,10 @@ frontend/build/
 *.tfvars
 .terraform/
 infra/terraform/terraform.tfvars
+
+/actuator/**
+/swagger-ui/**
+/swagger-ui.html
+/v3/api-docs/**
+/api/admin/auth/login
+/api/admin/auth/refresh
