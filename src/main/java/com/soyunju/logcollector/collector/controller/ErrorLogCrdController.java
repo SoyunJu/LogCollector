@@ -1,12 +1,11 @@
-package com.soyunju.logcollector.controller.lc;
+package com.soyunju.logcollector.collector.controller;
 
-import com.soyunju.logcollector.domain.lc.ErrorStatus;
-import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
-import com.soyunju.logcollector.dto.lc.ErrorResponse;
-import com.soyunju.logcollector.exception.ErrorCode;
-import com.soyunju.logcollector.service.lc.crd.ErrorLogCrdService;
-import com.soyunju.logcollector.service.lc.processor.LogProcessor;
-import com.soyunju.logcollector.service.lc.redis.LogToRedis;
+import com.soyunju.logcollector.collector.domain.ErrorStatus;
+import com.soyunju.logcollector.collector.dto.*;
+import com.soyunju.logcollector.collector.service.crd.ErrorLogCrdService;
+import com.soyunju.logcollector.collector.service.processor.LogProcessor;
+import com.soyunju.logcollector.collector.service.redis.LogToRedis;
+import com.soyunju.logcollector.global.exception.ErrorCode;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

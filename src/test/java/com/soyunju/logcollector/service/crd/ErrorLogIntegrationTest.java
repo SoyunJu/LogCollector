@@ -1,14 +1,14 @@
 package com.soyunju.logcollector.service.crd;
 
-import com.soyunju.logcollector.domain.lc.ErrorLog;
-import com.soyunju.logcollector.domain.lc.ErrorStatus;
-import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
-import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
-import com.soyunju.logcollector.es.KbArticleEsRepository;
-import com.soyunju.logcollector.es.KbArticleEsService;
-import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
-import com.soyunju.logcollector.service.kb.crud.KbEventOutboxProcessorService;
-import com.soyunju.logcollector.service.lc.crd.ErrorLogCrdService;
+import com.soyunju.logcollector.collector.domain.ErrorLog;
+import com.soyunju.logcollector.collector.domain.ErrorStatus;
+import com.soyunju.logcollector.collector.dto.ErrorLogRequest;
+import com.soyunju.logcollector.collector.dto.ErrorLogResponse;
+import com.soyunju.logcollector.knowledge.es.KbArticleEsRepository;
+import com.soyunju.logcollector.knowledge.es.KbArticleEsService;
+import com.soyunju.logcollector.collector.repository.ErrorLogRepository;
+import com.soyunju.logcollector.collector.service.crd.ErrorLogCrdService;
+import com.soyunju.logcollector.knowledge.service.KbEventOutboxProcessorService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

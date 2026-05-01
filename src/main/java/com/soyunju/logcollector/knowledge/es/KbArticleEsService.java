@@ -1,9 +1,10 @@
-package com.soyunju.logcollector.es;
+package com.soyunju.logcollector.knowledge.es;
 
-import com.soyunju.logcollector.domain.kb.KbAddendum;
-import com.soyunju.logcollector.domain.kb.KbArticle;
-import com.soyunju.logcollector.repository.kb.KbAddendumRepository;
-import com.soyunju.logcollector.repository.kb.KbArticleRepository;
+
+import com.soyunju.logcollector.knowledge.domain.KbAddendum;
+import com.soyunju.logcollector.knowledge.domain.KbArticle;
+import com.soyunju.logcollector.knowledge.repository.KbAddendumRepository;
+import com.soyunju.logcollector.knowledge.repository.KbArticleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

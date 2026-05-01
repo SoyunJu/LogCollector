@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.service.lc.redis;
+package com.soyunju.logcollector.collector.service.redis;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;

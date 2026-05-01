@@ -1,7 +1,7 @@
-package com.soyunju.logcollector.service.kb.crud;
+package com.soyunju.logcollector.incident.service.ignore;
 
-import com.soyunju.logcollector.repository.kb.LcIgnoreOutboxRepository;
-import com.soyunju.logcollector.service.lc.ignore.LcIgnoreApplyService;
+import com.soyunju.logcollector.incident.repository.LcIgnoreOutboxRepository;
+import com.soyunju.logcollector.collector.service.ignore.LcIgnoreApplyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

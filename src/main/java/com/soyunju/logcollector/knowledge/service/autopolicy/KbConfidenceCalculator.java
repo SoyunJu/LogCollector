@@ -1,8 +1,9 @@
-package com.soyunju.logcollector.service.kb.autopolicy;
+package com.soyunju.logcollector.knowledge.service.autopolicy;
 
-import com.soyunju.logcollector.domain.kb.KbArticle;
-import com.soyunju.logcollector.domain.kb.enums.ErrorLevel;
-import com.soyunju.logcollector.domain.kb.enums.KbStatus;
+
+import com.soyunju.logcollector.collector.domain.enums.ErrorLevel;
+import com.soyunju.logcollector.knowledge.domain.KbArticle;
+import com.soyunju.logcollector.knowledge.domain.enums.KbStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;

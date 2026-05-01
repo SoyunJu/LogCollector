@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.domain.kb;
+package com.soyunju.logcollector.knowledge.domain;
 
 import lombok.*;
 

@@ -1,13 +1,15 @@
-package com.soyunju.logcollector.service.kb.search;
+package com.soyunju.logcollector.incident.service.search;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.domain.kb.QIncident;
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
-import com.soyunju.logcollector.dto.kb.IncidentRankResponse;
-import com.soyunju.logcollector.dto.kb.IncidentResponse;
-import com.soyunju.logcollector.repository.kb.IncidentRepository;
-import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
+
+
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.incident.domain.QIncident;
+import com.soyunju.logcollector.incident.domain.enums.IncidentStatus;
+import com.soyunju.logcollector.incident.dto.IncidentRankResponse;
+import com.soyunju.logcollector.incident.dto.IncidentResponse;
+import com.soyunju.logcollector.incident.repository.IncidentRepository;
+import com.soyunju.logcollector.collector.repository.ErrorLogHostRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,7 +40,7 @@ public class IncidentSearchService {
 
     // Querydsl 리포지토리를 호출하여 인시던트를 검색하고, LC DB에서 호스트 발생 수를 가져와 DTO로 결합함 (In-Memory Join)
     public Page<IncidentResponse> searchIncidents(
-            com.soyunju.logcollector.dto.kb.IncidentSearch search,
+            com.soyunju.logcollector.incident.dto.IncidentSearch search,
             Pageable pageable) {
 
         Page<Incident> page = incidentRepository.search(search, pageable);
@@ -54,14 +56,14 @@ public class IncidentSearchService {
 
     // 호스트 발생 수 기준 랭킹 조회. 물리 DB가 다르므로 LC DB에서 상위 해시를 먼저 뽑은 후 KB 데이터를 매핑함
     private List<IncidentRankResponse> topByHostCount(
-            int limit, String serviceName, com.soyunju.logcollector.domain.kb.enums.IncidentStatus status,
+            int limit, String serviceName, IncidentStatus status,
             LocalDateTime from, LocalDateTime to
     ) {
         // 1. LC DB에서 호스트 카운트가 높은 상위 Hash 조회
         // (참고: 현재 LC 리포지토리 메서드는 필터 없이 전체 TOP N을 가져옵니다. 필터가 중요하다면 LC 리포지토리 쿼리 수정 필요)
-        List<com.soyunju.logcollector.repository.lc.agg.HostAgg> topHashes = errorLogHostRepository.findTopHashesByHostCount(limit);
+        List<com.soyunju.logcollector.collector.repository.agg.HostAgg> topHashes = errorLogHostRepository.findTopHashesByHostCount(limit);
 
-        List<String> hashes = topHashes.stream().map(com.soyunju.logcollector.repository.lc.agg.HostAgg::getLogHash).toList();
+        List<String> hashes = topHashes.stream().map(com.soyunju.logcollector.collector.repository.agg.HostAgg::getLogHash).toList();
 
         // 2. KB DB에서 해당 해시의 인시던트 조회
         Map<String, Incident> incidentMap = incidentRepository.findAllByLogHashIn(new HashSet<>(hashes))
@@ -89,9 +91,9 @@ public class IncidentSearchService {
     // LC DB의 ErrorLogHost 테이블에서 해시별 호스트 수를 집계하여 맵으로 반환함
     private Map<String, Long> fetchHostCountMap(List<String> logHashes) {
         if (logHashes.isEmpty()) return Collections.emptyMap();
-        List<com.soyunju.logcollector.repository.lc.agg.HostAgg> rows = errorLogHostRepository.countHostsByLogHash(logHashes);
+        List<com.soyunju.logcollector.collector.repository.agg.HostAgg> rows = errorLogHostRepository.countHostsByLogHash(logHashes);
         return rows.stream().collect(Collectors.toMap(
-                com.soyunju.logcollector.repository.lc.agg.HostAgg::getLogHash,
+                com.soyunju.logcollector.collector.repository.agg.HostAgg::getLogHash,
                 r -> r.getHostCount() != null ? r.getHostCount().longValue() : 0L
         ));
     }
@@ -156,7 +158,7 @@ public class IncidentSearchService {
     }
 
     // status eq
-    private com.querydsl.core.types.dsl.BooleanExpression statusEq(QIncident i, com.soyunju.logcollector.domain.kb.enums.IncidentStatus status) {
+    private com.querydsl.core.types.dsl.BooleanExpression statusEq(QIncident i, IncidentStatus status) {
         if (status == null) return null;
         return i.status.eq(status);
     }
@@ -173,7 +175,7 @@ public class IncidentSearchService {
             String metric,
             int limit,
             String serviceName,
-            com.soyunju.logcollector.domain.kb.enums.IncidentStatus status,
+            IncidentStatus status,
             LocalDateTime from,
             LocalDateTime to
     ) {

@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.config;
+package com.soyunju.logcollector.global.config;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;

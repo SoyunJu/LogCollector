@@ -1,7 +1,8 @@
-package com.soyunju.logcollector.repository.kb;
+package com.soyunju.logcollector.knowledge.repository;
 
-import com.soyunju.logcollector.domain.kb.KbEventOutbox;
-import com.soyunju.logcollector.domain.kb.enums.KbEventOutboxStatus;
+
+import com.soyunju.logcollector.knowledge.domain.KbEventOutbox;
+import com.soyunju.logcollector.knowledge.domain.enums.KbEventOutboxStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

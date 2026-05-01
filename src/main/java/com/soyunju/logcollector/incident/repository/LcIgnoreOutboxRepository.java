@@ -1,7 +1,7 @@
-package com.soyunju.logcollector.repository.kb;
+package com.soyunju.logcollector.incident.repository;
 
-import com.soyunju.logcollector.domain.kb.LcIgnoreOutbox;
-import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxStatus;
+import com.soyunju.logcollector.incident.domain.LcIgnoreOutbox;
+import com.soyunju.logcollector.incident.domain.enums.LcIgnoreOutboxStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;

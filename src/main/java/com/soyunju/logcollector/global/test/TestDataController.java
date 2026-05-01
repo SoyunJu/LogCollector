@@ -1,9 +1,9 @@
-package com.soyunju.logcollector.controller.test;
+package com.soyunju.logcollector.global.test;
 
-import com.soyunju.logcollector.repository.kb.IncidentRepository;
-import com.soyunju.logcollector.repository.kb.KbArticleRepository;
-import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
-import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
+import com.soyunju.logcollector.incident.repository.IncidentRepository;
+import com.soyunju.logcollector.knowledge.repository.KbArticleRepository;
+import com.soyunju.logcollector.collector.repository.ErrorLogHostRepository;
+import com.soyunju.logcollector.collector.repository.ErrorLogRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;

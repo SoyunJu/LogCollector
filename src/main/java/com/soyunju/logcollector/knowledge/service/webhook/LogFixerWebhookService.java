@@ -1,6 +1,7 @@
-package com.soyunju.logcollector.service.logfixer;
+package com.soyunju.logcollector.knowledge.service.webhook;
 
-import com.soyunju.logcollector.dto.logfixer.LogFixerIncidentPayload;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.soyunju.logcollector.knowledge.dto.LogFixerIncidentPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,20 +11,21 @@ import org.springframework.web.client.RestClient;
 
 import jakarta.annotation.PostConstruct;
 import java.net.URI;
+import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LogFixerWebhookService {
 
-    private final RestClient restClient;
+    private final RestClient    restClient;
+    private final ObjectMapper  objectMapper;
+    private final WebhookSigner webhookSigner;
 
     @Value("${logfixer.webhook.url:}")
     private String webhookUrl;
 
     private URI webhookUri;
-
-    private final WebhookSigner webhookSigner;
 
     @PostConstruct
     void init() {
@@ -31,7 +33,6 @@ public class LogFixerWebhookService {
             log.warn("LogFixer webhook URL이 설정되지 않았습니다. (logfixer.webhook.url 비어있음) LogFixer 연동은 비활성화됩니다.");
             return;
         }
-
         try {
             this.webhookUri = URI.create(webhookUrl.trim());
         } catch (Exception e) {
@@ -46,19 +47,20 @@ public class LogFixerWebhookService {
             return;
         }
         try {
-            String body = objectMapper.writeValueAsString(payload); // 직렬화
-            Map<String, String> signHeaders = webhookSigner.generateHeaders(body); // 서명 헤더 생성
+            String body = objectMapper.writeValueAsString(payload);
+            Map<String, String> signHeaders = webhookSigner.generateHeaders(body);
 
             restClient.post()
                     .uri(webhookUri)
-                    .headers(h -> signHeaders.forEach(h::add)) // 서명 헤더 추가
+                    .headers(h -> signHeaders.forEach(h::add))
                     .body(payload)
                     .retrieve()
                     .toBodilessEntity();
-            log.info("[LogFixer][WEBHOOK] incident 발송 완료. logHash={}, service={}", payload.getLogHash(), payload.getServiceName());
+            log.info("[LogFixer][WEBHOOK] incident 발송 완료. logHash={}, service={}",
+                    payload.getLogHash(), payload.getServiceName());
         } catch (Exception e) {
-            // 실패해도 LC 흐름에 영향 없도록 warn만 기록
-            log.warn("[LogFixer][WEBHOOK] 발송 실패 (무시). logHash={}, err={}", payload.getLogHash(), e.getMessage());
+            log.warn("[LogFixer][WEBHOOK] 발송 실패 (무시). logHash={}, err={}",
+                    payload.getLogHash(), e.getMessage());
         }
     }
 }

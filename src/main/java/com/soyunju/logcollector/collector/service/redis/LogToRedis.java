@@ -1,9 +1,9 @@
-package com.soyunju.logcollector.service.lc.redis;
+package com.soyunju.logcollector.collector.service.redis;
 
-import com.soyunju.logcollector.config.LogCollectorRedisProperties;
-import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
-import com.soyunju.logcollector.monitornig.LcMetrics;
-import com.soyunju.logcollector.service.lc.crd.ErrorLogCrdService;
+import com.soyunju.logcollector.collector.dto.ErrorLogRequest;
+import com.soyunju.logcollector.collector.service.crd.ErrorLogCrdService;
+import com.soyunju.logcollector.global.config.LogCollectorRedisProperties;
+import com.soyunju.logcollector.global.monitoring.LcMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.RedisConnectionFailureException;

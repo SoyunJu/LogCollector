@@ -48,7 +48,7 @@ VALUES
      DATE_SUB(NOW(6), INTERVAL 2 DAY), 'NullPointerException in publish()', DATE_SUB(NOW(6), INTERVAL 2 HOUR),
      'hash_capture_npe_publish_003', NULL, 5, NULL, 'CAPTURE-AUTH',
      'java.lang.NullPointerException: Cannot invoke "String.length()" because "x" is null
-  at com.soyunju.logcollector.service.KbArticleService.publish(KbArticleService.java:204)', 'OPEN',
+  at com.soyunju.logcollector.knowledge.serviceArticleService.publish(KbArticleService.java:204)', 'OPEN',
      'NPE likely caused by missing field in DTO.', NOW(6)),
 
     (1004, NULL, NULL, NOW(6), 'system', 'UPSTREAM_502', 'WARN',

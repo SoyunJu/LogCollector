@@ -152,7 +152,7 @@
 
     <!-- Appender -->
     <!-- collect, processing, redis queue -->
-    <logger name="com.soyunju.logcollector.service.lc" level="INFO" additivity="false">
+    <logger name="com.soyunju.logcollector.collector.service" level="INFO" additivity="false">
         <appender-ref ref="COLLECTOR_INFO"/>
         <appender-ref ref="COLLECTOR_ERROR"/>
     </logger>
@@ -163,18 +163,18 @@
         <appender-ref ref="INCIDENT_ERROR"/>
     </logger>
 
-    <logger name="com.soyunju.logcollector.service.kb.crud" level="INFO" additivity="false">
+    <logger name="com.soyunju.logcollector.knowledge.service.crud" level="INFO" additivity="false">
         <appender-ref ref="INCIDENT_INFO"/>
         <appender-ref ref="INCIDENT_ERROR"/>
     </logger>
 
     <!-- KB, ES, WebHook -->
-    <logger name="com.soyunju.logcollector.service.kb.search" level="INFO" additivity="false">
+    <logger name="com.soyunju.logcollector.knowledge.service.search" level="INFO" additivity="false">
         <appender-ref ref="KB_INFO"/>
         <appender-ref ref="KB_ERROR"/>
     </logger>
 
-    <logger name="com.soyunju.logcollector.service.kb.webhook" level="INFO" additivity="false">
+    <logger name="com.soyunju.logcollector.knowledge.service.webhook" level="INFO" additivity="false">
         <appender-ref ref="KB_INFO"/>
         <appender-ref ref="KB_ERROR"/>
     </logger>

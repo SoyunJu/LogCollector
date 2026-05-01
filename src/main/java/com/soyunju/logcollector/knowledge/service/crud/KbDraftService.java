@@ -1,16 +1,17 @@
-package com.soyunju.logcollector.service.kb.crud;
+package com.soyunju.logcollector.knowledge.service.crud;
 
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.domain.kb.KbArticle;
-import com.soyunju.logcollector.domain.kb.SystemDraft;
-import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
-import com.soyunju.logcollector.domain.kb.enums.DraftReason;
-import com.soyunju.logcollector.domain.kb.enums.KbStatus;
-import com.soyunju.logcollector.dto.kb.KbArticleResponse;
-import com.soyunju.logcollector.es.KbArticleEsService;
-import com.soyunju.logcollector.repository.kb.IncidentRepository;
-import com.soyunju.logcollector.repository.kb.KbArticleRepository;
-import com.soyunju.logcollector.repository.kb.SystemDraftRepository;
+
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.knowledge.domain.KbArticle;
+import com.soyunju.logcollector.knowledge.domain.SystemDraft;
+import com.soyunju.logcollector.knowledge.domain.enums.CreatedBy;
+import com.soyunju.logcollector.knowledge.domain.enums.DraftReason;
+import com.soyunju.logcollector.knowledge.domain.enums.KbStatus;
+import com.soyunju.logcollector.knowledge.dto.KbArticleResponse;
+import com.soyunju.logcollector.knowledge.es.KbArticleEsService;
+import com.soyunju.logcollector.incident.repository.IncidentRepository;
+import com.soyunju.logcollector.knowledge.repository.KbArticleRepository;
+import com.soyunju.logcollector.knowledge.repository.SystemDraftRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;

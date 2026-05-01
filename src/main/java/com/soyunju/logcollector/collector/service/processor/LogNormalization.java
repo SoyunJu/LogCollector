@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.service.lc.processor;
+package com.soyunju.logcollector.collector.service.processor;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.config;
+package com.soyunju.logcollector.global.config;
 
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -21,15 +21,17 @@ import javax.sql.DataSource;
 @EnableJpaAuditing
 @EnableJpaRepositories(
         basePackages = {
-                "com.soyunju.logcollector.repository.lc",
-                "com.soyunju.logcollector.repository.audit"
+                "com.soyunju.logcollector.collector.repository",
+                "com.soyunju.logcollector.admin.repository",
+                "com.soyunju.logcollector.global.audit.repository"
         },
         entityManagerFactoryRef = "lcEntityManagerFactory",
         transactionManagerRef = "lcTransactionManager"
 )
 @EntityScan(basePackages = {
-        "com.soyunju.logcollector.domain.lc",
-        "com.soyunju.logcollector.domain.audit"
+        "com.soyunju.logcollector.collector.domain",
+        "com.soyunju.logcollector.admin.domain",
+        "com.soyunju.logcollector.global.audit.domain"
 })
 public class LcJpaConfig {
 
@@ -49,8 +51,9 @@ public class LcJpaConfig {
         return builder
                 .dataSource(dataSource)
                 .packages(
-                        "com.soyunju.logcollector.domain.lc",
-                        "com.soyunju.logcollector.domain.audit"
+                        "com.soyunju.logcollector.collector.domain",
+                        "com.soyunju.logcollector.admin.domain",
+                        "com.soyunju.logcollector.global.audit.domain"
                 )
                 .persistenceUnit("lc")
                 .build();

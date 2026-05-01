@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.config;
+package com.soyunju.logcollector.global.config;
 
 import lombok.Getter;
 import lombok.Setter;

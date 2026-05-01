@@ -1,7 +1,8 @@
-package com.soyunju.logcollector.repository.kb;
+package com.soyunju.logcollector.incident.repository;
 
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
+
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.incident.domain.enums.IncidentStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

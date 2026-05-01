@@ -1,8 +1,8 @@
-package com.soyunju.logcollector.config;
+package com.soyunju.logcollector.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
+import com.soyunju.logcollector.collector.dto.ErrorLogRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;

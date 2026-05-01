@@ -1,14 +1,16 @@
-package com.soyunju.logcollector.service.kb.search;
+package com.soyunju.logcollector.knowledge.service.search;
 
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.soyunju.logcollector.domain.kb.KbArticle;
-import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
-import com.soyunju.logcollector.domain.kb.enums.KbStatus;
-import com.soyunju.logcollector.dto.kb.KbArticleResponse;
-import com.soyunju.logcollector.dto.kb.KbArticleSearch;
-import com.soyunju.logcollector.es.KbArticleEsService;
-import com.soyunju.logcollector.repository.kb.KbArticleRepository;
+
+import com.soyunju.logcollector.knowledge.domain.KbAddendum;
+import com.soyunju.logcollector.knowledge.domain.KbArticle;
+import com.soyunju.logcollector.knowledge.domain.enums.CreatedBy;
+import com.soyunju.logcollector.knowledge.domain.enums.KbStatus;
+import com.soyunju.logcollector.knowledge.dto.KbArticleResponse;
+import com.soyunju.logcollector.knowledge.dto.KbArticleSearch;
+import com.soyunju.logcollector.knowledge.es.KbArticleEsService;
+import com.soyunju.logcollector.knowledge.repository.KbArticleRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
@@ -20,8 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-import static com.soyunju.logcollector.domain.kb.QKbAddendum.kbAddendum;
-import static com.soyunju.logcollector.domain.kb.QKbArticle.kbArticle;
+import static com.soyunju.logcollector.knowledge.domain.QKbAddendum.kbAddendum;
+import static com.soyunju.logcollector.knowledge.domain.QKbArticle.kbArticle;
+
 
 @Slf4j
 @Service
@@ -143,7 +146,7 @@ public class KbArticleSearchService {
 
         long totalCount = (total == null) ? 0L : total;
 
-        List<com.soyunju.logcollector.domain.kb.KbAddendum> rows = queryFactory
+        List<KbAddendum> rows = queryFactory
                 .selectFrom(kbAddendum)
                 .where(kbAddendum.kbArticle.id.eq(kbArticleId))
                 .orderBy(kbAddendum.createdAt.desc(), kbAddendum.id.desc())

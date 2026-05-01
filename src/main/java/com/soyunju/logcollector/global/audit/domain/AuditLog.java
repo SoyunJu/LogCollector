@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.domain.audit;
+package com.soyunju.logcollector.global.audit.domain;
 
 import jakarta.persistence.*;
 import lombok.*;

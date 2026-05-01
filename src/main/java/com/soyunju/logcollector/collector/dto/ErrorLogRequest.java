@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.dto.lc;
+package com.soyunju.logcollector.collector.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.media.Schema;

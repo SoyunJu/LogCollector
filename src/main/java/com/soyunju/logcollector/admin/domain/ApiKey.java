@@ -21,11 +21,9 @@ public class ApiKey {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // DB에는 SHA-256 해시값만 저장. 원문은 발급 시 1회만 노출.
     @Column(nullable = false, unique = true, length = 128)
     private String apiKey;
 
-    // 마지막 4자리 표시용 (예: ...a1b2)
     @Column(nullable = false, length = 16)
     private String apiKeyHint;
 
@@ -35,7 +33,7 @@ public class ApiKey {
     @Column(nullable = false, length = 64)
     private String appId;
 
-    // 식별 이름 (예: SCM_AGENT_PROD)
+    // 식별 이름
     @Column(nullable = false, length = 128)
     private String name;
 

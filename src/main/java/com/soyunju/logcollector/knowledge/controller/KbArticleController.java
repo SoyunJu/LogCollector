@@ -1,11 +1,12 @@
-package com.soyunju.logcollector.controller.kb;
+package com.soyunju.logcollector.knowledge.controller;
 
-import com.soyunju.logcollector.domain.kb.enums.KbStatus;
-import com.soyunju.logcollector.dto.kb.*;
-import com.soyunju.logcollector.repository.kb.KbAddendumRepository;
-import com.soyunju.logcollector.service.kb.crud.KbCrudService;
-import com.soyunju.logcollector.service.kb.crud.KbDraftService;
-import com.soyunju.logcollector.service.kb.search.KbArticleSearchService;
+
+import com.soyunju.logcollector.knowledge.domain.enums.KbStatus;
+import com.soyunju.logcollector.knowledge.dto.*;
+import com.soyunju.logcollector.knowledge.repository.KbAddendumRepository;
+import com.soyunju.logcollector.knowledge.service.crud.KbCrudService;
+import com.soyunju.logcollector.knowledge.service.crud.KbDraftService;
+import com.soyunju.logcollector.knowledge.service.search.KbArticleSearchService;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

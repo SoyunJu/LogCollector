@@ -1,7 +1,8 @@
-package com.soyunju.logcollector.repository.kb;
+package com.soyunju.logcollector.incident.repository;
 
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.dto.kb.IncidentSearch;
+
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.incident.dto.IncidentSearch;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

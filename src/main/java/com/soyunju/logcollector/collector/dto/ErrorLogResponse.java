@@ -1,6 +1,6 @@
-package com.soyunju.logcollector.dto.lc;
+package com.soyunju.logcollector.collector.dto;
 
-import com.soyunju.logcollector.domain.lc.ErrorStatus;
+import com.soyunju.logcollector.collector.domain.ErrorStatus;
 import lombok.Builder;
 import lombok.Getter;
 

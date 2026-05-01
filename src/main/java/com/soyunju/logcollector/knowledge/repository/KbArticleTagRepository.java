@@ -1,7 +1,8 @@
-package com.soyunju.logcollector.repository.kb;
+package com.soyunju.logcollector.knowledge.repository;
 
-import com.soyunju.logcollector.domain.kb.KbArticleTag;
-import com.soyunju.logcollector.domain.kb.KbArticleTagId;
+
+import com.soyunju.logcollector.knowledge.domain.KbArticleTag;
+import com.soyunju.logcollector.knowledge.domain.KbArticleTagId;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

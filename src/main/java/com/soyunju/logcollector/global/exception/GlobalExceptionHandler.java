@@ -1,6 +1,6 @@
-package com.soyunju.logcollector.exception;
+package com.soyunju.logcollector.global.exception;
 
-import com.soyunju.logcollector.dto.lc.ErrorResponse;
+import com.soyunju.logcollector.collector.dto.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

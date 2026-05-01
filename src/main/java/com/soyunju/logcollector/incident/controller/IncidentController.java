@@ -1,9 +1,10 @@
-package com.soyunju.logcollector.controller.kb;
+package com.soyunju.logcollector.incident.controller;
 
-import com.soyunju.logcollector.dto.kb.IncidentResponse;
-import com.soyunju.logcollector.service.kb.crud.IncidentBridgeService;
-import com.soyunju.logcollector.service.kb.crud.IncidentService;
-import com.soyunju.logcollector.service.kb.search.IncidentSearchService;
+import com.soyunju.logcollector.incident.domain.enums.IncidentStatus;
+import com.soyunju.logcollector.incident.dto.IncidentResponse;
+import com.soyunju.logcollector.incident.service.crud.IncidentBridgeService;
+import com.soyunju.logcollector.incident.service.crud.IncidentService;
+import com.soyunju.logcollector.incident.service.search.IncidentSearchService;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +27,7 @@ public class IncidentController {
 
     @Hidden
     @GetMapping("/closed")
-    public ResponseEntity<org.springframework.data.domain.Page<com.soyunju.logcollector.dto.kb.IncidentResponse>> getClosedIncidents(
+    public ResponseEntity<org.springframework.data.domain.Page<com.soyunju.logcollector.incident.dto.IncidentResponse>> getClosedIncidents(
             @org.springframework.data.web.PageableDefault(size = 20) org.springframework.data.domain.Pageable pageable) {
         return ResponseEntity.ok(incidentService.findClosed(pageable));
     }
@@ -46,7 +47,7 @@ public class IncidentController {
 
     @Hidden
     @GetMapping
-    public ResponseEntity<org.springframework.data.domain.Page<com.soyunju.logcollector.dto.kb.IncidentResponse>> getIncidents(
+    public ResponseEntity<org.springframework.data.domain.Page<com.soyunju.logcollector.incident.dto.IncidentResponse>> getIncidents(
             @org.springframework.data.web.PageableDefault(size = 20) org.springframework.data.domain.Pageable pageable) {
         return ResponseEntity.ok(incidentService.findAll(pageable));
     }
@@ -58,7 +59,7 @@ public class IncidentController {
     @PatchMapping("/{logHash}/status")
     public ResponseEntity<Void> updateStatus(
             @PathVariable String logHash,
-            @RequestParam com.soyunju.logcollector.domain.kb.enums.IncidentStatus newStatus) {
+            @RequestParam IncidentStatus newStatus) {
         incidentBridgeService.updateStatus(logHash, newStatus);
         return ResponseEntity.ok().build();
     }
@@ -72,7 +73,7 @@ public class IncidentController {
             @PathVariable String logHash,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String createdBy,
-            @RequestParam(required = false) com.soyunju.logcollector.domain.kb.enums.IncidentStatus status) {
+            @RequestParam(required = false) IncidentStatus status) {
         incidentBridgeService.updateDetails(logHash, title, createdBy, status);
         return ResponseEntity.ok().build();
     }

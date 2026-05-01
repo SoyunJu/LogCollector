@@ -1,6 +1,6 @@
-package com.soyunju.logcollector.dto.lc;
+package com.soyunju.logcollector.collector.dto;
 
-import com.soyunju.logcollector.exception.ErrorCode;
+import com.soyunju.logcollector.global.exception.ErrorCode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,4 +26,5 @@ public class ErrorResponse {
                 .timestamp(LocalDateTime.now())
                 .build();
     }
+
 }

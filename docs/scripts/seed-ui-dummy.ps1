@@ -51,7 +51,7 @@ java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not avail
 '@,
     @'
 java.lang.NullPointerException: Cannot invoke "String.length()" because "x" is null
-  at com.soyunju.logcollector.service.KbArticleService.publish(KbArticleService.java:204)
+  at com.soyunju.logcollector.knowledge.serviceArticleService.publish(KbArticleService.java:204)
 '@,
     @'
 org.springframework.web.client.HttpServerErrorException$BadGateway: 502 Bad Gateway

@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.exception;
+package com.soyunju.logcollector.global.exception;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

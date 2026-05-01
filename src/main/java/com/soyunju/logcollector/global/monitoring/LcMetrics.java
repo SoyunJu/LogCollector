@@ -1,7 +1,8 @@
-package com.soyunju.logcollector.monitornig;
+package com.soyunju.logcollector.global.monitoring;
 
-import com.soyunju.logcollector.config.LogCollectorRedisProperties;
-import com.soyunju.logcollector.domain.lc.ErrorStatus;
+
+import com.soyunju.logcollector.collector.domain.ErrorStatus;
+import com.soyunju.logcollector.global.config.LogCollectorRedisProperties;
 import io.micrometer.core.instrument.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;

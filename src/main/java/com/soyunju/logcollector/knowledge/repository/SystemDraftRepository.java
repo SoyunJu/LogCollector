@@ -1,7 +1,8 @@
-package com.soyunju.logcollector.repository.kb;
+package com.soyunju.logcollector.knowledge.repository;
 
-import com.soyunju.logcollector.domain.kb.SystemDraft;
-import com.soyunju.logcollector.domain.kb.enums.DraftReason;
+
+import com.soyunju.logcollector.knowledge.domain.SystemDraft;
+import com.soyunju.logcollector.knowledge.domain.enums.DraftReason;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 

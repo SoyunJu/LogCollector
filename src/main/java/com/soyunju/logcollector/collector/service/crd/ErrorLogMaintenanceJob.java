@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.service.lc.crd;
+package com.soyunju.logcollector.collector.service.crd;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;

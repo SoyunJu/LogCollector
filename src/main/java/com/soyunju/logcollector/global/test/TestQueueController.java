@@ -1,6 +1,6 @@
-package com.soyunju.logcollector.controller.test;
+package com.soyunju.logcollector.global.test;
 
-import com.soyunju.logcollector.service.lc.redis.RedisToDB;
+import com.soyunju.logcollector.collector.service.redis.RedisToDB;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

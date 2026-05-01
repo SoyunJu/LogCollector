@@ -1,6 +1,6 @@
-package com.soyunju.logcollector.service.kb.ai;
+package com.soyunju.logcollector.knowledge.service.ai;
 
-import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
+import com.soyunju.logcollector.knowledge.dto.AiAnalysisResult;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 

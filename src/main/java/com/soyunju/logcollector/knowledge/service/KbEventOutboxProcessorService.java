@@ -1,18 +1,21 @@
-package com.soyunju.logcollector.service.kb.crud;
+package com.soyunju.logcollector.knowledge.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.soyunju.logcollector.domain.kb.KbEventOutbox;
-import com.soyunju.logcollector.domain.kb.enums.KbEventOutboxStatus;
-import com.soyunju.logcollector.domain.kb.enums.KbEventType;
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
-import com.soyunju.logcollector.dto.event.LogResolvedEvent;
-import com.soyunju.logcollector.dto.event.LogSavedEvent;
-import com.soyunju.logcollector.repository.kb.KbEventOutboxRepository;
+
+import com.soyunju.logcollector.global.event.LogResolvedEvent;
+import com.soyunju.logcollector.global.event.LogSavedEvent;
+import com.soyunju.logcollector.incident.domain.enums.IncidentStatus;
+import com.soyunju.logcollector.knowledge.domain.KbEventOutbox;
+import com.soyunju.logcollector.knowledge.domain.enums.KbEventOutboxStatus;
+import com.soyunju.logcollector.knowledge.domain.enums.KbEventType;
+import com.soyunju.logcollector.knowledge.repository.KbEventOutboxRepository;
+import com.soyunju.logcollector.knowledge.service.crud.KbDraftService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.soyunju.logcollector.incident.service.crud.IncidentBridgeService;
 
 import java.time.LocalDateTime;
 import java.util.List;

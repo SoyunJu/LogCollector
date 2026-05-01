@@ -1,8 +1,8 @@
-package com.soyunju.logcollector.repository.lc;
+package com.soyunju.logcollector.collector.repository;
 
-import com.soyunju.logcollector.domain.lc.ErrorLog;
-import com.soyunju.logcollector.domain.lc.ErrorStatus;
-import com.soyunju.logcollector.dto.kb.LogAnalysisData;
+import com.soyunju.logcollector.collector.domain.ErrorLog;
+import com.soyunju.logcollector.collector.domain.ErrorStatus;
+import com.soyunju.logcollector.knowledge.dto.LogAnalysisData;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -42,7 +42,7 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
     long countDistinctHostsByLogHash(@Param("logHash") String logHash);
 
     // AI 분석 전용: 특정 필드만 조회하여 DB 부하 최적화 (DTO로 분리)
-    @Query("SELECT new com.soyunju.logcollector.dto.kb.LogAnalysisData(e.errorCode, e.summary, e.message) " +
+    @Query("SELECT new com.soyunju.logcollector.knowledge.dto.LogAnalysisData(e.errorCode, e.summary, e.message) " +
             "FROM ErrorLog e WHERE e.id = :id")
     Optional<LogAnalysisData> findAnalysisDataById(@Param("id") Long id);
 
@@ -81,11 +81,11 @@ public interface ErrorLogRepository extends JpaRepository<ErrorLog, Long> {
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE ErrorLog e SET e.status = com.soyunju.logcollector.domain.lc.ErrorStatus.IGNORED WHERE e.logHash = :logHash")
+    @Query("UPDATE ErrorLog e SET e.status = com.soyunju.logcollector.collector.domain.ErrorStatus.IGNORED WHERE e.logHash = :logHash")
     int markIgnoredByLogHash(@Param("logHash") String logHash);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE ErrorLog e SET e.status = com.soyunju.logcollector.domain.lc.ErrorStatus.NEW WHERE e.logHash = :logHash")
+    @Query("UPDATE ErrorLog e SET e.status = com.soyunju.logcollector.collector.domain.ErrorStatus.NEW WHERE e.logHash = :logHash")
     int unmarkIgnoredByLogHash(@Param("logHash") String logHash);
 
     // 테스트 데이터 삭제용

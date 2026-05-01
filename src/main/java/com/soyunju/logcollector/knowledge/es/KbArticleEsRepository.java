@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.es;
+package com.soyunju.logcollector.knowledge.es;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

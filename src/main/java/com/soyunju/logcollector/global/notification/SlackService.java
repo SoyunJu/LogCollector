@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.service.lc.notification;
+package com.soyunju.logcollector.global.notification;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;

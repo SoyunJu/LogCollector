@@ -1,8 +1,8 @@
 package com.soyunju.logcollector.controller.kb;
 
-import com.soyunju.logcollector.dto.kb.KbAddendumCreateRequest;
-import com.soyunju.logcollector.dto.kb.KbAddendumResponse;
-import com.soyunju.logcollector.service.kb.crud.KbAddendumService;
+import com.soyunju.logcollector.knowledge.dto.KbAddendumCreateRequest;
+import com.soyunju.logcollector.knowledge.dto.KbAddendumResponse;
+import com.soyunju.logcollector.knowledge.service.crud.KbAddendumService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

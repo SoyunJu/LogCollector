@@ -1,10 +1,10 @@
-package com.soyunju.logcollector.service.kb.ai;
+package com.soyunju.logcollector.knowledge.service.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
-import com.soyunju.logcollector.repository.kb.IncidentRepository;
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.knowledge.dto.AiAnalysisResult;
+import com.soyunju.logcollector.incident.repository.IncidentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

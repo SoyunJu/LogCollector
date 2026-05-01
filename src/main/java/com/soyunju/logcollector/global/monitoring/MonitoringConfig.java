@@ -1,6 +1,7 @@
-package com.soyunju.logcollector.monitornig;
+package com.soyunju.logcollector.global.monitoring;
 
-import com.soyunju.logcollector.config.LogCollectorRedisProperties;
+
+import com.soyunju.logcollector.global.config.LogCollectorRedisProperties;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;

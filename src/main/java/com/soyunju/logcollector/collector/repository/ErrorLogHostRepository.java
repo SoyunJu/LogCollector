@@ -1,7 +1,7 @@
-package com.soyunju.logcollector.repository.lc;
+package com.soyunju.logcollector.collector.repository;
 
-import com.soyunju.logcollector.domain.lc.ErrorLogHost;
-import com.soyunju.logcollector.repository.lc.agg.HostAgg;
+import com.soyunju.logcollector.collector.domain.ErrorLogHost;
+import com.soyunju.logcollector.collector.repository.agg.HostAgg;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -80,7 +80,7 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
             WHERE log_hash IN (:logHashes) 
             GROUP BY log_hash
             """, nativeQuery = true)
-    List<com.soyunju.logcollector.repository.lc.agg.HostAgg> countHostsByLogHash(@Param("logHashes") List<String> logHashes);
+    List<com.soyunju.logcollector.collector.repository.agg.HostAgg> countHostsByLogHash(@Param("logHashes") List<String> logHashes);
 
     // 영향 호스트 기준 rank
     @Query(value = """
@@ -94,7 +94,7 @@ public interface ErrorLogHostRepository extends JpaRepository<ErrorLogHost, Long
             ORDER BY hostCount DESC 
             LIMIT :limit
             """, nativeQuery = true)
-    List<com.soyunju.logcollector.repository.lc.agg.HostAgg> findTopHashesByHostCount(@Param("limit") int limit);
+    List<com.soyunju.logcollector.collector.repository.agg.HostAgg> findTopHashesByHostCount(@Param("limit") int limit);
 
     @Query(value = "SELECT COUNT(*) FROM error_log_hosts WHERE log_hash = :logHash", nativeQuery = true)
     int countHostsByLogHash(@Param("logHash") String logHash);

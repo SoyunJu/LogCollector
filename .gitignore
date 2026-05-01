@@ -57,3 +57,5 @@ infra/terraform/terraform.tfvars
 /v3/api-docs/**
 /api/admin/auth/login
 /api/admin/auth/refresh
+.env
+infra/compose/.env

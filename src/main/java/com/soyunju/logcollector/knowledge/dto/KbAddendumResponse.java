@@ -1,6 +1,6 @@
-package com.soyunju.logcollector.dto.kb;
+package com.soyunju.logcollector.knowledge.dto;
 
-import com.soyunju.logcollector.domain.kb.KbAddendum;
+import com.soyunju.logcollector.knowledge.domain.KbAddendum;
 import lombok.*;
 
 import java.time.LocalDateTime;

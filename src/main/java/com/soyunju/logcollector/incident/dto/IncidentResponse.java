@@ -1,8 +1,9 @@
-package com.soyunju.logcollector.dto.kb;
+package com.soyunju.logcollector.incident.dto;
 
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.domain.kb.enums.ErrorLevel;
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
+
+import com.soyunju.logcollector.collector.domain.enums.ErrorLevel;
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.incident.domain.enums.IncidentStatus;
 import lombok.*;
 
 import java.time.LocalDateTime;

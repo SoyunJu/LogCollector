@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.dto.kb;
+package com.soyunju.logcollector.knowledge.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;

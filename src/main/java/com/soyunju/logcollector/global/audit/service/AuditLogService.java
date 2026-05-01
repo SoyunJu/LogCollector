@@ -1,7 +1,7 @@
-package com.soyunju.logcollector.service.audit;
+package com.soyunju.logcollector.global.audit.service;
 
-import com.soyunju.logcollector.domain.audit.AuditLog;
-import com.soyunju.logcollector.repository.audit.AuditLogRepository;
+import com.soyunju.logcollector.global.audit.domain.AuditLog;
+import com.soyunju.logcollector.global.audit.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

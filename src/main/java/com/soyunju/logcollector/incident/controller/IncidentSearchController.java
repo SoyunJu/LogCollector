@@ -1,9 +1,10 @@
-package com.soyunju.logcollector.controller.kb;
+package com.soyunju.logcollector.incident.controller;
 
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
-import com.soyunju.logcollector.dto.kb.IncidentRankResponse;
-import com.soyunju.logcollector.dto.kb.IncidentResponse;
-import com.soyunju.logcollector.service.kb.search.IncidentSearchService;
+
+import com.soyunju.logcollector.incident.domain.enums.IncidentStatus;
+import com.soyunju.logcollector.incident.dto.IncidentRankResponse;
+import com.soyunju.logcollector.incident.dto.IncidentResponse;
+import com.soyunju.logcollector.incident.service.search.IncidentSearchService;
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,7 +27,7 @@ public class IncidentSearchController {
 
     @GetMapping("/search")
     public ResponseEntity<Page<IncidentResponse>> search(
-            com.soyunju.logcollector.dto.kb.IncidentSearch search,
+            com.soyunju.logcollector.incident.dto.IncidentSearch search,
             org.springframework.data.domain.Pageable pageable) {
         return ResponseEntity.ok(incidentSearchService.searchIncidents(search, pageable));
     }

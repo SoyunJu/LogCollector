@@ -1,11 +1,12 @@
-package com.soyunju.logcollector.service.kb.autopolicy;
+package com.soyunju.logcollector.knowledge.service.autopolicy;
 
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.domain.kb.enums.DraftReason;
-import com.soyunju.logcollector.repository.kb.IncidentRepository;
-import com.soyunju.logcollector.service.kb.autopolicy.DraftPolicyService.DraftCandidate;
-import com.soyunju.logcollector.service.kb.autopolicy.DraftPolicyService.DraftRunResult;
-import com.soyunju.logcollector.service.kb.crud.KbDraftService;
+
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.incident.repository.IncidentRepository;
+import com.soyunju.logcollector.knowledge.domain.enums.DraftReason;
+import com.soyunju.logcollector.knowledge.service.autopolicy.DraftPolicyService.DraftCandidate;
+import com.soyunju.logcollector.knowledge.service.autopolicy.DraftPolicyService.DraftRunResult;
+import com.soyunju.logcollector.knowledge.service.crud.KbDraftService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

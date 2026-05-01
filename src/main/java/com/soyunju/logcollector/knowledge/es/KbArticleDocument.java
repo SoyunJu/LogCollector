@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.es;
+package com.soyunju.logcollector.knowledge.es;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;

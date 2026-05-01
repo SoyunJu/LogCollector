@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.domain.kb.enums;
+package com.soyunju.logcollector.knowledge.domain.enums;
 
 public enum CreatedBy {
     system, user, admin

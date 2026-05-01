@@ -1,6 +1,7 @@
-package com.soyunju.logcollector.domain.kb;
+package com.soyunju.logcollector.knowledge.domain;
 
-import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
+
+import com.soyunju.logcollector.knowledge.domain.enums.CreatedBy;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;

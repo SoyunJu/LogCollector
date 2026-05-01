@@ -1,6 +1,6 @@
-package com.soyunju.logcollector.service.lc.ignore;
+package com.soyunju.logcollector.collector.service.ignore;
 
-import com.soyunju.logcollector.service.lc.redis.IgnoredLogHashStore;
+import com.soyunju.logcollector.collector.service.redis.IgnoredLogHashStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

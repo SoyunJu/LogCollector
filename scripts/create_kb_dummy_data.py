@@ -220,7 +220,7 @@ def run_scenario_1(c: DummyDataCreator):
         "io.lettuce.core.RedisCommandTimeoutException: Command timed out after 500ms\n"
         "\tat io.lettuce.core.protocol.CommandHandler.handleCommandComplete(CommandHandler.java:644)\n"
         "\tat com.soyunju.logcollector.service.redis.RedisQueueService.enqueue(RedisQueueService.java:72)\n"
-        "\tat com.soyunju.logcollector.service.lc.redis.LogToRedis.push(LogToRedis.java:38)\n"
+        "\tat com.soyunju.logcollector.collector.service.redis.LogToRedis.push(LogToRedis.java:38)\n"
         "\tat com.soyunju.logcollector.controller.lc.ErrorLogCrdController.collectLog(ErrorLogCrdController.java:63)"
     )
 

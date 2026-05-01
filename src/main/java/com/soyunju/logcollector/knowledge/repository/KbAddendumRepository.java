@@ -1,6 +1,7 @@
-package com.soyunju.logcollector.repository.kb;
+package com.soyunju.logcollector.knowledge.repository;
 
-import com.soyunju.logcollector.domain.kb.KbAddendum;
+
+import com.soyunju.logcollector.knowledge.domain.KbAddendum;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 

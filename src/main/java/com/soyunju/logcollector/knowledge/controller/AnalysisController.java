@@ -1,7 +1,7 @@
-package com.soyunju.logcollector.controller.kb;
+package com.soyunju.logcollector.knowledge.controller;
 
-import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
-import com.soyunju.logcollector.service.kb.crud.IncidentService;
+import com.soyunju.logcollector.knowledge.dto.AiAnalysisResult;
+import com.soyunju.logcollector.incident.service.crud.IncidentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

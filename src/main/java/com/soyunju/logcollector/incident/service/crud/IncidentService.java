@@ -1,15 +1,19 @@
-package com.soyunju.logcollector.service.kb.crud;
+package com.soyunju.logcollector.incident.service.crud;
 
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.domain.kb.KbAddendum;
-import com.soyunju.logcollector.domain.kb.KbArticle;
-import com.soyunju.logcollector.domain.kb.enums.ErrorLevel;
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
-import com.soyunju.logcollector.dto.kb.AiAnalysisResult;
-import com.soyunju.logcollector.repository.kb.IncidentRepository;
-import com.soyunju.logcollector.repository.kb.KbAddendumRepository;
-import com.soyunju.logcollector.repository.kb.KbArticleRepository;
-import com.soyunju.logcollector.service.kb.ai.AiAnalysisService;
+
+
+import com.soyunju.logcollector.collector.domain.enums.ErrorLevel;
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.incident.domain.enums.IncidentStatus;
+import com.soyunju.logcollector.incident.dto.IncidentResponse;
+import com.soyunju.logcollector.knowledge.domain.KbAddendum;
+import com.soyunju.logcollector.knowledge.domain.KbArticle;
+import com.soyunju.logcollector.knowledge.dto.AiAnalysisResult;
+import com.soyunju.logcollector.incident.repository.IncidentRepository;
+import com.soyunju.logcollector.knowledge.repository.KbAddendumRepository;
+import com.soyunju.logcollector.knowledge.repository.KbArticleRepository;
+import com.soyunju.logcollector.knowledge.service.ai.AiAnalysisService;
+import com.soyunju.logcollector.knowledge.service.crud.KbDraftService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
+import static com.soyunju.logcollector.incident.domain.enums.IncidentStatus.*;
 
 @Slf4j
 @Service
@@ -38,17 +44,17 @@ public class IncidentService {
     }
 
     @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
-    public org.springframework.data.domain.Page<com.soyunju.logcollector.dto.kb.IncidentResponse> findAll(org.springframework.data.domain.Pageable pageable) {
+    public org.springframework.data.domain.Page<IncidentResponse> findAll(org.springframework.data.domain.Pageable pageable) {
         return incidentRepository
-                .findByStatusNot(IncidentStatus.CLOSED, pageable)
-                .map(com.soyunju.logcollector.dto.kb.IncidentResponse::from);
+                .findByStatusNot(CLOSED, pageable)
+                .map(IncidentResponse::from);
     }
 
     @Transactional(readOnly = true, transactionManager = "kbTransactionManager")
-    public org.springframework.data.domain.Page<com.soyunju.logcollector.dto.kb.IncidentResponse> findClosed(org.springframework.data.domain.Pageable pageable) {
+    public org.springframework.data.domain.Page<IncidentResponse> findClosed(org.springframework.data.domain.Pageable pageable) {
         return incidentRepository
-                .findByStatus(IncidentStatus.CLOSED, pageable)
-                .map(com.soyunju.logcollector.dto.kb.IncidentResponse::from);
+                .findByStatus(CLOSED, pageable)
+                .map(IncidentResponse::from);
     }
 
     @Transactional(transactionManager = "kbTransactionManager", propagation = Propagation.REQUIRES_NEW)

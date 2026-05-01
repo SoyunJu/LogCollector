@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.service.lc.ignore;
+package com.soyunju.logcollector.collector.service.ignore;
 
 public interface LcIgnoreApplyService {
     void applyIgnore(String logHash);

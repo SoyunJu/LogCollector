@@ -1,12 +1,12 @@
-package com.soyunju.logcollector.service.lc.redis;
+package com.soyunju.logcollector.collector.service.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.soyunju.logcollector.dto.lc.ErrorLogRequest;
-import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
-import com.soyunju.logcollector.monitornig.LcMetrics;
-import com.soyunju.logcollector.service.lc.crd.ErrorLogCrdService;
-import com.soyunju.logcollector.service.lc.notification.SlackService;
-import com.soyunju.logcollector.service.lc.processor.LogProcessor;
+import com.soyunju.logcollector.collector.dto.ErrorLogRequest;
+import com.soyunju.logcollector.collector.dto.ErrorLogResponse;
+import com.soyunju.logcollector.collector.service.crd.ErrorLogCrdService;
+import com.soyunju.logcollector.global.monitoring.LcMetrics;
+import com.soyunju.logcollector.global.notification.SlackService;
+import com.soyunju.logcollector.collector.service.processor.LogProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

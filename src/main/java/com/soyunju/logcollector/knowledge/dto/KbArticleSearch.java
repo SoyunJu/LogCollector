@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.dto.kb;
+package com.soyunju.logcollector.knowledge.dto;
 
 import lombok.Getter;
 import lombok.Setter;

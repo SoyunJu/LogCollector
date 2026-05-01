@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.dto.kb;
+package com.soyunju.logcollector.knowledge.dto;
 
 // AI 분석용
 public record LogAnalysisData(

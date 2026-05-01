@@ -1,7 +1,7 @@
-package com.soyunju.logcollector.domain.kb;
+package com.soyunju.logcollector.incident.domain;
 
-import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxAction;
-import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxStatus;
+import com.soyunju.logcollector.incident.domain.enums.LcIgnoreOutboxAction;
+import com.soyunju.logcollector.incident.domain.enums.LcIgnoreOutboxStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;

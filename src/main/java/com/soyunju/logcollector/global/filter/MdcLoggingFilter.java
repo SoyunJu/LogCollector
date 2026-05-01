@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.infra.filter;
+package com.soyunju.logcollector.global.filter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

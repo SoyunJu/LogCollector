@@ -1,8 +1,9 @@
-package com.soyunju.logcollector.controller.kb;
+package com.soyunju.logcollector.knowledge.controller;
 
-import com.soyunju.logcollector.domain.kb.KbArticle;
-import com.soyunju.logcollector.es.KbArticleEsService;
-import com.soyunju.logcollector.repository.kb.KbArticleRepository;
+
+import com.soyunju.logcollector.knowledge.domain.KbArticle;
+import com.soyunju.logcollector.knowledge.es.KbArticleEsService;
+import com.soyunju.logcollector.knowledge.repository.KbArticleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;

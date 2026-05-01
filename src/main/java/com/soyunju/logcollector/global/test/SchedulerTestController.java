@@ -1,6 +1,6 @@
-package com.soyunju.logcollector.controller.test;
+package com.soyunju.logcollector.global.test;
 
-import com.soyunju.logcollector.service.scheduler.KbScheduler;
+import com.soyunju.logcollector.global.scheduler.KbScheduler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

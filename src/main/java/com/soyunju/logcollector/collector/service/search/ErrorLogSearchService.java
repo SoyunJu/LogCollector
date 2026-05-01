@@ -1,14 +1,14 @@
-package com.soyunju.logcollector.service.lc.search;
+package com.soyunju.logcollector.collector.service.search;
 
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.soyunju.logcollector.domain.lc.ErrorLog;
-import com.soyunju.logcollector.domain.lc.ErrorStatus;
-import com.soyunju.logcollector.domain.lc.QErrorLog;
-import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
-import com.soyunju.logcollector.repository.lc.ErrorLogRepository;
-import com.soyunju.logcollector.service.lc.processor.LogProcessor;
+import com.soyunju.logcollector.collector.domain.ErrorLog;
+import com.soyunju.logcollector.collector.domain.ErrorStatus;
+import com.soyunju.logcollector.collector.domain.QErrorLog;
+import com.soyunju.logcollector.collector.dto.ErrorLogResponse;
+import com.soyunju.logcollector.collector.repository.ErrorLogRepository;
+import com.soyunju.logcollector.collector.service.processor.LogProcessor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;

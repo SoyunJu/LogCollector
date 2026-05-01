@@ -1,7 +1,7 @@
-package com.soyunju.logcollector.service.lc.processor;
+package com.soyunju.logcollector.collector.service.processor;
 
-import com.soyunju.logcollector.domain.lc.ErrorLog;
-import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
+import com.soyunju.logcollector.collector.domain.ErrorLog;
+import com.soyunju.logcollector.collector.dto.ErrorLogResponse;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;

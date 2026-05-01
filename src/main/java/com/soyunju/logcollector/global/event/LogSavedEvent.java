@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.dto.event;
+package com.soyunju.logcollector.global.event;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

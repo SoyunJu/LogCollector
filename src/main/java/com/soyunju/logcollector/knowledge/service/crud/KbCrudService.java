@@ -1,13 +1,14 @@
-package com.soyunju.logcollector.service.kb.crud;
+package com.soyunju.logcollector.knowledge.service.crud;
 
-import com.soyunju.logcollector.domain.kb.KbAddendum;
-import com.soyunju.logcollector.domain.kb.KbArticle;
-import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
-import com.soyunju.logcollector.domain.kb.enums.KbStatus;
-import com.soyunju.logcollector.es.KbArticleEsService;
-import com.soyunju.logcollector.repository.kb.KbAddendumRepository;
-import com.soyunju.logcollector.repository.kb.KbArticleRepository;
-import com.soyunju.logcollector.service.kb.autopolicy.KbConfidenceCalculator;
+
+import com.soyunju.logcollector.knowledge.domain.KbAddendum;
+import com.soyunju.logcollector.knowledge.domain.KbArticle;
+import com.soyunju.logcollector.knowledge.domain.enums.CreatedBy;
+import com.soyunju.logcollector.knowledge.domain.enums.KbStatus;
+import com.soyunju.logcollector.knowledge.es.KbArticleEsService;
+import com.soyunju.logcollector.knowledge.repository.KbAddendumRepository;
+import com.soyunju.logcollector.knowledge.repository.KbArticleRepository;
+import com.soyunju.logcollector.knowledge.service.autopolicy.KbConfidenceCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

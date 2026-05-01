@@ -1,9 +1,11 @@
-package com.soyunju.logcollector.repository.kb;
+package com.soyunju.logcollector.incident.repository;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.dto.kb.IncidentSearch;
+import com.soyunju.logcollector.collector.domain.enums.ErrorLevel;
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.incident.domain.enums.IncidentStatus;
+import com.soyunju.logcollector.incident.dto.IncidentSearch;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -12,7 +14,8 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 
-import static com.soyunju.logcollector.domain.kb.QIncident.incident;
+import static com.soyunju.logcollector.incident.domain.QIncident.incident;
+
 
 public class IncidentRepositoryImpl implements IncidentRepositoryCustom {
 
@@ -59,11 +62,11 @@ public class IncidentRepositoryImpl implements IncidentRepositoryCustom {
         return StringUtils.hasText(serviceName) ? incident.serviceName.containsIgnoreCase(serviceName.trim()) : null;
     }
 
-    private BooleanExpression statusEq(com.soyunju.logcollector.domain.kb.enums.IncidentStatus status) {
+    private BooleanExpression statusEq(IncidentStatus status) {
         return status != null ? incident.status.eq(status) : null;
     }
 
-    private BooleanExpression levelEq(com.soyunju.logcollector.domain.kb.enums.ErrorLevel level) {
+    private BooleanExpression levelEq(ErrorLevel level) {
         return level != null ? incident.errorLevel.eq(level) : null;
     }
 

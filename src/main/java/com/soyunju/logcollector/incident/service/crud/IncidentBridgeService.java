@@ -1,12 +1,13 @@
-package com.soyunju.logcollector.service.kb.crud;
+package com.soyunju.logcollector.incident.service.crud;
 
-import com.soyunju.logcollector.domain.kb.Incident;
-import com.soyunju.logcollector.domain.kb.LcIgnoreOutbox;
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
-import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxAction;
-import com.soyunju.logcollector.domain.kb.enums.LcIgnoreOutboxStatus;
-import com.soyunju.logcollector.repository.kb.IncidentRepository;
-import com.soyunju.logcollector.repository.kb.LcIgnoreOutboxRepository;
+
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.incident.domain.LcIgnoreOutbox;
+import com.soyunju.logcollector.incident.domain.enums.IncidentStatus;
+import com.soyunju.logcollector.incident.domain.enums.LcIgnoreOutboxAction;
+import com.soyunju.logcollector.incident.domain.enums.LcIgnoreOutboxStatus;
+import com.soyunju.logcollector.incident.repository.IncidentRepository;
+import com.soyunju.logcollector.incident.repository.LcIgnoreOutboxRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

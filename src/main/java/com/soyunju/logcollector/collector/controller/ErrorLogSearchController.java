@@ -1,8 +1,8 @@
-package com.soyunju.logcollector.controller.lc;
+package com.soyunju.logcollector.collector.controller;
 
-import com.soyunju.logcollector.domain.lc.ErrorStatus;
-import com.soyunju.logcollector.dto.lc.ErrorLogResponse;
-import com.soyunju.logcollector.service.lc.search.ErrorLogSearchService;
+import com.soyunju.logcollector.collector.domain.ErrorStatus;
+import com.soyunju.logcollector.collector.dto.ErrorLogResponse;
+import com.soyunju.logcollector.collector.service.search.ErrorLogSearchService;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

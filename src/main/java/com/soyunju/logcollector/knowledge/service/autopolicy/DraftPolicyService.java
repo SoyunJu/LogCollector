@@ -1,9 +1,10 @@
-package com.soyunju.logcollector.service.kb.autopolicy;
+package com.soyunju.logcollector.knowledge.service.autopolicy;
 
-import com.soyunju.logcollector.domain.kb.enums.IncidentStatus;
-import com.soyunju.logcollector.repository.kb.IncidentRepository;
-import com.soyunju.logcollector.repository.lc.ErrorLogHostRepository;
-import com.soyunju.logcollector.repository.lc.agg.HostAgg;
+
+import com.soyunju.logcollector.incident.domain.enums.IncidentStatus;
+import com.soyunju.logcollector.incident.repository.IncidentRepository;
+import com.soyunju.logcollector.collector.repository.ErrorLogHostRepository;
+import com.soyunju.logcollector.collector.repository.agg.HostAgg;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.service.kb;
+package com.soyunju.logcollector.knowledge.service.tag;
 
 public class TagService {
 }

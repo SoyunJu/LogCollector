@@ -1,6 +1,7 @@
-package com.soyunju.logcollector.domain.kb;
+package com.soyunju.logcollector.knowledge.domain;
 
-import com.soyunju.logcollector.domain.kb.enums.DraftReason;
+import com.soyunju.logcollector.incident.domain.Incident;
+import com.soyunju.logcollector.knowledge.domain.enums.DraftReason;
 import jakarta.persistence.*;
 import lombok.*;
 

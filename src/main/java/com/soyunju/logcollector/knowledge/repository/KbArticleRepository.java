@@ -1,8 +1,9 @@
-package com.soyunju.logcollector.repository.kb;
+package com.soyunju.logcollector.knowledge.repository;
 
-import com.soyunju.logcollector.domain.kb.KbArticle;
-import com.soyunju.logcollector.domain.kb.enums.CreatedBy;
-import com.soyunju.logcollector.domain.kb.enums.KbStatus;
+
+import com.soyunju.logcollector.knowledge.domain.KbArticle;
+import com.soyunju.logcollector.knowledge.domain.enums.CreatedBy;
+import com.soyunju.logcollector.knowledge.domain.enums.KbStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -46,8 +47,8 @@ public interface KbArticleRepository extends JpaRepository<KbArticle, Long> {
               and k.createdAt < :createdBefore
               and k.lastActivityAt < :lastActivityBefore
             """)
-    int deleteExpiredSystemDrafts(@Param("createdBy") com.soyunju.logcollector.domain.kb.enums.CreatedBy createdBy,
-                                  @Param("status") com.soyunju.logcollector.domain.kb.enums.KbStatus status,
+    int deleteExpiredSystemDrafts(@Param("createdBy") com.soyunju.logcollector.knowledge.domain.enums.CreatedBy createdBy,
+                                  @Param("status") com.soyunju.logcollector.knowledge.domain.enums.KbStatus status,
                                   @Param("createdBefore") java.time.LocalDateTime createdBefore,
                                   @Param("lastActivityBefore") java.time.LocalDateTime lastActivityBefore);
 

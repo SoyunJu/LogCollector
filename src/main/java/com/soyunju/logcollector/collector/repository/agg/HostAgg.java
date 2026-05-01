@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.repository.lc.agg;
+package com.soyunju.logcollector.collector.repository.agg;
 
 public interface HostAgg {
     String getLogHash();

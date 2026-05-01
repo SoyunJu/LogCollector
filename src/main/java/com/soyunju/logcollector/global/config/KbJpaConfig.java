@@ -1,4 +1,4 @@
-package com.soyunju.logcollector.config;
+package com.soyunju.logcollector.global.config;
 
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,11 +19,17 @@ import javax.sql.DataSource;
 @Configuration
 @EnableJpaAuditing
 @EnableJpaRepositories(
-        basePackages = "com.soyunju.logcollector.repository.kb",
+        basePackages = {
+                "com.soyunju.logcollector.knowledge.repository",
+                "com.soyunju.logcollector.incident.repository"
+        },
         entityManagerFactoryRef = "kbEntityManagerFactory",
         transactionManagerRef = "kbTransactionManager"
 )
-@EntityScan(basePackages = "com.soyunju.logcollector.domain.kb")
+@EntityScan(basePackages = {
+        "com.soyunju.logcollector.knowledge.domain",
+        "com.soyunju.logcollector.incident.domain"
+})
 public class KbJpaConfig {
 
     @Bean(name = "kbDataSource")
@@ -39,7 +45,10 @@ public class KbJpaConfig {
     ) {
         return builder
                 .dataSource(dataSource)
-                .packages("com.soyunju.logcollector.domain.kb")
+                .packages(
+                        "com.soyunju.logcollector.knowledge.domain",
+                        "com.soyunju.logcollector.incident.domain"
+                )
                 .persistenceUnit("kb")
                 .build();
     }
