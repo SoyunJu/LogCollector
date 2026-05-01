@@ -8,6 +8,7 @@ import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
@@ -39,6 +40,7 @@ public class KbJpaConfig {
     }
 
     @Bean(name = "kbEntityManagerFactory")
+    @DependsOn("kbFlyway")
     public LocalContainerEntityManagerFactoryBean kbEntityManagerFactory(
             EntityManagerFactoryBuilder builder,
             @Qualifier("kbDataSource") DataSource dataSource
