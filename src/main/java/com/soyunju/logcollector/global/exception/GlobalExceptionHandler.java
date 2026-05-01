@@ -5,35 +5,47 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 1. 잘못된 인자 요청 (ID 부재 등)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .collect(Collectors.joining(", "));
+        return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_INPUT", message);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException e) {
         return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_INPUT", e.getMessage());
     }
 
-    // 2. 비즈니스 로직 에러 (AI 분석 시 필드 누락 등)
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException e) {
         log.warn("Business Logic Error: {}", e.getMessage());
         return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "BUSINESS_ERROR", e.getMessage());
     }
 
-    // 3. 보안 관련 예외 (접근 권한 부족 등)
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidTransition(InvalidStatusTransitionException e) {
+        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "INVALID_STATUS_TRANSITION", e.getMessage());
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException e) {
         return buildResponse(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "해당 작업에 대한 권한이 없습니다.");
     }
 
-    // 4. 공통 최상위 예외 처리
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception e) {
         log.error("Unhandled Exception occurred: ", e);
@@ -49,5 +61,4 @@ public class GlobalExceptionHandler {
                 .build();
         return new ResponseEntity<>(response, status);
     }
-
 }
