@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(indexName = "kb_articles")
-@Setting(settingPath = "resources/es/kb-article-settings.json")
+@Setting(settingPath = "es/kb-article-settings.json")
 public class KbArticleDocument {
 
     @Id
