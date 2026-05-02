@@ -33,7 +33,6 @@ public class KbArticle {
     @Column(name = "incident_title", nullable = false, length = 255)
     private String incidentTitle;
 
-    @Lob
     @Column(columnDefinition = "LONGTEXT", nullable = false)
     private String content;
 

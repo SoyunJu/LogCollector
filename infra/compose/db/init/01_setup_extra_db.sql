@@ -1,3 +1,7 @@
+-- LC DB
+CREATE DATABASE IF NOT EXISTS logcollector;
+
+-- KB DB
 CREATE DATABASE IF NOT EXISTS knowledge_base;
 
 CREATE USER IF NOT EXISTS 'kb_root'@'%' IDENTIFIED BY 'root';

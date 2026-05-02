@@ -40,8 +40,7 @@ public class LcIgnoreOutbox {
     @Column(name = "next_retry_at")
     private LocalDateTime nextRetryAt;
 
-    @Lob
-    @Column(name = "last_error")
+    @Column(name = "last_error", columnDefinition = "LONGTEXT")
     private String lastError;
 
     @CreatedDate

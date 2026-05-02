@@ -25,7 +25,6 @@ public class KbAddendum {
     @JoinColumn(name = "kb_article_id", nullable = false)
     private KbArticle kbArticle;
 
-    @Lob
     @Column(columnDefinition = "LONGTEXT", nullable = false)
     private String content;
 

@@ -33,7 +33,6 @@ public class KbEventOutbox {
     private KbEventType eventType;
 
     // 이벤트 페이로드 전체를 JSON으로 직렬화해서 저장
-    @Lob
     @Column(name = "payload", columnDefinition = "TEXT", nullable = false)
     private String payload;
 
@@ -47,7 +46,6 @@ public class KbEventOutbox {
     @Column(name = "next_retry_at")
     private LocalDateTime nextRetryAt;
 
-    @Lob
     @Column(name = "last_error")
     private String lastError;
 

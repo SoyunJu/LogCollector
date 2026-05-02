@@ -33,14 +33,12 @@ public class Incident {
     @Column(name = "incident_title")
     private String incidentTitle;
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String summary;
 
     @Column(name = "created_by")
     private String createdBy;
 
-    @Lob
     @Column(name = "stack_trace", columnDefinition = "LONGTEXT")
     private String stackTrace;
 
